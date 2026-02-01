@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Article;
+use App\Models\BankAccount;
+use App\Models\Currency;
 use App\Models\Enums\UserRoleEnum;
 use App\Models\User;
 use App\Models\Company;
@@ -127,6 +129,49 @@ class DatabaseSeeder extends Seeder
             ['name' => '++i Article 1', 'type' => 'products'],
             ['name' => '++i Article 2', 'type' => 'services'],
             ['name' => '++i Article 3', 'type' => 'products'],
+        ]);
+
+        // Create currencies for each company (test data for leak detection)
+        $duskoCompany->currencies()->createMany([
+            ['code' => 'BAM', 'name' => 'Dusko BAM', 'prefix' => 'KM'],
+            ['code' => 'EUR', 'name' => 'Dusko EUR', 'prefix' => '€'],
+        ]);
+
+        $sandroCompany->currencies()->createMany([
+            ['code' => 'BAM', 'name' => 'Sandro BAM', 'prefix' => 'KM'],
+            ['code' => 'USD', 'name' => 'Sandro USD', 'prefix' => '$'],
+        ]);
+
+        $borisCompany->currencies()->createMany([
+            ['code' => 'BAM', 'name' => 'Boris BAM', 'prefix' => 'KM'],
+            ['code' => 'CHF', 'name' => 'Boris CHF', 'prefix' => 'CHF'],
+        ]);
+
+        $plusiCompany->currencies()->createMany([
+            ['code' => 'BAM', 'name' => '++i BAM', 'prefix' => 'KM'],
+            ['code' => 'EUR', 'name' => '++i EUR', 'prefix' => '€'],
+            ['code' => 'USD', 'name' => '++i USD', 'prefix' => '$'],
+        ]);
+
+        // Create bank accounts for each company (test data for leak detection)
+        $duskoCompany->bankAccounts()->createMany([
+            ['bank_name' => 'Dusko Bank 1', 'account_number' => 'DUSKO-0001', 'swift' => 'DUSKBA22XXX', 'is_default' => true],
+            ['bank_name' => 'Dusko Bank 2', 'account_number' => 'DUSKO-0002', 'swift' => 'DUSKBA22YYY', 'is_default' => false],
+        ]);
+
+        $sandroCompany->bankAccounts()->createMany([
+            ['bank_name' => 'Sandro Bank 1', 'account_number' => 'SANDRO-0001', 'swift' => 'SANDRO22XXX', 'is_default' => true],
+            ['bank_name' => 'Sandro Bank 2', 'account_number' => 'SANDRO-0002', 'swift' => 'SANDRO22YYY', 'is_default' => false],
+        ]);
+
+        $borisCompany->bankAccounts()->createMany([
+            ['bank_name' => 'Boris Bank 1', 'account_number' => 'BORIS-0001', 'swift' => 'BORISB22XXX', 'is_default' => true],
+            ['bank_name' => 'Boris Bank 2', 'account_number' => 'BORIS-0002', 'swift' => 'BORISB22YYY', 'is_default' => false],
+        ]);
+
+        $plusiCompany->bankAccounts()->createMany([
+            ['bank_name' => '++i Bank 1', 'account_number' => 'PLUSA-0001', 'swift' => 'PLUSIB22XXX', 'is_default' => true],
+            ['bank_name' => '++i Bank 2', 'account_number' => 'PLUSA-0002', 'swift' => 'PLUSIB22YYY', 'is_default' => false],
         ]);
     }
 }

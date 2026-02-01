@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\API\V1\AuthController;
 use App\Http\Controllers\API\V1\ClientController;
+use App\Http\Controllers\API\V1\BankAccountController;
+use App\Http\Controllers\API\V1\CurrencyController;
 use App\Http\Controllers\API\V1\UserController;
 use App\Http\Controllers\API\V1\CompanyController;
 use App\Http\Controllers\API\V1\ArticleController;
@@ -23,6 +25,9 @@ Route::prefix('v1')->group(function () {
             ->group(function () {
                 Route::apiResource('clients', ClientController::class);
                 Route::apiResource('articles', ArticleController::class);
+                Route::apiResource('currencies', CurrencyController::class);
+                Route::apiResource('bank-accounts', BankAccountController::class)
+                    ->parameters(['bank-accounts' => 'bankAccount']);
             });
     });
 });
