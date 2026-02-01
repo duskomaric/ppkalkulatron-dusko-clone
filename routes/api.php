@@ -3,7 +3,9 @@
 use App\Http\Controllers\API\V1\AuthController;
 use App\Http\Controllers\API\V1\ClientController;
 use App\Http\Controllers\API\V1\BankAccountController;
+use App\Http\Controllers\API\V1\CompanySettingController;
 use App\Http\Controllers\API\V1\CurrencyController;
+use App\Http\Controllers\API\V1\UserSettingController;
 use App\Http\Controllers\API\V1\UserController;
 use App\Http\Controllers\API\V1\CompanyController;
 use App\Http\Controllers\API\V1\ArticleController;
@@ -19,6 +21,11 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('companies', CompanyController::class);
         });
 
+        Route::prefix('me')->group(function () {
+            Route::get('settings', [UserSettingController::class, 'show']);
+            Route::patch('settings', [UserSettingController::class, 'update']);
+        });
+
         Route::middleware('company')
             ->prefix('{company:slug}')
             ->scopeBindings()
@@ -28,6 +35,9 @@ Route::prefix('v1')->group(function () {
                 Route::apiResource('currencies', CurrencyController::class);
                 Route::apiResource('bank-accounts', BankAccountController::class)
                     ->parameters(['bank-accounts' => 'bankAccount']);
+
+                Route::get('settings', [CompanySettingController::class, 'show']);
+                Route::patch('settings', [CompanySettingController::class, 'update']);
             });
     });
 });
