@@ -4,8 +4,19 @@ namespace Database\Seeders;
 
 use App\Models\Article;
 use App\Models\BankAccount;
+use App\Models\Contract;
+use App\Models\ContractItem;
 use App\Models\Currency;
+use App\Models\Enums\DocumentStatusEnum;
+use App\Models\Enums\DocumentTemplateEnum;
+use App\Models\Enums\LanguageEnum;
 use App\Models\Enums\UserRoleEnum;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\Proforma;
+use App\Models\ProformaItem;
+use App\Models\Quote;
+use App\Models\QuoteItem;
 use App\Models\User;
 use App\Models\Company;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -20,6 +31,38 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $makeItemData = function (string $name, ?int $articleId, int $quantity, int $unitPrice, int $taxRate): array {
+            $subtotal = $quantity * $unitPrice;
+            $taxAmount = (int) ($subtotal * $taxRate / 10000);
+            $total = $subtotal + $taxAmount;
+
+            return [
+                'article_id' => $articleId,
+                'name' => $name,
+                'description' => null,
+                'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'subtotal' => $subtotal,
+                'tax_rate' => $taxRate,
+                'tax_amount' => $taxAmount,
+                'total' => $total,
+            ];
+        };
+
+        $recalcTotals = function (iterable $items): array {
+            $subtotal = 0;
+            $taxTotal = 0;
+            $total = 0;
+
+            foreach ($items as $item) {
+                $subtotal += (int) $item['subtotal'];
+                $taxTotal += (int) $item['tax_amount'];
+                $total += (int) $item['total'];
+            }
+
+            return [$subtotal, $taxTotal, $total];
+        };
+
         // Create existing admin user
         $adminUser = User::factory()->create([
             'first_name' => 'Super',
@@ -173,5 +216,191 @@ class DatabaseSeeder extends Seeder
             ['bank_name' => '++i Bank 1', 'account_number' => 'PLUSA-0001', 'swift' => 'PLUSIB22XXX', 'is_default' => true],
             ['bank_name' => '++i Bank 2', 'account_number' => 'PLUSA-0002', 'swift' => 'PLUSIB22YYY', 'is_default' => false],
         ]);
+
+        $seedDocumentsForCompany = function (Company $company, string $tenantTag) use ($makeItemData, $recalcTotals): void {
+            $client = $company->clients()->orderBy('id')->first();
+            $articles = $company->articles()->orderBy('id')->take(3)->get();
+            $articleIds = $articles->pluck('id')->values();
+
+            if (!$client) {
+                return;
+            }
+
+            $quoteItems = [
+                $makeItemData("{$tenantTag} Quote Item 1", $articleIds->get(0), 2, 12500, 1700),
+                $makeItemData("{$tenantTag} Quote Item 2", $articleIds->get(1), 1, 49900, 0),
+                $makeItemData("{$tenantTag} Quote Item 3", $articleIds->get(2), 3, 9900, 2100),
+            ];
+            [$quoteSubtotal, $quoteTaxTotal, $quoteTotal] = $recalcTotals($quoteItems);
+
+            $quote = Quote::query()->create([
+                'quote_number' => "{$tenantTag}-QUO-0001",
+                'company_id' => $company->id,
+                'client_id' => $client->id,
+                'status' => DocumentStatusEnum::Draft,
+                'language' => LanguageEnum::English,
+                'date' => now()->toDateString(),
+                'valid_until' => now()->addDays(14)->toDateString(),
+                'notes' => null,
+                'currency' => 'BAM',
+                'quote_template' => DocumentTemplateEnum::Classic,
+                'subtotal' => $quoteSubtotal,
+                'tax_total' => $quoteTaxTotal,
+                'discount_total' => 0,
+                'total' => $quoteTotal,
+            ]);
+
+            foreach ($quoteItems as $item) {
+                QuoteItem::query()->create(array_merge($item, ['quote_id' => $quote->id]));
+            }
+
+            $contractItems = [
+                $makeItemData("{$tenantTag} Contract Item 1", $articleIds->get(0), 1, 75000, 1700),
+                $makeItemData("{$tenantTag} Contract Item 2", $articleIds->get(1), 2, 25000, 1700),
+            ];
+            [$contractSubtotal, $contractTaxTotal, $contractTotal] = $recalcTotals($contractItems);
+
+            $contract = Contract::query()->create([
+                'contract_number' => "{$tenantTag}-CON-0001",
+                'company_id' => $company->id,
+                'client_id' => $client->id,
+                'status' => DocumentStatusEnum::Draft,
+                'language' => LanguageEnum::English,
+                'date' => now()->toDateString(),
+                'due_date' => now()->addDays(30)->toDateString(),
+                'notes' => null,
+                'source_type' => Quote::class,
+                'source_id' => $quote->id,
+                'currency' => 'BAM',
+                'contract_template' => DocumentTemplateEnum::Classic,
+                'file_paths' => null,
+                'subtotal' => $contractSubtotal,
+                'tax_total' => $contractTaxTotal,
+                'discount_total' => 0,
+                'total' => $contractTotal,
+            ]);
+
+            foreach ($contractItems as $item) {
+                ContractItem::query()->create(array_merge($item, ['contract_id' => $contract->id]));
+            }
+
+            $proformaItems = [
+                $makeItemData("{$tenantTag} Proforma Item 1", $articleIds->get(2), 5, 5000, 1700),
+                $makeItemData("{$tenantTag} Proforma Item 2", $articleIds->get(0), 1, 199000, 2100),
+            ];
+            [$proformaSubtotal, $proformaTaxTotal, $proformaTotal] = $recalcTotals($proformaItems);
+
+            $proforma = Proforma::query()->create([
+                'proforma_number' => "{$tenantTag}-PRO-0001",
+                'company_id' => $company->id,
+                'client_id' => $client->id,
+                'status' => DocumentStatusEnum::Draft,
+                'language' => LanguageEnum::English,
+                'date' => now()->toDateString(),
+                'due_date' => now()->addDays(7)->toDateString(),
+                'notes' => null,
+                'source_type' => Quote::class,
+                'source_id' => $quote->id,
+                'currency' => 'BAM',
+                'proforma_template' => DocumentTemplateEnum::Classic,
+                'subtotal' => $proformaSubtotal,
+                'tax_total' => $proformaTaxTotal,
+                'discount_total' => 0,
+                'total' => $proformaTotal,
+            ]);
+
+            foreach ($proformaItems as $item) {
+                ProformaItem::query()->create(array_merge($item, ['proforma_id' => $proforma->id]));
+            }
+
+            $invoiceItemsFromProforma = [
+                $makeItemData("{$tenantTag} Invoice(P) Item 1", $articleIds->get(0), 1, 30000, 1700),
+                $makeItemData("{$tenantTag} Invoice(P) Item 2", $articleIds->get(1), 2, 12000, 0),
+            ];
+            [$invPSubtotal, $invPTaxTotal, $invPTotal] = $recalcTotals($invoiceItemsFromProforma);
+
+            $invoiceFromProforma = Invoice::query()->create([
+                'invoice_number' => "{$tenantTag}-INV-P-0001",
+                'company_id' => $company->id,
+                'client_id' => $client->id,
+                'status' => DocumentStatusEnum::Draft,
+                'language' => LanguageEnum::English,
+                'date' => now()->toDateString(),
+                'due_date' => now()->addDays(15)->toDateString(),
+                'notes' => null,
+                'is_recurring' => false,
+                'frequency' => null,
+                'next_invoice_date' => null,
+                'parent_id' => null,
+                'source_type' => Proforma::class,
+                'source_id' => $proforma->id,
+                'currency' => 'BAM',
+                'invoice_template' => DocumentTemplateEnum::Classic,
+                'is_fiscalized' => false,
+                'fiscal_invoice_number' => null,
+                'fiscal_counter' => null,
+                'fiscal_verification_url' => null,
+                'fiscalized_at' => null,
+                'fiscal_meta' => null,
+                'subtotal' => $invPSubtotal,
+                'tax_total' => $invPTaxTotal,
+                'discount_total' => 0,
+                'total' => $invPTotal,
+            ]);
+
+            foreach ($invoiceItemsFromProforma as $item) {
+                InvoiceItem::query()->create(array_merge($item, ['invoice_id' => $invoiceFromProforma->id]));
+            }
+
+            $invoiceItemsFromContract = [
+                $makeItemData("{$tenantTag} Invoice(C) Item 1", $articleIds->get(2), 1, 100000, 1700),
+            ];
+            [$invCSubtotal, $invCTaxTotal, $invCTotal] = $recalcTotals($invoiceItemsFromContract);
+
+            $invoiceFromContract = Invoice::query()->create([
+                'invoice_number' => "{$tenantTag}-INV-C-0001",
+                'company_id' => $company->id,
+                'client_id' => $client->id,
+                'status' => DocumentStatusEnum::Draft,
+                'language' => LanguageEnum::English,
+                'date' => now()->toDateString(),
+                'due_date' => now()->addDays(15)->toDateString(),
+                'notes' => null,
+                'is_recurring' => false,
+                'frequency' => null,
+                'next_invoice_date' => null,
+                'parent_id' => null,
+                'source_type' => Contract::class,
+                'source_id' => $contract->id,
+                'currency' => 'BAM',
+                'invoice_template' => DocumentTemplateEnum::Classic,
+                'is_fiscalized' => false,
+                'fiscal_invoice_number' => null,
+                'fiscal_counter' => null,
+                'fiscal_verification_url' => null,
+                'fiscalized_at' => null,
+                'fiscal_meta' => null,
+                'subtotal' => $invCSubtotal,
+                'tax_total' => $invCTaxTotal,
+                'discount_total' => 0,
+                'total' => $invCTotal,
+            ]);
+
+            foreach ($invoiceItemsFromContract as $item) {
+                InvoiceItem::query()->create(array_merge($item, ['invoice_id' => $invoiceFromContract->id]));
+            }
+        };
+
+        $seedDocumentsForCompany($duskoCompany, 'DUSKO');
+        $seedDocumentsForCompany($sandroCompany, 'SANDRO');
+        $seedDocumentsForCompany($borisCompany, 'BORIS');
+        $seedDocumentsForCompany($plusiCompany, 'PLUSI');
+
+        //seed 50 invoices for dusko
+        for ($i = 0; $i < 50; $i++) {
+            $seedDocumentsForCompany($duskoCompany, 'DUSKO');
+        }
+
+
     }
 }

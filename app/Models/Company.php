@@ -38,7 +38,7 @@ class Company extends Model
      */
     public function getRouteKeyName(): string
     {
-        return 'id';
+        return 'slug';
     }
 
     public function users(): BelongsToMany
@@ -64,5 +64,30 @@ class Company extends Model
     public function bankAccounts(): HasMany
     {
         return $this->hasMany(BankAccount::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function proformas(): HasMany
+    {
+        return $this->hasMany(Proforma::class);
+    }
+
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(Contract::class);
+    }
+
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(Quote::class);
+    }
+
+    public function documentCounters(): HasMany
+    {
+        return $this->hasMany(DocumentCounter::class);
     }
 }
