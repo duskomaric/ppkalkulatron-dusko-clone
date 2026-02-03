@@ -13,4 +13,7 @@ export { XIcon } from './XIcon';
 export { HashIcon } from './HashIcon';
 export { Calendar1Icon } from './Calendar1Icon';
 export { Clock1Icon } from './Clock1Icon';
+export { MailIcon } from './MailIcon';
+export { PhoneIcon } from './PhoneIcon';
+export { MapPinIcon } from './MapPinIcon';
 

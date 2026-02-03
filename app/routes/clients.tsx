@@ -4,12 +4,12 @@ import { useEffect, useState, useCallback } from "react";
 import { getClients } from "~/api/clients";
 import type { Client } from "~/types/client";
 import type { Company } from "~/types/company";
-import { 
-  ContactRoundIcon, 
-  ChevronLeftIcon, 
-  ChevronRightIcon,
-  XIcon,
-  CogIcon
+import {
+    ContactRoundIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    XIcon,
+    CogIcon, HashIcon, MailIcon, PhoneIcon, MapPinIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import type { PaginationMeta } from "~/types/api";
@@ -65,50 +65,86 @@ export default function ClientsPage() {
       }
     >
       <div className="space-y-4">
-        {clients.map((client) => (
-          <div
-            key={client.id}
-            className="group cursor-pointer bg-[#16161E]/80 backdrop-blur-xl border border-white/5 rounded-xl transition-all duration-500 hover:bg-[#1C1C26] hover:border-primary/40 p-4 flex flex-col gap-3 relative overflow-hidden"
-            style={{ boxShadow: '0 8px 30px rgba(var(--primary-base), 0.1)' }}
-          >
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary border border-primary/20">
-                  <ContactRoundIcon className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-white tracking-tight">{client.name}</h3>
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">
-                    {client.vat_id ? `VAT: ${client.vat_id}` : 'Nema VAT ID'}
-                  </p>
-                </div>
-              </div>
-              <button className="h-8 w-8 bg-white/5 rounded-lg flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
-                <CogIcon className="w-4 h-4" />
-              </button>
-            </div>
+          {clients.map((client) => (
+              <div
+                  key={client.id}
+                  className="group cursor-pointer bg-[#16161E]/80 backdrop-blur-xl border border-white/5 rounded-xl transition-all duration-500 hover:bg-[#1C1C26] hover:border-primary/40 p-3.5 flex flex-col gap-3 relative overflow-hidden"
+                  style={{ boxShadow: '0 8px 30px rgba(var(--primary-base), 0.1)' }}
+              >
+                  {/* Gornji dio: Ime klijenta sa HashIcon-om */}
+                  <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                          <ContactRoundIcon className="w-3.5 h-3.5 text-primary" />
+                          <span className="text-lg font-black text-white tracking-tighter italic leading-none">
+                    {client.name}
+                </span>
+                      </div>
+                      {client.is_active !== undefined && (
+                          <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border backdrop-blur-md ${client.is_active ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
+                    {client.is_active ? 'Aktivan' : 'Neaktivan'}
+                </span>
+                      )}
+                  </div>
 
-            <div className="h-[1px] w-full bg-white/5" />
+                {/*  /!* Srednji dio: VAT info - po uzoru na klijent info kod računa *!/*/}
+                {/*  {client.vat_id && (*/}
+                {/*      <div className="flex items-center gap-2">*/}
+                {/*          /!* Ovdje možeš staviti HashIcon ako želiš da VAT bude upečatljiviji *!/*/}
+                {/*          <HashIcon className="w-3 h-3 text-gray-600 opacity-50" />*/}
+                {/*          <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">*/}
+                {/*    VAT ID: <span className="text-gray-400">{client.vat_id}</span>*/}
+                {/*</span>*/}
+                {/*      </div>*/}
+                {/*  )}*/}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <span className="text-[8px] font-black uppercase text-gray-600">Email</span>
-                <p className="text-xs font-bold text-gray-300 truncate">{client.email || '—'}</p>
+                  {/* Separator */}
+                  <div className="h-[1px] w-full bg-white/5" />
+
+                  {/* Donji dio: Kontakt i Adresa */}
+                  <div className="flex justify-between items-end">
+                      <div className="flex gap-5">
+                          {/* Email */}
+                          {client.email && (
+                              <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-1.5 text-gray-600">
+                                      <MailIcon className="w-2.5 h-2.5" /> {/* Manja verzija za podnaslove */}
+                                      <span className="text-[8px] font-black uppercase tracking-tighter">Email</span>
+                                  </div>
+                                  <p className="text-[10px] font-bold text-gray-300 truncate max-w-[120px]">
+                                      {client.email}
+                                  </p>
+                              </div>
+                          )}
+
+                          {/* Telefon */}
+                          {client.phone && (
+                              <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-1.5 text-gray-600">
+                                      <PhoneIcon className="w-2.5 h-2.5" />
+                                      <span className="text-[8px] font-black uppercase tracking-tighter">Telefon</span>
+                                  </div>
+                                  <p className="text-[10px] font-bold text-gray-300">
+                                      {client.phone}
+                                  </p>
+                              </div>
+                          )}
+                      </div>
+
+                      {/* Adresa - Desni fokus (umjesto Totala) */}
+                      {(client.address || client.city) && (
+                          <div className="text-right flex flex-col items-end gap-1">
+                              <div className="flex items-center gap-1.5 text-gray-600">
+                                  <MapPinIcon className="w-2.5 h-2.5" />
+                                  <span className="text-[8px] font-black uppercase tracking-tighter">Lokacija</span>
+                              </div>
+                              <p className="text-[10px] font-black text-white tracking-tight italic leading-none">
+                                  <span className="text-primary text-[8px] not-italic opacity-70 mr-1">{client.zip}</span> {client.city}
+                              </p>
+                          </div>
+                      )}
+                  </div>
               </div>
-              <div className="space-y-1">
-                <span className="text-[8px] font-black uppercase text-gray-600">Telefon</span>
-                <p className="text-xs font-bold text-gray-300 truncate">{client.phone || '—'}</p>
-              </div>
-            </div>
-            
-            <div className="space-y-1">
-              <span className="text-[8px] font-black uppercase text-gray-600">Adresa</span>
-              <p className="text-xs font-bold text-gray-400 truncate">
-                {[client.address, client.city, client.country].filter(Boolean).join(', ') || '—'}
-              </p>
-            </div>
-          </div>
-        ))}
+          ))}
 
         {loading && (
           <div className="flex justify-center py-10">

@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
-import { 
-  CalculatorIcon, 
-  CogIcon, 
-  UserIcon, 
-  FileTextIcon, 
-  ContactRoundIcon, 
-  FileCheckIcon, 
-  BoxesIcon, 
-  FileSlidersIcon,
-  ChevronUpIcon,
-  ChevronRightIcon
+import {
+    CalculatorIcon,
+    CogIcon,
+    UserIcon,
+    ChevronUpIcon,
+    ChevronRightIcon, BoxesIcon
 } from "~/components/ui/icons";
 import { Drawer } from "./Drawer";
 import type { Company } from "~/types/company";
+import { getThemeByPath } from "~/utils/theme";
+import { NAV_ITEMS } from "~/config/navigation";
 
 export interface AppLayoutProps {
   children: React.ReactNode;
@@ -31,21 +28,14 @@ export function AppLayout({
   onCompanyChange,
   actions
 }: AppLayoutProps) {
-  const { user, logoutAction, isAuthenticated, loading } = useAuth();
+  const { user, logoutAction, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeDrawer, setActiveDrawer] = useState<"company" | "user" | "settings" | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
-    const pageColors: Record<string, string> = {
-        "/invoices": "245, 158, 11",  // Amber
-        "/clients": "34, 197, 94",    // Green
-        "/proformas": "168, 85, 247", // Purple
-        "/quotes": "14, 165, 233",    // Blue
-        "/articles": "244, 63, 94",   // Rose
-    };
-
-    const currentRGB = pageColors[location.pathname] || "34, 197, 94";
+  // Get dynamic color based on path from central utility
+  const currentRGB = getThemeByPath(location.pathname);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -66,31 +56,23 @@ export function AppLayout({
 
   if (loading) return null;
 
-  const navItems = [
-    { id: 'proformas', icon: FileCheckIcon, label: 'Proformas', path: '/proformas', title: 'Proforme' },
-    { id: 'quotes', icon: FileSlidersIcon, label: 'Quotes', path: '/quotes', title: 'Ponude' },
-    { id: 'invoices', icon: FileTextIcon, label: 'Invoices', path: '/invoices', title: 'Računi' },
-    { id: 'clients', icon: ContactRoundIcon, label: 'Clients', path: '/clients', title: 'Klijenti' },
-    { id: 'articles', icon: BoxesIcon, label: 'Articles', path: '/articles', title: 'Artikli' },
-  ];
-
   return (
-      <div
-          className="min-h-screen bg-[#0B0B0F] flex flex-col pb-32 overflow-hidden relative"
-          style={{
-              /* 1. Primarna baza koju koriste tvoji custom CSS efekti */
-              "--primary-base": currentRGB,
+    <div 
+      className="min-h-screen bg-[#0B0B0F] flex flex-col pb-32 overflow-hidden relative"
+      style={{
+          /* 1. Primarna baza koju koriste tvoji custom CSS efekti */
+          "--primary-base": currentRGB,
 
-              /* 2. Forsiramo Tailwindov --color-primary da koristi ovu bazu */
-              "--color-primary": `rgb(${currentRGB})`,
+          /* 2. Forsiramo Tailwindov --color-primary da koristi ovu bazu */
+          "--color-primary": `rgb(${currentRGB})`,
 
-              /* 3. Forsiramo hover i ostale izvedene varijable */
-              "--color-primary-hover": `color-mix(in srgb, rgb(${currentRGB}), white 20%)`,
+          /* 3. Forsiramo hover i ostale izvedene varijable */
+          "--color-primary-hover": `color-mix(in srgb, rgb(${currentRGB}), white 20%)`,
 
-              /* 4. Ažuriramo sjenke */
-              "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`
-          } as React.CSSProperties}
-      >
+          /* 4. Ažuriramo sjenke */
+          "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`
+      } as React.CSSProperties}
+    >
       {/* Background Effects */}
       <div className="glow-ball glow-ball-primary top-[-100px] left-[-100px]"></div>
       <div className="glow-ball glow-ball-secondary bottom-[-50px] right-[-50px]"></div>
@@ -151,7 +133,7 @@ export function AppLayout({
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-5 md:bottom-6 flex justify-center pointer-events-auto">
         <nav className="bg-black/50 backdrop-blur-2xl border border-white/10 rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/60 px-5 sm:px-8 py-3 sm:py-4 flex items-center justify-around gap-3 sm:gap-6 w-full max-w-md sm:max-w-lg">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
             

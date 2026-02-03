@@ -11,8 +11,14 @@ export function useAuth() {
     const savedUser = localStorage.getItem("auth_user");
 
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      try {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.error("Failed to parse saved user", e);
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+      }
     }
     setLoading(false);
   }, []);
