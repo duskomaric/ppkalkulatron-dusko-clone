@@ -26,8 +26,7 @@ import { Input } from "~/components/ui/Input";
 import type { PaginationMeta } from "~/types/api";
 
 export default function ClientsPage() {
-  const { user, token, isAuthenticated, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user, token, isAuthenticated } = useAuth();
 
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [clients, setClients] = useState<Client[]>([]);

@@ -2,15 +2,13 @@ import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
 import { getInvoices } from "~/api/invoices";
-import type { Invoice, StatusColor } from "~/types/invoice";
+import type { Invoice } from "~/types/invoice";
 import type { Company } from "~/types/company";
 import {
   HashIcon,
   ContactRoundIcon,
   Calendar1Icon,
   Clock1Icon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   XIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
@@ -20,8 +18,7 @@ import { StatusBadge, type BadgeColor } from "~/components/ui/StatusBadge";
 import type { PaginationMeta } from "~/types/api";
 
 export default function InvoicesPage() {
-  const { user, token, isAuthenticated, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user, token, isAuthenticated } = useAuth();
 
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -66,12 +63,6 @@ export default function InvoicesPage() {
       fetchInvoices(currentPage);
     }
   }, [isAuthenticated, selectedCompany, currentPage, fetchInvoices]);
-
-  // Removed inline statusColors as we use StatusBadge now
-
-  const formatAmount = (amount: number, currency: string) => {
-    return (amount / 100).toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' ' + currency;
-  };
 
   return (
     <AppLayout

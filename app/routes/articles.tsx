@@ -24,7 +24,6 @@ import type { PaginationMeta } from "~/types/api";
 
 export default function ArticlesPage() {
     const { user, token, isAuthenticated } = useAuth();
-    const navigate = useNavigate();
 
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [articles, setArticles] = useState<Article[]>([]);
