@@ -6,6 +6,11 @@ export interface PaginationMeta {
   per_page: number;
   to: number;
   total: number;
+  links?: {
+    url: string | null;
+    label: string;
+    active: boolean;
+  }[];
 }
 
 export interface PaginationLinks {

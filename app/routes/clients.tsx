@@ -1,27 +1,25 @@
 import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
-import { getInvoices } from "~/api/invoices";
-import type { Invoice, StatusColor } from "~/types/invoice";
+import { getClients } from "~/api/clients";
+import type { Client } from "~/types/client";
 import type { Company } from "~/types/company";
 import { 
-  HashIcon, 
   ContactRoundIcon, 
-  Calendar1Icon, 
-  Clock1Icon, 
   ChevronLeftIcon, 
   ChevronRightIcon,
-  XIcon
+  XIcon,
+  CogIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import type { PaginationMeta } from "~/types/api";
 
-export default function InvoicesPage() {
+export default function ClientsPage() {
   const { user, token, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -32,16 +30,16 @@ export default function InvoicesPage() {
     }
   }, [user, selectedCompany]);
 
-  const fetchInvoices = useCallback(async (page: number = 1) => {
+  const fetchClients = useCallback(async (page: number = 1) => {
     if (!selectedCompany || !token) return;
     setLoading(true);
     try {
-      const response = await getInvoices(selectedCompany.slug, token, page);
-      setInvoices(response.data);
+      const response = await getClients(selectedCompany.slug, token, page);
+      setClients(response.data);
       setPagination(response.meta);
       setCurrentPage(page);
     } catch (error) {
-      console.error("Greška pri dohvatanju računa:", error);
+      console.error("Greška pri dohvatanju klijenata:", error);
     } finally {
       setLoading(false);
     }
@@ -49,23 +47,13 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     if (isAuthenticated && selectedCompany) {
-      fetchInvoices(currentPage);
+      fetchClients(currentPage);
     }
-  }, [isAuthenticated, selectedCompany, currentPage, fetchInvoices]);
-
-  const statusColors: Record<StatusColor, string> = {
-    green: "bg-green-500/10 text-green-400 border-green-500/20",
-    gray: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-    red: "bg-red-500/10 text-red-400 border-red-500/20",
-  };
-
-  const formatAmount = (amount: number, currency: string) => {
-    return (amount / 100).toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' ' + currency;
-  };
+  }, [isAuthenticated, selectedCompany, currentPage, fetchClients]);
 
   return (
     <AppLayout 
-      title="Računi" 
+      title="Klijenti" 
       selectedCompany={selectedCompany}
       onCompanyChange={setSelectedCompany}
       actions={
@@ -77,57 +65,47 @@ export default function InvoicesPage() {
       }
     >
       <div className="space-y-4">
-        {invoices.map((inv) => (
+        {clients.map((client) => (
           <div
-            key={inv.id}
-            className="group cursor-pointer bg-[#16161E]/80 backdrop-blur-xl border border-white/5 rounded-xl transition-all duration-500 hover:bg-[#1C1C26] hover:border-primary/40 p-3.5 flex flex-col gap-3 relative overflow-hidden"
+            key={client.id}
+            className="group cursor-pointer bg-[#16161E]/80 backdrop-blur-xl border border-white/5 rounded-xl transition-all duration-500 hover:bg-[#1C1C26] hover:border-primary/40 p-4 flex flex-col gap-3 relative overflow-hidden"
             style={{ boxShadow: '0 8px 30px rgba(var(--primary-base), 0.1)' }}
           >
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <HashIcon className="w-3.5 h-3.5 text-primary" />
-                <span className="text-lg font-black text-white tracking-tighter italic leading-none">
-                  {inv.invoice_number}
-                </span>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary border border-primary/20">
+                  <ContactRoundIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white tracking-tight">{client.name}</h3>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">
+                    {client.vat_id ? `VAT: ${client.vat_id}` : 'Nema VAT ID'}
+                  </p>
+                </div>
               </div>
-              <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border backdrop-blur-md ${statusColors[inv.status_color] || statusColors.gray}`}>
-                {inv.status_label}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <ContactRoundIcon className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-bold text-gray-400 tracking-tight truncate">
-                {inv.client?.name || `Klijent #${inv.client_id}`}
-              </span>
+              <button className="h-8 w-8 bg-white/5 rounded-lg flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
+                <CogIcon className="w-4 h-4" />
+              </button>
             </div>
 
             <div className="h-[1px] w-full bg-white/5" />
 
-            <div className="flex justify-between items-end">
-              <div className="flex gap-5">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-1.5 text-gray-600">
-                    <Calendar1Icon className="w-3 h-3" />
-                    <span className="text-[8px] font-black uppercase">Datum</span>
-                  </div>
-                  <p className="text-[10px] font-bold text-gray-300">{new Date(inv.date).toLocaleDateString('de-DE')}</p>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-1.5 text-gray-600">
-                    <Clock1Icon className="w-3 h-3" />
-                    <span className="text-[8px] font-black uppercase">Rok</span>
-                  </div>
-                  <p className="text-[10px] font-bold text-red-400/80">{new Date(inv.due_date).toLocaleDateString('de-DE')}</p>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <span className="text-[8px] font-black uppercase text-gray-600">Email</span>
+                <p className="text-xs font-bold text-gray-300 truncate">{client.email || '—'}</p>
               </div>
-
-              <div className="text-right">
-                <p className="text-xl font-black text-white tracking-tighter">
-                  {formatAmount(inv.total, inv.currency)}
-                </p>
+              <div className="space-y-1">
+                <span className="text-[8px] font-black uppercase text-gray-600">Telefon</span>
+                <p className="text-xs font-bold text-gray-300 truncate">{client.phone || '—'}</p>
               </div>
+            </div>
+            
+            <div className="space-y-1">
+              <span className="text-[8px] font-black uppercase text-gray-600">Adresa</span>
+              <p className="text-xs font-bold text-gray-400 truncate">
+                {[client.address, client.city, client.country].filter(Boolean).join(', ') || '—'}
+              </p>
             </div>
           </div>
         ))}
@@ -138,10 +116,10 @@ export default function InvoicesPage() {
           </div>
         )}
 
-        {!loading && invoices.length === 0 && (
+        {!loading && clients.length === 0 && (
           <div className="py-20 text-center bg-[#16161E]/40 border border-dashed border-white/5 rounded-2xl">
             <XIcon className="h-8 w-8 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Nema pronađenih računa</p>
+            <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Nema pronađenih klijenata</p>
           </div>
         )}
       </div>

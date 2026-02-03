@@ -24,21 +24,11 @@
     --animate-fade-in: fade-in 0.3s ease-out;
     --animate-slide-in-bottom: slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     --animate-pulse-slow: pulse-slow 3s infinite;
-    --animate-shake-it: shakeRotate 0.4s ease-in-out;
 
-    /* --- KEYFRAMES (Dozvoljeno unutar @theme) --- */
-    @keyframes fade-in {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @keyframes slide-in-bottom {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
-    }
-    @keyframes pulse-slow {
-        0%, 100% { opacity: 0.2; }
-        50% { opacity: 0.4; }
-    }
+    /* --- KEYFRAMES --- */
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slide-in-bottom { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes pulse-slow { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.4; } }
     @keyframes shakeRotate {
         0%, 100% { transform: rotate(-12deg); }
         20% { transform: rotate(-25deg); }
@@ -48,36 +38,16 @@
     }
 }
 
-/* --- GLOBALNE KLASE I ELEMENTI (Izvan @theme) --- */
-html,
-body {
+html, body {
     @apply bg-[#0B0B0F] text-gray-100 antialiased overflow-x-hidden;
 }
 
-/* Klasa koju tvoj login koristi direktno */
-.shake-it {
-    animation: shakeRotate 0.4s ease-in-out;
-}
+.shake-it { animation: shakeRotate 0.4s ease-in-out; }
 
 /* Glowing balls effect */
 .glow-ball {
     background-color: var(--color-primary);
     @apply absolute rounded-full blur-[100px] opacity-20 pointer-events-none z-0;
 }
-
-.glow-ball-primary {
-    background-color: var(--color-primary);
-    @apply w-[300px] h-[300px];
-}
-
-.glow-ball-secondary {
-    background-color: var(--color-primary);
-    @apply w-[250px] h-[250px];
-}
-
-.glow-ball-accent {
-    background-color: var(--color-primary);
-    filter: blur(120px);
-    opacity: 0.1;
-    @apply absolute w-[400px] h-[400px] pointer-events-none;
-}
+.glow-ball-primary { @apply w-[300px] h-[300px]; }
+.glow-ball-secondary { @apply w-[250px] h-[250px]; }
