@@ -69,38 +69,39 @@ export default function InvoicesPage() {
       selectedCompany={selectedCompany}
       onCompanyChange={setSelectedCompany}
       actions={
-        <div className="cursor-pointer h-10 w-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold text-sm border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-glow-primary">
+        <button className="cursor-pointer h-10 w-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold text-sm border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-glow-primary">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14"/><path d="M12 5v14"/>
           </svg>
-        </div>
+        </button>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
         {invoices.map((inv) => (
             <div
                 key={inv.id}
-                className="group cursor-pointer bg-[#16161E]/80 backdrop-blur-xl border border-white/5 rounded-xl transition-all duration-500 hover:bg-[#1C1C26] hover:border-primary/40 hover:shadow-[0_8px_30px_rgba(168,85,247,0.1)] p-3.5 flex flex-col gap-3 relative overflow-hidden"
+                className="group cursor-pointer bg-[#16161E]/80 backdrop-blur-xl border border-white/5 rounded-xl transition-all duration-500 hover:bg-[#1C1C26] hover:border-primary/40 p-3 flex flex-col gap-2 relative overflow-hidden"
+                style={{ boxShadow: '0 4px 20px rgba(var(--primary-base), 0.05)' }}
             >
                 {/* Gornji dio: Broj i Status */}
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                        <HashIcon className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-lg font-black text-white tracking-tighter italic leading-none">
-                {inv.invoice_number}
-            </span>
+                        <HashIcon className="w-3 h-3 text-primary" />
+                        <span className="text-base font-black text-white tracking-tighter italic leading-none group-hover:text-primary transition-colors">
+                            {inv.invoice_number}
+                        </span>
                     </div>
-                    <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border backdrop-blur-md ${statusColors[inv.status_color]}`}>
-            {inv.status_label}
-        </span>
+                    <span className={`px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-wider border backdrop-blur-md ${statusColors[inv.status_color] || statusColors.gray}`}>
+                        {inv.status_label}
+                    </span>
                 </div>
 
-                {/* Srednji dio: Klijent - Bez margina, čisto poravnato */}
+                {/* Srednji dio: Klijent */}
                 <div className="flex items-center gap-2">
-                    <ContactRoundIcon className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="text-xs font-bold text-gray-400 tracking-tight truncate">
-            {inv.client.name}
-        </span>
+                    <ContactRoundIcon className="w-3 h-3 text-gray-500" />
+                    <span className="text-[11px] font-bold text-gray-400 tracking-tight truncate">
+                        {inv.client?.name || 'Nepoznat klijent'}
+                    </span>
                 </div>
 
                 {/* Separator */}
@@ -108,30 +109,32 @@ export default function InvoicesPage() {
 
                 {/* Donji dio: Datumi i Iznos */}
                 <div className="flex justify-between items-end">
-                    <div className="flex gap-5">
-                        {/* Datum - Poravnato uz ikonu, tekst ispod ikone */}
-                        <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5 text-gray-600">
-                                <Calendar1Icon className="w-3 h-3" />
-                                <span className="text-[8px] font-black uppercase">Datum</span>
+                    <div className="flex gap-4">
+                        <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1 text-gray-600">
+                                <Calendar1Icon className="w-2.5 h-2.5" />
+                                <span className="text-[7px] font-black uppercase">Datum</span>
                             </div>
-                            <p className="text-[10px] font-bold text-gray-300">{inv.date}</p>
+                            <p className="text-[9px] font-bold text-gray-400">
+                                { inv.date }
+                            </p>
                         </div>
 
-                        {/* Dospijeće */}
-                        <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5 text-gray-600">
-                                <Clock1Icon className="w-3 h-3" />
-                                <span className="text-[8px] font-black uppercase">Rok</span>
+                        <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1 text-gray-600">
+                                <Clock1Icon className="w-2.5 h-2.5" />
+                                <span className="text-[7px] font-black uppercase">Dospijeće</span>
                             </div>
-                            <p className="text-[10px] font-bold text-red-400/80">{inv.due_date}</p>
+                            <p className="text-[9px] font-bold text-red-400/80">
+                                { inv.due_date }
+                            </p>
                         </div>
                     </div>
 
                     {/* Total - Desni fokus */}
                     <div className="text-right">
-                        <p className="text-xl font-black text-white tracking-tighter">
-                            {inv.total} <span className="text-primary text-[10px] italic">{inv.currency}</span>
+                        <p className="text-lg font-black text-white tracking-tighter italic">
+                            { inv.total } { inv.currency }
                         </p>
                     </div>
                 </div>
@@ -154,13 +157,13 @@ export default function InvoicesPage() {
 
       {/* Pagination */}
       {pagination && pagination.last_page > 1 && (
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
           <button
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
             disabled={currentPage === 1 || loading}
             className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${currentPage === 1 || loading ? "bg-white/5 text-gray-500 cursor-not-allowed border border-white/10" : "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"}`}
           >
-            <ChevronLeftIcon className="h-5 w-5"/>
+            <ChevronLeftIcon className="h-4 w-4"/>
           </button>
 
           {Array.from({length: pagination.last_page}, (_, i) => i + 1)
@@ -170,7 +173,7 @@ export default function InvoicesPage() {
                 key={page}
                 onClick={() => setCurrentPage(page)}
                 disabled={loading}
-                className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-sm font-bold transition-all ${page === currentPage ? "bg-primary text-white shadow-glow-primary" : "bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10"}`}
+                className={`h-8 w-8 rounded-xl text-xs font-bold transition-all ${page === currentPage ? "bg-primary text-white shadow-glow-primary" : "bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10"}`}
               >
                 {page}
               </button>
@@ -181,7 +184,7 @@ export default function InvoicesPage() {
             disabled={currentPage === pagination.last_page || loading}
             className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${currentPage === pagination.last_page || loading ? "bg-white/5 text-gray-500 cursor-not-allowed border border-white/10" : "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"}`}
           >
-            <ChevronRightIcon className="h-5 w-5"/>
+            <ChevronRightIcon className="h-4 w-4"/>
           </button>
         </div>
       )}
