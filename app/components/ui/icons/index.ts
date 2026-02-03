@@ -1,0 +1,12 @@
+export { CogIcon } from './CogIcon';
+export { UserIcon } from './UserIcon';
+export { FileTextIcon } from './FileTextIcon';
+export { ContactRoundIcon } from './ContactRoundIcon';
+export { FileCheckIcon } from './FileCheckIcon';
+export { BoxesIcon } from './BoxesIcon';
+export { FileSlidersIcon } from './FileSlidersIcon';
+export { ChevronLeftIcon } from './ChevronLeftIcon';
+export { ChevronRightIcon } from './ChevronRightIcon';
+export { CalculatorIcon } from './CalculatorIcon';
+export { ChevronUpIcon } from './ChevronUpIcon';
+export { XIcon } from './XIcon';
