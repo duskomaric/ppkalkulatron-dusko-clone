@@ -21,6 +21,7 @@ import {
 import { AppLayout } from "~/components/layout/AppLayout";
 import { Drawer } from "~/components/layout/Drawer";
 import { Toast, type ToastType } from "~/components/ui/Toast";
+import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import type { PaginationMeta } from "~/types/api";
 
 const REQUIRED_STAR = <span className="text-primary ml-0.5">*</span>;
@@ -41,6 +42,9 @@ export default function ClientsPage() {
     type: "success",
     isVisible: false,
   });
+
+  // Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Drawer States
   const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
@@ -147,7 +151,6 @@ export default function ClientsPage() {
 
   const handleDelete = async () => {
     if (!activeClient || !selectedCompany || !token) return;
-    if (!confirm(`Da li ste sigurni da želite obrisati klijenta ${activeClient.name}?`)) return;
 
     setLoading(true);
     try {
@@ -205,6 +208,14 @@ export default function ClientsPage() {
         type={toast.type} 
         isVisible={toast.isVisible} 
         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      />
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Obriši klijenta"
+        message={`Da li ste sigurni da želite trajno obrisati klijenta ${activeClient?.name}? Ova akcija se ne može poništiti.`}
       />
 
       <div className="space-y-4">
@@ -362,7 +373,7 @@ export default function ClientsPage() {
             <div className="flex flex-col gap-2 pt-2">
               <div className="flex gap-2">
                 <button
-                  onClick={handleDelete}
+                  onClick={() => setIsDeleteModalOpen(true)}
                   className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all group"
                 >
                   <TrashIcon className="h-3.5 w-3.5 transition-transform group-hover:rotate-12" />
