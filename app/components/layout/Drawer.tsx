@@ -22,28 +22,49 @@ export const Drawer: React.FC<DrawerProps> = ({ title, children, isOpen, onClose
   }, [isOpen]);
 
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-md animate-fade-in" 
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-[8px] animate-fade-in transition-all duration-500"
         onClick={onClose}
       ></div>
-      <div className="relative w-full max-w-lg bg-[#0B0B0F] rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-slide-in-bottom border border-white/10 flex flex-col max-h-[92vh] sm:max-h-[85vh]">
+
+      {/* Drawer Container */}
+      <div className="relative w-full max-w-lg bg-[#0F0F13]/95 backdrop-blur-2xl rounded-t-[32px] sm:rounded-[40px] shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden animate-slide-in-bottom border-t sm:border border-white/10 flex flex-col max-h-[94vh] sm:max-h-[90vh]">
+
+        {/* Mobile Pull Handle */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 bg-white/10 rounded-full"></div>
+        </div>
+
         {/* Header */}
-        <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-[#16161E]/50 backdrop-blur-xl sticky top-0 z-10">
-          <h2 className="text-base font-black text-white tracking-tight italic">{title}</h2>
-          <button 
+        <div className="px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+          <div className="flex flex-col">
+            <h2 className="text-lg font-black text-white tracking-tight italic leading-tight">
+              {title}
+            </h2>
+            <div className="h-0.5 w-8 bg-primary rounded-full mt-1 opacity-50"></div>
+          </div>
+
+          <button
             onClick={onClose}
-            className="cursor-pointer h-8 w-8 flex items-center justify-center bg-white/5 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all border border-white/5"
+            className="cursor-pointer h-10 w-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-[14px] text-gray-400 hover:text-white transition-all border border-white/5 group active:scale-90"
+            aria-label="Zatvori"
           >
-            <XIcon className="h-4 w-4" />
+            <XIcon className="h-5 w-5 transition-transform group-hover:rotate-90" />
           </button>
         </div>
 
+        {/* Glow Decoration */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-primary/20 blur-md pointer-events-none"></div>
+
         {/* Scrollable Body */}
-        <div className="p-5 overflow-y-auto custom-scrollbar flex-1 pb-24 sm:pb-10">
-          {children}
+        <div className="px-6 pb-12 sm:pb-8 overflow-y-auto custom-scrollbar flex-1">
+          <div className="animate-fade-in mt-2 transition-all duration-700 delay-100">
+            {children}
+          </div>
         </div>
       </div>
     </div>

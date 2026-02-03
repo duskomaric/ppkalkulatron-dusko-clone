@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { XIcon, CheckCircleIcon, CogIcon, HashIcon } from "~/components/ui/icons";
+import { XIcon, CheckCircleIcon, CogIcon, HashIcon, InfoIcon } from "~/components/ui/icons";
 
 export type ToastType = "success" | "error" | "info" | "warning";
 
@@ -25,36 +25,36 @@ export function Toast({ message, type, isVisible, onClose, duration = 5000 }: To
     success: {
       bg: "bg-green-500/10",
       border: "border-green-500/20",
-      shadow: "shadow-green-500/10",
-      iconBg: "bg-green-500 shadow-green-500/20",
-      icon: <CheckCircleIcon className="h-5 w-5" />,
+      shadow: "shadow-green-500/20",
+      iconBg: "bg-green-500",
+      icon: <CheckCircleIcon className="h-4 w-4" />,
       label: "Uspjeh",
       textColor: "text-green-400"
     },
     error: {
       bg: "bg-red-500/10",
       border: "border-red-500/20",
-      shadow: "shadow-red-500/10",
-      iconBg: "bg-red-500 shadow-red-500/20",
-      icon: <XIcon className="h-5 w-5" />,
+      shadow: "shadow-red-500/20",
+      iconBg: "bg-red-500",
+      icon: <XIcon className="h-4 w-4" />,
       label: "Greška",
       textColor: "text-red-400"
     },
     info: {
       bg: "bg-blue-500/10",
       border: "border-blue-500/20",
-      shadow: "shadow-blue-500/10",
-      iconBg: "bg-blue-500 shadow-blue-500/20",
-      icon: <HashIcon className="h-5 w-5" />,
-      label: "Info",
+      shadow: "shadow-blue-500/20",
+      iconBg: "bg-blue-500",
+      icon: <InfoIcon className="h-4 w-4" />,
+      label: "Informacija",
       textColor: "text-blue-400"
     },
     warning: {
       bg: "bg-amber-500/10",
       border: "border-amber-500/20",
-      shadow: "shadow-amber-500/10",
-      iconBg: "bg-amber-500 shadow-amber-500/20",
-      icon: <CogIcon className="h-5 w-5" />,
+      shadow: "shadow-amber-500/20",
+      iconBg: "bg-amber-500",
+      icon: <CogIcon className="h-4 w-4" />,
       label: "Upozorenje",
       textColor: "text-amber-400"
     }
@@ -63,23 +63,23 @@ export function Toast({ message, type, isVisible, onClose, duration = 5000 }: To
   const current = config[type];
 
   return (
-    <div className={`fixed top-[72px] left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 transform 
-      w-[calc(100%-2rem)] max-w-md md:w-auto
-      ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-10 opacity-0 pointer-events-none"}`}
+    <div className={`fixed top-[76px] left-1/2 -translate-x-1/2 z-[130] transition-all duration-500 transform 
+      w-[calc(100%-2.5rem)] max-w-[360px]
+      ${isVisible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-8 opacity-0 scale-95 pointer-events-none"}`}
     >
-      <div className={`backdrop-blur-2xl border p-3 md:px-4 md:py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-4
+      <div className={`backdrop-blur-2xl border p-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3
         ${current.bg} ${current.border} ${current.shadow}`}
       >
-        <div className="flex items-center gap-3">
-          <div className={`h-8 w-8 min-w-[2rem] rounded-xl flex items-center justify-center text-white shadow-lg ${current.iconBg}`}>
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className={`h-8 w-8 min-w-[2rem] rounded-xl flex items-center justify-center text-white shadow-lg shrink-0 ${current.iconBg}`}>
             {current.icon}
           </div>
 
-          <div className="overflow-hidden">
-            <p className="text-white font-black text-[10px] leading-none uppercase tracking-wider italic">
+          <div className="min-w-0">
+            <p className="text-white font-black text-[9px] leading-tight uppercase tracking-widest italic opacity-80">
               {current.label}
             </p>
-            <p className={`text-[10px] mt-1 font-bold break-words line-clamp-2 ${current.textColor}`}>
+            <p className={`text-[11px] font-bold truncate leading-tight mt-0.5 ${current.textColor}`}>
               {message}
             </p>
           </div>
@@ -87,12 +87,17 @@ export function Toast({ message, type, isVisible, onClose, duration = 5000 }: To
 
         <button
           onClick={onClose}
-          className="p-1.5 -mr-1 text-gray-500 hover:text-white transition-colors"
+          className="p-1.5 h-8 w-8 flex items-center justify-center bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all hover:bg-white/10 shrink-0"
           aria-label="Zatvori"
         >
-          <XIcon className="h-4 w-4" />
+          <XIcon className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {/* Dynamic line at bottom for progress feel */}
+      {isVisible && (
+        <div className="absolute bottom-0 left-4 right-4 h-[1px] bg-white/10 opacity-50 blur-[0.5px]"></div>
+      )}
     </div>
   );
 }

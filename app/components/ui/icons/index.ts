@@ -20,3 +20,5 @@ export * from './GlobeIcon';
 export * from './CheckCircleIcon';
 export * from './Calendar1Icon';
 export * from './Clock1Icon';
+export * from './InfoIcon';
+export * from './AlertTriangleIcon';
