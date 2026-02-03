@@ -22,3 +22,6 @@ export * from './Calendar1Icon';
 export * from './Clock1Icon';
 export * from './InfoIcon';
 export * from './AlertTriangleIcon';
+export * from './LockIcon';
+export * from './TagIcon';
+export * from './DollarIcon';

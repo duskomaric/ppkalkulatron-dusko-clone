@@ -63,7 +63,7 @@ export function Toast({ message, type, isVisible, onClose, duration = 5000 }: To
   const current = config[type];
 
   return (
-    <div className={`fixed top-[76px] left-1/2 -translate-x-1/2 z-[130] transition-all duration-500 transform 
+    <div className={`fixed top-[76px] left-1/2 -translate-x-1/2 z-[1200] transition-all duration-500 transform 
       w-[calc(100%-2.5rem)] max-w-[360px]
       ${isVisible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-8 opacity-0 scale-95 pointer-events-none"}`}
     >

@@ -7,6 +7,6 @@ export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
     server: {
         // Add the specific ngrok hostname to the allowed list
-        allowedHosts: ['65bf05d20cc6.ngrok-free.app', 'localhost', '127.0.0.1'],
+        allowedHosts: ['4d2d3534c9eb.ngrok-free.app', 'localhost', '127.0.0.1'],
     },
 });

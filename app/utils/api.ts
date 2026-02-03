@@ -22,6 +22,11 @@ export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}):
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+      window.location.reload();
+    }
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || `API Error: ${response.status}`);
   }

@@ -2,8 +2,8 @@ export const PAGE_THEMES: Record<string, string> = {
   "/invoices": "245, 158, 11",  // Amber
   "/clients": "34, 197, 94",    // Green
   "/proformas": "168, 85, 247", // Purple
-  "/quotes": "14, 165, 233",    // Blue
-  "/articles": "244, 63, 94",   // Rose
+  "/quotes": "244, 63, 94",   // Rose
+  "/articles": "14, 165, 233",    // Blue
   "/": "168, 85, 247",         // Purple (Login)
 };
 

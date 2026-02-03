@@ -24,7 +24,7 @@ export const Drawer: React.FC<DrawerProps> = ({ title, children, isOpen, onClose
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-[8px] animate-fade-in transition-all duration-500"
@@ -61,7 +61,7 @@ export const Drawer: React.FC<DrawerProps> = ({ title, children, isOpen, onClose
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-primary/20 blur-md pointer-events-none"></div>
 
         {/* Scrollable Body */}
-        <div className="px-6 pb-12 sm:pb-8 overflow-y-auto custom-scrollbar flex-1">
+        <div className="px-6 pb-24 sm:pb-12 overflow-y-auto custom-scrollbar flex-1">
           <div className="animate-fade-in mt-2 transition-all duration-700 delay-100">
             {children}
           </div>

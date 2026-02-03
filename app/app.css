@@ -47,7 +47,7 @@ html, body {
 /* Glowing balls effect */
 .glow-ball {
     background-color: var(--color-primary);
-    @apply absolute rounded-full blur-[100px] opacity-20 pointer-events-none z-0;
+    @apply absolute rounded-full blur-[100px] opacity-20 pointer-events-none z-[-1];
 }
 .glow-ball-primary { @apply w-[300px] h-[300px]; }
 .glow-ball-secondary { @apply w-[250px] h-[250px]; }

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
-import { 
-  CalculatorIcon, 
-  CogIcon, 
-  UserIcon, 
+import {
+  CalculatorIcon,
+  CogIcon,
+  UserIcon,
   ChevronUpIcon,
   ChevronRightIcon,
   BoxesIcon
@@ -22,14 +22,14 @@ export interface AppLayoutProps {
   actions?: React.ReactNode;
 }
 
-export function AppLayout({ 
-  children, 
-  title, 
+export function AppLayout({
+  children,
+  title,
   selectedCompany,
   onCompanyChange,
   actions
 }: AppLayoutProps) {
-  const { user, logoutAction, loading } = useAuth();
+  const { user, token, logoutAction, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeDrawer, setActiveDrawer] = useState<"company" | "user" | "settings" | null>(null);
@@ -46,6 +46,13 @@ export function AppLayout({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Route protection
+  useEffect(() => {
+    if (!loading && !token) {
+      navigate("/");
+    }
+  }, [loading, token, navigate]);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -55,23 +62,23 @@ export function AppLayout({
     navigate("/");
   };
 
-  if (loading) return null;
+  if (loading || !token) return null;
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-[#0B0B0F] flex flex-col pb-32 overflow-hidden relative"
       style={{
-          /* 1. Primarna baza koju koriste tvoji custom CSS efekti */
-          "--primary-base": currentRGB,
+        /* 1. Primarna baza koju koriste tvoji custom CSS efekti */
+        "--primary-base": currentRGB,
 
-          /* 2. Forsiramo Tailwindov --color-primary da koristi ovu bazu */
-          "--color-primary": `rgb(${currentRGB})`,
+        /* 2. Forsiramo Tailwindov --color-primary da koristi ovu bazu */
+        "--color-primary": `rgb(${currentRGB})`,
 
-          /* 3. Forsiramo hover i ostale izvedene varijable */
-          "--color-primary-hover": `color-mix(in srgb, rgb(${currentRGB}), white 20%)`,
+        /* 3. Forsiramo hover i ostale izvedene varijable */
+        "--color-primary-hover": `color-mix(in srgb, rgb(${currentRGB}), white 20%)`,
 
-          /* 4. Ažuriramo sjenke */
-          "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`
+        /* 4. Ažuriramo sjenke */
+        "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`
       } as React.CSSProperties}
     >
       {/* Background Effects */}
@@ -83,7 +90,7 @@ export function AppLayout({
       <header className="sticky top-0 z-40 h-[60px] flex items-center bg-[#0B0B0F]/20 backdrop-blur-lg border-b border-white/5">
         <div className="max-w-[1200px] w-full mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Link 
+            <Link
               to="/invoices"
               className="h-9 w-9 bg-primary rounded-xl flex items-center justify-center text-white shadow-glow-primary cursor-pointer transition-all duration-500"
             >
@@ -99,7 +106,7 @@ export function AppLayout({
                   {selectedCompany.name}
                 </span>
                 <svg className="h-3.5 w-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 9l-7 7-7-7" strokeWidth="2.5"/>
+                  <path d="M19 9l-7 7-7-7" strokeWidth="2.5" />
                 </svg>
               </button>
             )}
@@ -123,7 +130,7 @@ export function AppLayout({
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow max-w-[1200px] w-full mx-auto px-5 py-6 relative z-10">
+      <main className="flex-grow max-w-[1200px] w-full mx-auto px-5 py-6 relative">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-black text-white tracking-tight italic">{title}</h1>
           {actions}
@@ -137,9 +144,9 @@ export function AppLayout({
           {NAV_ITEMS.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
-            
+
             return (
-              <Link 
+              <Link
                 key={item.id}
                 to={item.path}
                 title={item.title}
@@ -161,9 +168,8 @@ export function AppLayout({
       {/* Back to Top */}
       <button
         onClick={scrollToTop}
-        className={`fixed right-6 bottom-32 z-[60] h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white shadow-glow-primary transition-all duration-300 transform ${
-          showBackToTop ? "scale-100 opacity-100 translate-y-0" : "scale-0 opacity-0 translate-y-10"
-        } hover:scale-110 active:scale-95`}
+        className={`fixed right-6 bottom-32 z-[60] h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white shadow-glow-primary transition-all duration-300 transform ${showBackToTop ? "scale-100 opacity-100 translate-y-0" : "scale-0 opacity-0 translate-y-10"
+          } hover:scale-110 active:scale-95`}
         aria-label="Back to top"
       >
         <ChevronUpIcon className="h-5 w-5" />
@@ -179,9 +185,8 @@ export function AppLayout({
                 onCompanyChange(company);
                 setActiveDrawer(null);
               }}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                selectedCompany?.id === company.id ? "border-primary bg-primary/10 ring-1 ring-primary/20" : "border-white/5 bg-white/5 hover:bg-white/10"
-              }`}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${selectedCompany?.id === company.id ? "border-primary bg-primary/10 ring-1 ring-primary/20" : "border-white/5 bg-white/5 hover:bg-white/10"
+                }`}
             >
               <div className={`h-10 w-10 rounded-lg flex items-center justify-center font-black text-xs shadow-glow-primary shrink-0 ${selectedCompany?.id === company.id ? "bg-primary text-white" : "bg-[#1C1C26] text-gray-600"}`}>
                 {company.name.substring(0, 2).toUpperCase()}
@@ -212,7 +217,7 @@ export function AppLayout({
             </div>
             Moj Profil
           </button>
-          <button 
+          <button
             onClick={handleLogout}
             className="w-full text-left p-3.5 text-xs font-black uppercase tracking-widest text-red-400/80 hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all flex items-center gap-3 border border-transparent hover:border-red-400/20 group"
           >

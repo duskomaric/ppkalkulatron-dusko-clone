@@ -24,6 +24,7 @@ import { Toast, type ToastType } from "~/components/ui/Toast";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge } from "~/components/ui/StatusBadge";
+import { Input } from "~/components/ui/Input";
 import type { PaginationMeta } from "~/types/api";
 
 const REQUIRED_STAR = <span className="text-primary ml-0.5">*</span>;
@@ -384,111 +385,92 @@ export default function ClientsPage() {
         isOpen={formDrawerOpen}
         onClose={() => setFormDrawerOpen(false)}
       >
-        <form onSubmit={handleFormSubmit} className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">
-              Naziv klijenta {REQUIRED_STAR}
-            </label>
-            <input
-              name="name"
-              required
-              value={formData.name}
+        <form onSubmit={handleFormSubmit} className="space-y-4">
+          <Input
+            label="Naziv klijenta"
+            name="name"
+            required
+            value={formData.name}
+            onChange={handleInputChange}
+            placeholder="npr. PlusPlus d.o.o."
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Email"
+              name="email"
+              type="email"
+              icon={MailIcon}
+              value={formData.email || ""}
               onChange={handleInputChange}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all font-bold text-sm"
-              placeholder="npr. PlusPlus d.o.o."
+              placeholder="info@klijent.com"
+            />
+            <Input
+              label="Telefon"
+              name="phone"
+              icon={PhoneIcon}
+              value={formData.phone || ""}
+              onChange={handleInputChange}
+              placeholder="+387 61 ..."
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Email</label>
-              <input
-                name="email"
-                type="email"
-                value={formData.email || ""}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="info@klijent.com"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Telefon</label>
-              <input
-                name="phone"
-                value={formData.phone || ""}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="+387 61 ..."
-              />
-            </div>
-          </div>
+          <Input
+            label="Adresa"
+            name="address"
+            icon={MapPinIcon}
+            value={formData.address || ""}
+            onChange={handleInputChange}
+            placeholder="Ulica i broj"
+          />
 
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Adresa</label>
-            <input
-              name="address"
-              value={formData.address || ""}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-              placeholder="Ulica i broj"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-1 space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">ZIP</label>
-              <input
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-1">
+              <Input
+                label="ZIP"
                 name="zip"
                 value={formData.zip || ""}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
                 placeholder="71000"
               />
             </div>
-            <div className="col-span-2 space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Grad</label>
-              <input
+            <div className="col-span-2">
+              <Input
+                label="Grad"
                 name="city"
                 value={formData.city || ""}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
                 placeholder="Sarajevo"
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Država</label>
-            <input
-              name="country"
-              value={formData.country || ""}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-              placeholder="Bosna i Hercegovina"
-            />
-          </div>
+          <Input
+            label="Država"
+            name="country"
+            icon={GlobeIcon}
+            value={formData.country || ""}
+            onChange={handleInputChange}
+            placeholder="Bosna i Hercegovina"
+          />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">VAT ID</label>
-              <input
-                name="vat_id"
-                value={formData.vat_id || ""}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="Identifikacioni broj"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">TAX ID</label>
-              <input
-                name="tax_id"
-                value={formData.tax_id || ""}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="Porezni broj"
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="VAT ID"
+              name="vat_id"
+              icon={HashIcon}
+              value={formData.vat_id || ""}
+              onChange={handleInputChange}
+              placeholder="Identifikacioni broj"
+            />
+            <Input
+              label="TAX ID"
+              name="tax_id"
+              icon={HashIcon}
+              value={formData.tax_id || ""}
+              onChange={handleInputChange}
+              placeholder="Porezni broj"
+            />
           </div>
 
           <label

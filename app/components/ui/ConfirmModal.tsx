@@ -38,7 +38,7 @@ export function ConfirmModal({
   const isDanger = type === "danger";
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-[12px] animate-fade-in transition-all duration-500"
@@ -55,8 +55,8 @@ export function ConfirmModal({
           {/* Icon Section */}
           <div className="flex justify-center mb-6">
             <div className={`h-16 w-16 rounded-[24px] flex items-center justify-center border shadow-lg transform rotate-3 transition-transform hover:rotate-0 duration-500 ${isDanger
-                ? 'bg-red-500/10 border-red-500/20 text-red-500 shadow-red-500/10'
-                : 'bg-amber-500/10 border-amber-500/20 text-amber-500 shadow-amber-500/10'
+              ? 'bg-red-500/10 border-red-500/20 text-red-500 shadow-red-500/10'
+              : 'bg-amber-500/10 border-amber-500/20 text-amber-500 shadow-amber-500/10'
               }`}>
               {isDanger ? <TrashIcon className="h-7 w-7" /> : <AlertTriangleIcon className="h-7 w-7" />}
             </div>
@@ -77,8 +77,8 @@ export function ConfirmModal({
               onClose();
             }}
             className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition-all ${isDanger
-                ? 'bg-red-500 text-white shadow-red-500/25 hover:bg-red-600'
-                : 'bg-amber-500 text-black shadow-amber-500/25 hover:bg-amber-600'
+              ? 'bg-red-500 text-white shadow-red-500/25 hover:bg-red-600'
+              : 'bg-amber-500 text-black shadow-amber-500/25 hover:bg-amber-600'
               }`}
           >
             {confirmLabel}
