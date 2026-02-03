@@ -10,3 +10,7 @@ export { ChevronRightIcon } from './ChevronRightIcon';
 export { CalculatorIcon } from './CalculatorIcon';
 export { ChevronUpIcon } from './ChevronUpIcon';
 export { XIcon } from './XIcon';
+export { HashIcon } from './HashIcon';
+export { Calendar1Icon } from './Calendar1Icon';
+export { Clock1Icon } from './Clock1Icon';
+

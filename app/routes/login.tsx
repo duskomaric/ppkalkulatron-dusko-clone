@@ -88,21 +88,8 @@ export default function LoginPage() {
             <div className="absolute inset-0 pointer-events-none z-0">
                 <div className="glow-ball glow-ball-primary top-[-120px] left-[-120px]"></div>
                 <div className="glow-ball glow-ball-secondary bottom-[-80px] right-[-80px]"></div>
-                <div className="glow-ball bg-purple-600/10 w-[600px] h-[600px] top-[20%] left-[10%] blur-[140px]"></div>
+                {/*<div className="glow-ball bg-purple-600/10 w-[600px] h-[600px] top-[20%] left-[10%] blur-[140px]"></div>*/}
             </div>
-
-            {/* Shake Animation */}
-            <style>{`
-                @keyframes shakeRotate {
-                    0%, 100% { transform: rotate(-12deg); }
-                    20% { transform: rotate(-25deg); }
-                    40% { transform: rotate(-5deg); }
-                    60% { transform: rotate(-20deg); }
-                    80% { transform: rotate(-8deg); }
-                }
-                .shake-it { animation: shakeRotate 0.4s ease-in-out; }
-            `}
-            </style>
 
             {/* LEFT SIDE: Brand Icon */}
             <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center z-10">
@@ -110,7 +97,9 @@ export default function LoginPage() {
                     <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full animate-pulse-slow"></div>
                     <div className={`relative transform transition-all duration-700 ${isShaking ? "shake-it" : "-rotate-12 hover:rotate-0"}`}>
                         <div className="h-48 w-48 bg-[#16161E] border border-white/10 rounded-[40px] flex items-center justify-center shadow-2xl group-hover:shadow-primary/20 transition-all">
-                            <CalculatorIcon className="h-24 w-24 text-primary drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+                            <CalculatorIcon
+                                className="h-24 w-24 text-primary drop-shadow-[0_0_15px_rgba(var(--primary-base),0.5)] transition-all duration-700"
+                            />
                         </div>
                     </div>
                 </div>
@@ -120,7 +109,7 @@ export default function LoginPage() {
             <div className="flex-grow lg:w-1/2 flex items-center justify-center px-4 sm:px-12 lg:px-24 z-10 py-12">
                 <div className="w-full max-w-md">
                     <div className="text-center mb-10">
-                        <div className={`lg:hidden mx-auto h-16 w-16 bg-primary rounded-2xl flex items-center justify-center shadow-glow-purple mb-6 transition-all duration-300 ${isShaking ? "shake-it" : "-rotate-6 hover:rotate-0"}`}>
+                        <div className={`lg:hidden mx-auto h-16 w-16 bg-primary rounded-2xl flex items-center justify-center shadow-glow-primary mb-6 transition-all duration-300 ${isShaking ? "shake-it" : "-rotate-6 hover:rotate-0"}`}>
                             <CalculatorIcon className="h-10 w-10 text-white" />
                         </div>
                         <h1 className="text-4xl font-black text-white tracking-tighter mb-2 italic">
@@ -161,13 +150,15 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className={`group cursor-pointer w-full py-5 rounded-2xl font-black text-white text-sm uppercase tracking-[0.2em] bg-primary hover:bg-primary-hover shadow-[0_10px_20px_rgba(168,85,247,0.3)] transition-all duration-300 mt-4 flex items-center justify-center ${
-                                    isLoading ? "opacity-50 cursor-not-allowed" : "hover:-translate-y-1 active:scale-95"
-                                }`}
-                            >
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className={`group cursor-pointer w-full py-5 rounded-2xl font-black text-white text-sm uppercase tracking-[0.2em] bg-primary hover:bg-primary-hover transition-all duration-300 mt-4 flex items-center justify-center ${
+                                        isLoading
+                                            ? "opacity-50 cursor-not-allowed"
+                                            : "hover:-translate-y-1 active:scale-95 shadow-glow-primary" // Ovdje koristimo tvoju varijablu
+                                    }`}
+                                >
                                 {isLoading ? (
                                     <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                 ) : (

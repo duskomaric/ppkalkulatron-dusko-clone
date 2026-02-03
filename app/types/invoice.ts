@@ -23,6 +23,7 @@ export interface Invoice {
   invoice_number: string;
   company_id: number;
   client_id: number;
+  client: import("./client").Client;
   status: string;
   status_color: StatusColor;
   status_label: string;

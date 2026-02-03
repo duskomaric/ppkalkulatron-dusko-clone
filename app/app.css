@@ -1,31 +1,83 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  
-  --color-primary: #a855f7; /* lighter purple for dark mode #a855f7 */
-  --color-primary-hover: #c084fc;
-  --color-primary-light: rgba(168, 85, 247, 0.1);
-  
-  --shadow-glow-purple: 0 0 20px 2px rgba(168, 85, 247, 0.4);
-  --shadow-glow-blue: 0 0 20px 2px rgba(59, 130, 246, 0.4);
+
+    /* --- JEDINA BOJA KOJU MIJENJAŠ --- */
+    /*--primary-base: 168, 85, 247; !* Ovo je #a855f7 u RGB formatu *!*/
+    /*--primary-base: 14, 165, 233; !* Sky Blue 500 *!*/
+    /*--primary-base: 34, 197, 94; !* Green 500 *!*/
+    /*--primary-base: 244, 63, 94; !* Rose 500 *!*/
+    --primary-base: 245, 158, 11; /* Amber 500 */
+    /*--primary-base: 139, 92, 246; !* Violet 500 *!*/
+
+    --color-primary: rgb(var(--primary-base));
+
+    /* Miješa primarnu sa bijelom (20%) za hover */
+    --color-primary-hover: color-mix(in srgb, var(--color-primary), white 20%);
+    --color-primary-light: rgba(var(--primary-base), 0.1);
+
+    --shadow-glow-primary: 0 0 20px 2px rgba(var(--primary-base), 0.4);
+
+    /* --- REGISTRACIJA ANIMACIJA KAO TAILWIND UTILITIES --- */
+    --animate-fade-in: fade-in 0.3s ease-out;
+    --animate-slide-in-bottom: slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-pulse-slow: pulse-slow 3s infinite;
+    --animate-shake-it: shakeRotate 0.4s ease-in-out;
+
+    /* --- KEYFRAMES (Dozvoljeno unutar @theme) --- */
+    @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slide-in-bottom {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+    @keyframes pulse-slow {
+        0%, 100% { opacity: 0.2; }
+        50% { opacity: 0.4; }
+    }
+    @keyframes shakeRotate {
+        0%, 100% { transform: rotate(-12deg); }
+        20% { transform: rotate(-25deg); }
+        40% { transform: rotate(-5deg); }
+        60% { transform: rotate(-20deg); }
+        80% { transform: rotate(-8deg); }
+    }
 }
 
+/* --- GLOBALNE KLASE I ELEMENTI (Izvan @theme) --- */
 html,
 body {
-  @apply bg-[#0B0B0F] text-gray-100 antialiased overflow-x-hidden;
+    @apply bg-[#0B0B0F] text-gray-100 antialiased overflow-x-hidden;
+}
+
+/* Klasa koju tvoj login koristi direktno */
+.shake-it {
+    animation: shakeRotate 0.4s ease-in-out;
 }
 
 /* Glowing balls effect */
 .glow-ball {
-  @apply absolute rounded-full blur-[100px] opacity-20 pointer-events-none z-0;
+    background-color: var(--color-primary);
+    @apply absolute rounded-full blur-[100px] opacity-20 pointer-events-none z-0;
 }
 
 .glow-ball-primary {
-  @apply bg-primary w-[300px] h-[300px];
+    background-color: var(--color-primary);
+    @apply w-[300px] h-[300px];
 }
 
 .glow-ball-secondary {
-  @apply bg-blue-500 w-[250px] h-[250px];
+    background-color: var(--color-primary);
+    @apply w-[250px] h-[250px];
+}
+
+.glow-ball-accent {
+    background-color: var(--color-primary);
+    filter: blur(120px);
+    opacity: 0.1;
+    @apply absolute w-[400px] h-[400px] pointer-events-none;
 }
