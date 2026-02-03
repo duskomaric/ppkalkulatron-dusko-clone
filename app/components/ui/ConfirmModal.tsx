@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { TrashIcon, XIcon, AlertTriangleIcon } from "~/components/ui/icons";
+import { TrashIcon, AlertTriangleIcon } from "~/components/ui/icons";
 
 interface ConfirmModalProps {
   isOpen: boolean;

@@ -13,6 +13,7 @@ import { Drawer } from "./Drawer";
 import type { Company } from "~/types/company";
 import { getThemeByPath } from "~/utils/theme";
 import { NAV_ITEMS } from "~/config/navigation";
+import { getPageTitle, APP_CONFIG } from "~/config/app";
 
 export interface AppLayoutProps {
   children: React.ReactNode;
@@ -52,6 +53,13 @@ export function AppLayout({
       navigate("/");
     }
   }, [loading, token, navigate]);
+
+  // Document Title
+  useEffect(() => {
+    if (title) {
+      document.title = getPageTitle(title);
+    }
+  }, [title]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -132,7 +140,9 @@ export function AppLayout({
       {/* Main Content */}
       <main className="flex-grow max-w-[1200px] w-full mx-auto px-5 py-6 relative">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-black text-white tracking-tight italic">{title}</h1>
+          <h1 className="text-2xl font-black text-white tracking-tight italic">
+            {(APP_CONFIG.titles as any)[title.toLowerCase()] || title}
+          </h1>
           {actions}
         </div>
         {children}

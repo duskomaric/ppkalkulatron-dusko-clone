@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { XIcon, CheckCircleIcon, CogIcon, HashIcon, InfoIcon } from "~/components/ui/icons";
+import { XIcon, CheckCircleIcon, CogIcon, InfoIcon } from "~/components/ui/icons";
 
 export type ToastType = "success" | "error" | "info" | "warning";
 

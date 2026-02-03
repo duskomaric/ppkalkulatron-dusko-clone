@@ -75,7 +75,7 @@ export default function InvoicesPage() {
 
   return (
     <AppLayout
-      title="Računi"
+      title="invoices"
       selectedCompany={selectedCompany}
       onCompanyChange={setSelectedCompany}
       actions={

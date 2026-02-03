@@ -6,8 +6,6 @@ import type { Client } from "~/types/client";
 import type { Company } from "~/types/company";
 import {
   ContactRoundIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   XIcon,
   MailIcon,
   PhoneIcon,
@@ -26,8 +24,6 @@ import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge } from "~/components/ui/StatusBadge";
 import { Input } from "~/components/ui/Input";
 import type { PaginationMeta } from "~/types/api";
-
-const REQUIRED_STAR = <span className="text-primary ml-0.5">*</span>;
 
 export default function ClientsPage() {
   const { user, token, isAuthenticated, loading: authLoading } = useAuth();
@@ -192,7 +188,7 @@ export default function ClientsPage() {
 
   return (
     <AppLayout
-      title="Klijenti"
+      title="clients"
       selectedCompany={selectedCompany}
       onCompanyChange={setSelectedCompany}
       actions={

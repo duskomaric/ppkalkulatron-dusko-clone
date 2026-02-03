@@ -6,7 +6,6 @@ import type { Article } from "~/types/article";
 import type { Company } from "~/types/company";
 import {
     BoxesIcon,
-    XIcon,
     TrashIcon,
     PencilIcon,
     HashIcon,
@@ -202,7 +201,7 @@ export default function ArticlesPage() {
 
     return (
         <AppLayout
-            title="Artikli"
+            title="articles"
             selectedCompany={selectedCompany}
             onCompanyChange={setSelectedCompany}
             actions={

@@ -6,6 +6,7 @@ import { CalculatorIcon, ChevronRightIcon, MailIcon, LockIcon } from "~/componen
 import { getThemeByPath } from "~/utils/theme";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { Input } from "~/components/ui/Input";
+import { getPageTitle, APP_CONFIG } from "~/config/app";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -26,6 +27,11 @@ export default function LoginPage() {
 
     // Get dynamic color based on path (/)
     const currentRGB = getThemeByPath(location.pathname);
+
+    // Set document title
+    useEffect(() => {
+        document.title = getPageTitle("Login");
+    }, []);
 
     // Redirect if already logged in
     useEffect(() => {
@@ -111,10 +117,10 @@ export default function LoginPage() {
                         <h1 className="text-4xl font-black text-white tracking-tighter mb-2 italic">
                             Prijavite se<span className="text-primary">.</span>
                         </h1>
-                        <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">++Kalkulatron</p>
+                        <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">{APP_CONFIG.name}</p>
                         <div className="flex items-center justify-center gap-2 mt-1">
                             <div className="h-1 w-8 bg-white/10 rounded-full"></div>
-                            <p className="text-gray-500 font-black uppercase tracking-[0.3em] text-[10px]">Verzija 1.0</p>
+                            <p className="text-gray-500 font-black uppercase tracking-[0.3em] text-[10px]">Verzija {APP_CONFIG.version}</p>
                             <div className="h-1 w-8 bg-white/10 rounded-full"></div>
                         </div>
                     </div>
@@ -157,8 +163,8 @@ export default function LoginPage() {
                                 type="submit"
                                 disabled={isLoading}
                                 className={`group cursor-pointer w-full py-5 rounded-[22px] font-black text-white text-[13px] uppercase tracking-[0.25em] bg-primary relative overflow-hidden transition-all duration-500 mt-6 flex items-center justify-center ${isLoading
-                                        ? "opacity-50 cursor-not-allowed"
-                                        : "hover:-translate-y-1 active:scale-95 shadow-[0_20px_40px_-12px_rgba(var(--primary-base),0.4)]"
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : "hover:-translate-y-1 active:scale-95 shadow-[0_20px_40px_-12px_rgba(var(--primary-base),0.4)]"
                                     }`}
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
