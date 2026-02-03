@@ -4,6 +4,7 @@ export const PAGE_THEMES: Record<string, string> = {
   "/proformas": "168, 85, 247", // Purple
   "/quotes": "14, 165, 233",    // Blue
   "/articles": "244, 63, 94",   // Rose
+  "/": "168, 85, 247",         // Purple (Login)
 };
 
 export const DEFAULT_THEME = "34, 197, 94"; // Green

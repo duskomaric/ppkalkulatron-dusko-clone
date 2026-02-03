@@ -14,6 +14,7 @@ import {
   XIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
+import { Toast, type ToastType } from "~/components/ui/Toast";
 import type { PaginationMeta } from "~/types/api";
 
 export default function InvoicesPage() {
@@ -25,6 +26,17 @@ export default function InvoicesPage() {
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
+    message: "",
+    type: "success",
+    isVisible: false,
+  });
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type, isVisible: true });
+  };
 
   useEffect(() => {
     if (user && user.companies.length > 0 && !selectedCompany) {
@@ -40,8 +52,8 @@ export default function InvoicesPage() {
       setInvoices(response.data);
       setPagination(response.meta);
       setCurrentPage(page);
-    } catch (error) {
-      console.error("Greška pri dohvatanju računa:", error);
+    } catch (error: any) {
+      showToast(error.message || "Greška pri dohvatanju računa", "error");
     } finally {
       setLoading(false);
     }
@@ -76,6 +88,13 @@ export default function InvoicesPage() {
         </button>
       }
     >
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.isVisible} 
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      />
+
       <div className="space-y-3">
         {invoices.map((inv) => (
             <div

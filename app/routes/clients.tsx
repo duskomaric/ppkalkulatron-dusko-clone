@@ -20,6 +20,7 @@ import {
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { Drawer } from "~/components/layout/Drawer";
+import { Toast, type ToastType } from "~/components/ui/Toast";
 import type { PaginationMeta } from "~/types/api";
 
 const REQUIRED_STAR = <span className="text-primary ml-0.5">*</span>;
@@ -27,13 +28,19 @@ const REQUIRED_STAR = <span className="text-primary ml-0.5">*</span>;
 export default function ClientsPage() {
   const { user, token, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-
+  
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
+    message: "",
+    type: "success",
+    isVisible: false,
+  });
 
   // Drawer States
   const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
@@ -61,6 +68,10 @@ export default function ClientsPage() {
     }
   }, [user, selectedCompany]);
 
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type, isVisible: true });
+  };
+
   const fetchClients = useCallback(async (page: number = 1) => {
     if (!selectedCompany || !token) return;
     setLoading(true);
@@ -70,7 +81,7 @@ export default function ClientsPage() {
       setPagination(response.meta);
       setCurrentPage(page);
     } catch (error: any) {
-      setError(error.message || "Greška pri dohvatanju klijenata");
+      showToast(error.message || "Greška pri dohvatanju klijenata", "error");
     } finally {
       setLoading(false);
     }
@@ -120,13 +131,15 @@ export default function ClientsPage() {
     try {
       if (formMode === "create") {
         await createClient(selectedCompany.slug, token, formData);
+        showToast("Klijent uspješno kreiran", "success");
       } else if (activeClient) {
         await updateClient(selectedCompany.slug, activeClient.id, token, formData);
+        showToast("Klijent uspješno ažuriran", "success");
       }
       setFormDrawerOpen(false);
       fetchClients(currentPage);
     } catch (err: any) {
-      setError(err.message || "Greška pri čuvanju klijenta");
+      showToast(err.message || "Greška pri čuvanju klijenta", "error");
     } finally {
       setLoading(false);
     }
@@ -139,10 +152,11 @@ export default function ClientsPage() {
     setLoading(true);
     try {
       await deleteClient(selectedCompany.slug, activeClient.id, token);
+      showToast("Klijent uspješno obrisan", "info");
       setViewDrawerOpen(false);
       fetchClients(currentPage);
     } catch (err: any) {
-      setError(err.message || "Greška pri brisanju klijenta");
+      showToast(err.message || "Greška pri brisanju klijenta", "error");
     } finally {
       setLoading(false);
     }
@@ -186,14 +200,12 @@ export default function ClientsPage() {
         </button>
       }
     >
-      {/* Error Toast */}
-      {error && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] bg-red-500/10 border border-red-500/20 backdrop-blur-xl p-4 rounded-2xl flex items-center gap-3 animate-fade-in shadow-2xl">
-          <XIcon className="h-5 w-5 text-red-500" />
-          <p className="text-red-500 text-sm font-bold">{error}</p>
-          <button onClick={() => setError("")} className="ml-2 text-gray-500 hover:text-white"><XIcon className="h-4 w-4"/></button>
-        </div>
-      )}
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.isVisible} 
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      />
 
       <div className="space-y-4">
           {clients.map((client) => (
@@ -392,7 +404,7 @@ export default function ClientsPage() {
               value={formData.name}
               onChange={handleInputChange}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all font-bold text-sm"
-              placeholder="PlusPlusI d.o.o."
+              placeholder="npr. PlusPlus d.o.o."
             />
           </div>
 
@@ -405,7 +417,7 @@ export default function ClientsPage() {
                 value={formData.email || ""}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="info@ppkalkulatron.com"
+                placeholder="info@klijent.com"
               />
             </div>
             <div className="space-y-1">
@@ -415,7 +427,7 @@ export default function ClientsPage() {
                 value={formData.phone || ""}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="06 ..."
+                placeholder="+387 61 ..."
               />
             </div>
           </div>
@@ -427,19 +439,19 @@ export default function ClientsPage() {
               value={formData.address || ""}
               onChange={handleInputChange}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-              placeholder="Ulica"
+              placeholder="Ulica i broj"
             />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-1 space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Poštanski broj</label>
+              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">ZIP</label>
               <input
                 name="zip"
                 value={formData.zip || ""}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="78000"
+                placeholder="71000"
               />
             </div>
             <div className="col-span-2 space-y-1">
@@ -449,7 +461,7 @@ export default function ClientsPage() {
                 value={formData.city || ""}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="Banja Luka"
+                placeholder="Sarajevo"
               />
             </div>
           </div>
@@ -467,65 +479,47 @@ export default function ClientsPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">JIB</label>
+              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">VAT ID</label>
               <input
                 name="vat_id"
                 value={formData.vat_id || ""}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="JIB"
+                placeholder="Identifikacioni broj"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">PIB</label>
+              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">TAX ID</label>
               <input
                 name="tax_id"
                 value={formData.tax_id || ""}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-700 focus:border-primary outline-none transition-all font-bold text-sm"
-                placeholder="PIB"
+                placeholder="Porezni broj"
               />
             </div>
           </div>
 
-            <label
-                htmlFor="is_active"
-                className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 cursor-pointer"
-            >
-                <div className="relative flex items-center">
-                    <input
-                        type="checkbox"
-                        id="is_active"
-                        name="is_active"
-                        checked={formData.is_active}
-                        onChange={handleInputChange}
-                        className="sr-only peer"
-                    />
+          <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+            <div className="relative flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="is_active"
+                name="is_active"
+                checked={formData.is_active}
+                onChange={handleInputChange}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white"></div>
+              <label htmlFor="is_active" className="ml-3 text-[13px] font-bold text-gray-300 cursor-pointer">Klijent je aktivan</label>
+            </div>
+          </div>
 
-                    <div className="w-9 h-5 bg-white/10 rounded-full
-                      peer-focus:outline-none
-                      peer-checked:bg-primary
-                      after:content-['']
-                      after:absolute after:top-[2px] after:left-[2px]
-                      after:h-4 after:w-4 after:rounded-full
-                      after:bg-gray-400 after:border after:border-gray-300
-                      after:transition-all
-                      peer-checked:after:translate-x-full
-                      peer-checked:after:bg-white">
-                                    </div>
-                                </div>
-
-                                <span className="text-[13px] font-bold text-gray-300">
-                    Klijent je aktivan
-                  </span>
-            </label>
-
-
-            <div className="flex flex-col gap-2 pt-2">
+          <div className="flex flex-col gap-2 pt-2">
             <button
               type="submit"
               disabled={loading}
-              className="cursor-pointer w-full py-3.5 bg-primary text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-primary text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -536,7 +530,7 @@ export default function ClientsPage() {
             <button
               type="button"
               onClick={() => setFormDrawerOpen(false)}
-              className="cursor-pointer w-full py-3 bg-white/5 text-gray-400 border border-white/5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all"
+              className="w-full py-3 bg-white/5 text-gray-400 border border-white/5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all"
             >
               Odustani
             </button>

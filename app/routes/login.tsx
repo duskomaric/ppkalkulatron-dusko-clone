@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { login } from "~/api/auth";
 import { useAuth } from "~/hooks/useAuth";
-import {CalculatorIcon, ChevronRightIcon, XIcon} from "~/components/ui/icons";
+import { CalculatorIcon, ChevronRightIcon } from "~/components/ui/icons";
+import { getThemeByPath } from "~/utils/theme";
+import { Toast, type ToastType } from "~/components/ui/Toast";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [isShaking, setIsShaking] = useState(false);
+
+    // Toast state
+    const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
+        message: "",
+        type: "error",
+        isVisible: false,
+    });
 
     const navigate = useNavigate();
+    const location = useLocation();
     const { loginAction, isAuthenticated, loading } = useAuth();
+
+    // Get dynamic color based on path (/)
+    const currentRGB = getThemeByPath(location.pathname);
 
     // Redirect if already logged in
     useEffect(() => {
@@ -20,19 +33,12 @@ export default function LoginPage() {
         }
     }, [isAuthenticated, loading, navigate]);
 
-    // Automatski sakrij grešku nakon 5 sekundi
-    useEffect(() => {
-        if (error) {
-            const timer = setTimeout(() => setError(""), 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [error]);
-
-    const [isShaking, setIsShaking] = useState(false);
+    const showToast = (message: string, type: ToastType) => {
+        setToast({ message, type, isVisible: true });
+    };
 
     const handleSubmit = async (e: React.SyntheticEvent) => {
         e.preventDefault();
-        setError("");
         setIsLoading(true);
 
         try {
@@ -40,55 +46,35 @@ export default function LoginPage() {
             loginAction(data.token, data.user);
             navigate("/invoices");
         } catch (err: any) {
-            setError(err.message || "Proverite vezu sa serverom");
-            // OKIDAČ:
+            showToast(err.message || "Proverite vezu sa serverom", "error");
             setIsShaking(true);
-            setTimeout(() => setIsShaking(false), 500); // gasi nakon pola sekunde
+            setTimeout(() => setIsShaking(false), 500);
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#0B0B0F] flex flex-col lg:flex-row relative overflow-hidden font-sans">
-
-            {/* --- ERROR TOAST --- */}
-            <div className={`fixed top-4 md:top-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 transform 
-    w-[calc(100%-2rem)] max-w-md md:w-auto
-    ${error ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0 pointer-events-none"}`}
-            >
-                <div className="bg-red-500/15 backdrop-blur-2xl border border-red-500/20 p-4 md:px-6 md:py-4 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.2)] flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        {/* Ikona - smanjena na mobilnom */}
-                        <div
-                            className="h-8 w-8 min-w-[2rem] bg-red-500 rounded-full flex items-center justify-center text-white">
-                            <XIcon className="h-5 w-5" />
-                        </div>
-
-                        <div className="overflow-hidden">
-                            <p className="text-white font-bold text-sm leading-none truncate">Greška</p>
-                            <p className="text-red-400 text-xs mt-1 font-medium break-words line-clamp-2">
-                                {error}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Dugme za zatvaranje - veći touch target na mobilnom */}
-                    <button
-                        onClick={() => setError("")}
-                        className="p-2 -mr-2 text-gray-500 hover:text-white transition-colors"
-                        aria-label="Zatvori"
-                    >
-                        <XIcon className="h-5 w-5 md:h-4 md:w-4" />
-                    </button>
-                </div>
-            </div>
+        <div 
+            className="min-h-screen bg-[#0B0B0F] flex flex-col lg:flex-row relative overflow-hidden font-sans"
+            style={{
+                "--primary-base": currentRGB,
+                "--color-primary": `rgb(${currentRGB})`,
+                "--color-primary-hover": `color-mix(in srgb, rgb(${currentRGB}), white 20%)`,
+                "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`
+            } as React.CSSProperties}
+        >
+            <Toast 
+                message={toast.message} 
+                type={toast.type} 
+                isVisible={toast.isVisible} 
+                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+            />
 
             {/* Background Effects */}
             <div className="absolute inset-0 pointer-events-none z-0">
                 <div className="glow-ball glow-ball-primary top-[-120px] left-[-120px]"></div>
                 <div className="glow-ball glow-ball-secondary bottom-[-80px] right-[-80px]"></div>
-                {/*<div className="glow-ball bg-purple-600/10 w-[600px] h-[600px] top-[20%] left-[10%] blur-[140px]"></div>*/}
             </div>
 
             {/* LEFT SIDE: Brand Icon */}
@@ -120,7 +106,6 @@ export default function LoginPage() {
 
                     <div className="bg-[#16161E]/60 backdrop-blur-2xl rounded-[32px] border border-white/5 shadow-2xl p-8 sm:p-10 relative">
                         <form onSubmit={handleSubmit} className="space-y-6">
-
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Email</label>
                                 <input
@@ -150,15 +135,15 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className={`group cursor-pointer w-full py-5 rounded-2xl font-black text-white text-sm uppercase tracking-[0.2em] bg-primary hover:bg-primary-hover transition-all duration-300 mt-4 flex items-center justify-center ${
-                                        isLoading
-                                            ? "opacity-50 cursor-not-allowed"
-                                            : "hover:-translate-y-1 active:scale-95 shadow-glow-primary" // Ovdje koristimo tvoju varijablu
-                                    }`}
-                                >
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className={`group cursor-pointer w-full py-5 rounded-2xl font-black text-white text-sm uppercase tracking-[0.2em] bg-primary hover:bg-primary-hover transition-all duration-300 mt-4 flex items-center justify-center ${
+                                    isLoading
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : "hover:-translate-y-1 active:scale-95 shadow-glow-primary"
+                                }`}
+                            >
                                 {isLoading ? (
                                     <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                 ) : (
