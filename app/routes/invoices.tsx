@@ -15,6 +15,9 @@ import { AppLayout } from "~/components/layout/AppLayout";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge, type BadgeColor } from "~/components/ui/StatusBadge";
+import { EntityCard } from "~/components/ui/EntityCard";
+import { EmptyState } from "~/components/ui/EmptyState";
+import { LoadingState } from "~/components/ui/LoadingState";
 import type { PaginationMeta } from "~/types/api";
 
 export default function InvoicesPage() {
@@ -86,11 +89,7 @@ export default function InvoicesPage() {
 
       <div className="space-y-3">
         {invoices.map((inv) => (
-          <div
-            key={inv.id}
-            className="group cursor-pointer bg-[#16161E]/80 backdrop-blur-xl border border-white/5 rounded-xl transition-all duration-500 hover:bg-[#1C1C26] hover:border-primary/40 p-3 flex flex-col gap-2 relative overflow-hidden"
-            style={{ boxShadow: '0 4px 20px rgba(var(--primary-base), 0.05)' }}
-          >
+          <EntityCard key={inv.id}>
             {/* Gornji dio: Broj i Status */}
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -147,20 +146,13 @@ export default function InvoicesPage() {
                 </p>
               </div>
             </div>
-          </div>
+          </EntityCard>
         ))}
 
-        {loading && (
-          <div className="flex justify-center py-10">
-            <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
-          </div>
-        )}
+        {loading && <LoadingState />}
 
         {!loading && invoices.length === 0 && (
-          <div className="py-20 text-center bg-[#16161E]/40 border border-dashed border-white/5 rounded-2xl">
-            <XIcon className="h-8 w-8 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Nema pronađenih računa</p>
-          </div>
+          <EmptyState icon={XIcon} message="Nema pronađenih računa" />
         )}
       </div>
 

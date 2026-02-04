@@ -23,6 +23,10 @@ import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge } from "~/components/ui/StatusBadge";
 import { Input } from "~/components/ui/Input";
+import { EntityCard } from "~/components/ui/EntityCard";
+import { EmptyState } from "~/components/ui/EmptyState";
+import { DetailsItem } from "~/components/ui/DetailsItem";
+import { LoadingState } from "~/components/ui/LoadingState";
 import type { PaginationMeta } from "~/types/api";
 
 export default function ClientsPage() {
@@ -171,20 +175,6 @@ export default function ClientsPage() {
     }));
   };
 
-  const DataItem = ({ icon: Icon, label, value }: { icon: any, label: string, value: string | null | undefined | boolean }) => (
-    <div className="flex items-center gap-2.5 p-2 bg-white/5 rounded-xl border border-white/5">
-      <div className="h-7 w-7 bg-primary/10 rounded-lg flex items-center justify-center text-primary shrink-0">
-        <Icon className="h-3.5 w-3.5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest leading-none mb-0.5">{label}</p>
-        <p className="text-[10px] font-bold text-white truncate italic leading-none">
-          {typeof value === 'boolean' ? (value ? 'Aktivan' : 'Neaktivan') : (value || '-')}
-        </p>
-      </div>
-    </div>
-  );
-
   return (
     <AppLayout
       title="clients"
@@ -218,11 +208,9 @@ export default function ClientsPage() {
 
       <div className="space-y-4">
         {clients.map((client) => (
-          <div
+          <EntityCard
             key={client.id}
             onClick={() => handleRowClick(client)}
-            className="group cursor-pointer bg-[#16161E]/80 backdrop-blur-xl border border-white/5 rounded-xl transition-all duration-500 hover:bg-[#1C1C26] hover:border-primary/40 p-3 flex flex-col gap-2 relative overflow-hidden"
-            style={{ boxShadow: '0 4px 20px rgba(var(--primary-base), 0.05)' }}
           >
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -278,20 +266,13 @@ export default function ClientsPage() {
                 </div>
               )}
             </div>
-          </div>
+          </EntityCard>
         ))}
 
-        {loading && !viewDrawerOpen && !formDrawerOpen && (
-          <div className="flex justify-center py-10">
-            <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
-          </div>
-        )}
+        {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
 
         {!loading && clients.length === 0 && (
-          <div className="py-20 text-center bg-[#16161E]/40 border border-dashed border-white/5 rounded-2xl">
-            <XIcon className="h-8 w-8 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Nema pronađenih klijenata</p>
-          </div>
+          <EmptyState icon={XIcon} message="Nema pronađenih klijenata" />
         )}
       </div>
 
@@ -334,15 +315,15 @@ export default function ClientsPage() {
 
             {/* Data Grid */}
             <div className="grid grid-cols-2 gap-2">
-              <DataItem icon={MailIcon} label="Email" value={activeClient.email} />
-              <DataItem icon={PhoneIcon} label="Telefon" value={activeClient.phone} />
-              <DataItem icon={MapPinIcon} label="Adresa" value={activeClient.address} />
-              <DataItem icon={MapPinIcon} label="Grad" value={activeClient.city} />
-              <DataItem icon={HashIcon} label="ZIP" value={activeClient.zip} />
-              <DataItem icon={GlobeIcon} label="Država" value={activeClient.country} />
-              <DataItem icon={HashIcon} label="VAT ID" value={activeClient.vat_id} />
-              <DataItem icon={HashIcon} label="TAX ID" value={activeClient.tax_id} />
-              <DataItem icon={CheckCircleIcon} label="Status" value={activeClient.is_active} />
+              <DetailsItem icon={MailIcon} label="Email" value={activeClient.email} />
+              <DetailsItem icon={PhoneIcon} label="Telefon" value={activeClient.phone} />
+              <DetailsItem icon={MapPinIcon} label="Adresa" value={activeClient.address} />
+              <DetailsItem icon={MapPinIcon} label="Grad" value={activeClient.city} />
+              <DetailsItem icon={HashIcon} label="ZIP" value={activeClient.zip} />
+              <DetailsItem icon={GlobeIcon} label="Država" value={activeClient.country} />
+              <DetailsItem icon={HashIcon} label="VAT ID" value={activeClient.vat_id} />
+              <DetailsItem icon={HashIcon} label="TAX ID" value={activeClient.tax_id} />
+              <DetailsItem icon={CheckCircleIcon} label="Status" value={activeClient.is_active} />
             </div>
 
             {/* Actions */}

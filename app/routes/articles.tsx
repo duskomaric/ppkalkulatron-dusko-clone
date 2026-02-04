@@ -20,6 +20,10 @@ import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge } from "~/components/ui/StatusBadge";
 import { Input } from "~/components/ui/Input";
+import { EntityCard } from "~/components/ui/EntityCard";
+import { EmptyState } from "~/components/ui/EmptyState";
+import { DetailsItem } from "~/components/ui/DetailsItem";
+import { LoadingState } from "~/components/ui/LoadingState";
 import type { PaginationMeta } from "~/types/api";
 
 export default function ArticlesPage() {
@@ -184,19 +188,6 @@ export default function ArticlesPage() {
         }));
     };
 
-    const DataItem = ({ icon: Icon, label, value, color }: { icon: any, label: string, value: any, color?: string }) => (
-        <div className="flex items-center gap-2.5 p-2 bg-white/5 rounded-xl border border-white/5">
-            <div className={`h-7 w-7 ${color || 'bg-primary/10 text-primary'} rounded-lg flex items-center justify-center shrink-0`}>
-                <Icon className="h-3.5 w-3.5" />
-            </div>
-            <div className="min-w-0">
-                <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest leading-none mb-0.5">{label}</p>
-                <p className="text-[10px] font-bold text-white truncate italic leading-none">
-                    {typeof value === 'boolean' ? (value ? 'Aktivan' : 'Neaktivan') : (value || '-')}
-                </p>
-            </div>
-        </div>
-    );
 
     return (
         <AppLayout
@@ -231,11 +222,9 @@ export default function ArticlesPage() {
 
             <div className="space-y-4">
                 {articles.map((article) => (
-                    <div
+                    <EntityCard
                         key={article.id}
                         onClick={() => handleRowClick(article)}
-                        className="group cursor-pointer bg-[#16161E]/80 backdrop-blur-xl border border-white/5 rounded-xl transition-all duration-500 hover:bg-[#1C1C26] hover:border-primary/40 p-3 flex flex-col gap-2 relative overflow-hidden"
-                        style={{ boxShadow: '0 4px 20px rgba(var(--primary-base), 0.05)' }}
                     >
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
@@ -249,39 +238,24 @@ export default function ArticlesPage() {
                                     <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">{article.type_label}</p>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
+                            <div className="flex gap-2">
                                 <StatusBadge
-                                    label={article.is_active ? 'Aktivan' : 'Neaktivan'}
-                                    color={article.is_active ? 'green' : 'gray'}
+                                    label={article.type_label}
+                                    color={article.type === 'products' ? 'blue' : 'amber'}
                                 />
-                                <div className="flex flex-col items-end">
-                                    {article.prices_meta && typeof article.prices_meta === 'object' && !Array.isArray(article.prices_meta) ? (
-                                        Object.entries(article.prices_meta)
-                                            .sort(([a], [b]) => a.localeCompare(b))
-                                            .map(([currency, amount]) => (
-                                                <p key={currency} className="text-[10px] font-black text-white italic tracking-tighter leading-tight mt-0.5 last:mt-0">
-                                                    {amount || 0} <span className="text-[7px] opacity-60 not-italic uppercase">{currency}</span>
-                                                </p>
-                                            ))
-                                    ) : (
-                                        <p className="text-xs font-black text-white italic tracking-tighter leading-tight mt-1">
-                                            0 <span className="text-[8px] opacity-60 not-italic">EUR</span>
-                                        </p>
-                                    )}
-                                </div>
                             </div>
                         </div>
 
                         <div className="h-[1px] w-full bg-white/5" />
 
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-end">
                             <div className="flex gap-4">
                                 <div className="flex flex-col gap-0.5">
                                     <div className="flex items-center gap-1 text-gray-600">
                                         <TagIcon className="w-2 h-2" />
                                         <span className="text-[7px] font-black uppercase tracking-tighter">Jedinica</span>
                                     </div>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                    <p className="text-[9px] font-bold text-gray-400">
                                         {article.unit}
                                     </p>
                                 </div>
@@ -291,32 +265,29 @@ export default function ArticlesPage() {
                                         <HashIcon className="w-2 h-2" />
                                         <span className="text-[7px] font-black uppercase tracking-tighter">Porez</span>
                                     </div>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                    <p className="text-[9px] font-bold text-gray-400">
                                         {article.tax_category}
                                     </p>
                                 </div>
                             </div>
 
-                            {article.description && (
-                                <p className="text-[9px] font-bold text-gray-500 italic max-w-[150px] truncate">
-                                    {article.description}
+                            <div className="text-right">
+                                <div className="flex items-center gap-1 text-gray-600 justify-end mb-0.5">
+                                    <DollarIcon className="w-2 h-2" />
+                                    <span className="text-[7px] font-black uppercase tracking-tighter">Cijena</span>
+                                </div>
+                                <p className="text-lg font-black text-white tracking-tighter italic leading-none">
+                                    {article.prices_meta && Object.values(article.prices_meta)[0]} <span className="text-[10px] opacity-60 not-italic uppercase">{article.prices_meta && Object.keys(article.prices_meta)[0]}</span>
                                 </p>
-                            )}
+                            </div>
                         </div>
-                    </div>
+                    </EntityCard>
                 ))}
 
-                {loading && !viewDrawerOpen && !formDrawerOpen && (
-                    <div className="flex justify-center py-10">
-                        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
-                    </div>
-                )}
+                {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
 
                 {!loading && articles.length === 0 && (
-                    <div className="py-20 text-center bg-[#16161E]/40 border border-dashed border-white/5 rounded-2xl">
-                        <BoxesIcon className="h-8 w-8 text-gray-600 mx-auto mb-4" />
-                        <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Nema pronađenih artikala</p>
-                    </div>
+                    <EmptyState icon={BoxesIcon} message="Nema pronađenih artikala" />
                 )}
             </div>
 
@@ -369,17 +340,17 @@ export default function ArticlesPage() {
                                 Object.entries(activeArticle.prices_meta)
                                     .sort(([a], [b]) => a.localeCompare(b))
                                     .map(([currency, amount]) => (
-                                        <DataItem key={currency} icon={DollarIcon} label={`Cijena (${currency})`} value={`${amount || 0} ${currency}`} color="bg-green-500/10 text-green-400" />
+                                        <DetailsItem key={currency} icon={DollarIcon} label={`Cijena (${currency})`} value={`${amount || 0} ${currency}`} color="bg-green-500/10 text-green-400" />
                                     ))
                             ) : (
-                                <DataItem icon={DollarIcon} label="Cijena" value="0 EUR" color="bg-green-500/10 text-green-400" />
+                                <DetailsItem icon={DollarIcon} label="Cijena" value="0 EUR" color="bg-green-500/10 text-green-400" />
                             )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-2">
-                            <DataItem icon={TagIcon} label="Jedinica mjere" value={activeArticle.unit} />
-                            <DataItem icon={HashIcon} label="Porezna kategorija" value={activeArticle.tax_category} />
-                            <DataItem icon={CheckCircleIcon} label="Status" value={activeArticle.is_active} />
+                            <DetailsItem icon={TagIcon} label="Jedinica mjere" value={activeArticle.unit} />
+                            <DetailsItem icon={HashIcon} label="Porezna kategorija" value={activeArticle.tax_category} />
+                            <DetailsItem icon={CheckCircleIcon} label="Status" value={activeArticle.is_active} />
                         </div>
 
                         <div className="flex flex-col gap-2 pt-2">
