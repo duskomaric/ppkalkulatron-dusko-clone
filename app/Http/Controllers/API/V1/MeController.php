@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\CompanySetting;
 use App\Models\Enums\DocumentFrequencyEnum;
 use App\Models\Enums\DocumentTemplateEnum;
 use App\Models\Enums\LanguageEnum;
@@ -15,10 +16,12 @@ use Illuminate\Http\Request;
 class MeController extends Controller
 {
     #[Endpoint(operationId: 'getMe', title: 'Get current user context', description: 'Get current authenticated user with available options for forms (languages, frequencies, templates)')]
-    public function show(Request $request): JsonResponse
+    public function show(\App\Models\Company $company): JsonResponse
     {
+
         return response()->json([
             'data' => [
+                'company_settings' => CompanySetting::resolved($company->id),
                 'languages' => collect(LanguageEnum::cases())->map(fn($lang) => [
                     'value' => $lang->value,
                     'label' => $lang->getLabel(),

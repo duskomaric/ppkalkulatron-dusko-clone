@@ -13,8 +13,13 @@ class Currency extends Model
     protected $fillable = [
         'company_id',
         'code',
-        'prefix',
         'name',
+        'symbol',
+        'is_default',
+    ];
+
+    protected $casts = [
+        'is_default' => 'boolean',
     ];
 
     public function company(): BelongsTo

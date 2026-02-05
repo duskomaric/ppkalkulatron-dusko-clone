@@ -15,8 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->string('code', 3);
-            $table->string('prefix', 10)->nullable();
             $table->string('name');
+            $table->string('symbol');
+            $table->boolean('is_default')->default(false);
             $table->timestamps();
 
             $table->unique(['company_id', 'code']);

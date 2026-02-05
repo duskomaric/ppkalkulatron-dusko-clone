@@ -188,24 +188,24 @@ class DatabaseSeeder extends Seeder
 
         // Create currencies for each company (test data for leak detection)
         $duskoCompany->currencies()->createMany([
-            ['code' => 'BAM', 'name' => 'Dusko BAM', 'prefix' => 'KM'],
-            ['code' => 'EUR', 'name' => 'Dusko EUR', 'prefix' => '€'],
+            ['code' => 'BAM', 'name' => 'Dusko BAM', 'symbol' => 'KM'],
+            ['code' => 'EUR', 'name' => 'Dusko EUR', 'symbol' => '€'],
         ]);
 
         $sandroCompany->currencies()->createMany([
-            ['code' => 'BAM', 'name' => 'Sandro BAM', 'prefix' => 'KM'],
-            ['code' => 'USD', 'name' => 'Sandro USD', 'prefix' => '$'],
+            ['code' => 'BAM', 'name' => 'Sandro BAM', 'symbol' => 'KM'],
+            ['code' => 'USD', 'name' => 'Sandro USD', 'symbol' => '$'],
         ]);
 
         $borisCompany->currencies()->createMany([
-            ['code' => 'BAM', 'name' => 'Boris BAM', 'prefix' => 'KM'],
-            ['code' => 'CHF', 'name' => 'Boris CHF', 'prefix' => 'CHF'],
+            ['code' => 'BAM', 'name' => 'Boris BAM', 'symbol' => 'KM'],
+            ['code' => 'CHF', 'name' => 'Boris CHF', 'symbol' => 'CHF'],
         ]);
 
         $plusiCompany->currencies()->createMany([
-            ['code' => 'BAM', 'name' => '++i BAM', 'prefix' => 'KM'],
-            ['code' => 'EUR', 'name' => '++i EUR', 'prefix' => '€'],
-            ['code' => 'USD', 'name' => '++i USD', 'prefix' => '$'],
+            ['code' => 'BAM', 'name' => '++i BAM', 'symbol' => 'KM'],
+            ['code' => 'EUR', 'name' => '++i EUR', 'symbol' => '€'],
+            ['code' => 'USD', 'name' => '++i USD', 'symbol' => '$'],
         ]);
 
         // Create bank accounts for each company (test data for leak detection)

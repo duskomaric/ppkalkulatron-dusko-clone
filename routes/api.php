@@ -28,8 +28,6 @@ Route::prefix('v1')->group(function () {
         });
 
         // Current user context
-        Route::get('me', [MeController::class, 'show']);
-
         Route::prefix('me')->group(function () {
             Route::get('settings', [UserSettingController::class, 'show']);
             Route::patch('settings', [UserSettingController::class, 'update']);
@@ -39,6 +37,9 @@ Route::prefix('v1')->group(function () {
             ->prefix('{company:slug}')
             ->scopeBindings()
             ->group(function () {
+                // Company Context Me Endpoint
+                Route::get('me', [MeController::class, 'show']);
+
                 Route::apiResource('clients', ClientController::class);
                 Route::apiResource('articles', ArticleController::class);
                 Route::apiResource('currencies', CurrencyController::class);

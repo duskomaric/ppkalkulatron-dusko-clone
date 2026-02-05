@@ -54,6 +54,7 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+        $user->load('companies');
 
         return new UserResource($user);
     }

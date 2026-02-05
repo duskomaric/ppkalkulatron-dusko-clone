@@ -54,7 +54,7 @@ it('tenant: user can create currency for accessible company', function () {
         ->postJson("/api/v1/{$company->slug}/currencies", [
             'code' => 'eur',
             'name' => 'Euro',
-            'prefix' => '€',
+            'symbol' => '€',
         ]);
 
     $response->assertStatus(201)
@@ -63,7 +63,7 @@ it('tenant: user can create currency for accessible company', function () {
                 'company_id' => $company->id,
                 'code' => 'EUR',
                 'name' => 'Euro',
-                'prefix' => '€',
+                'symbol' => '€',
             ]
         ]);
 

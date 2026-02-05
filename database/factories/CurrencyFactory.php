@@ -13,14 +13,14 @@ class CurrencyFactory extends Factory
     public function definition(): array
     {
         $currencyMetaByCode = [
-            'BAM' => ['name' => 'Konvertibilna Marka', 'prefix' => 'KM'],
-            'EUR' => ['name' => 'Euro', 'prefix' => '€'],
-            'USD' => ['name' => 'US Dollar', 'prefix' => '$'],
-            'GBP' => ['name' => 'British Pound', 'prefix' => '£'],
-            'CHF' => ['name' => 'Swiss Franc', 'prefix' => 'CHF'],
-            'JPY' => ['name' => 'Japanese Yen', 'prefix' => '¥'],
-            'CAD' => ['name' => 'Canadian Dollar', 'prefix' => '$'],
-            'AUD' => ['name' => 'Australian Dollar', 'prefix' => '$'],
+            'BAM' => ['name' => 'Konvertibilna Marka', 'symbol' => 'KM'],
+            'EUR' => ['name' => 'Euro', 'symbol' => '€'],
+            'USD' => ['name' => 'US Dollar', 'symbol' => '$'],
+            'GBP' => ['name' => 'British Pound', 'symbol' => '£'],
+            'CHF' => ['name' => 'Swiss Franc', 'symbol' => 'CHF'],
+            'JPY' => ['name' => 'Japanese Yen', 'symbol' => '¥'],
+            'CAD' => ['name' => 'Canadian Dollar', 'symbol' => '$'],
+            'AUD' => ['name' => 'Australian Dollar', 'symbol' => '$'],
         ];
 
         $code = fake()->unique()->randomElement(array_keys($currencyMetaByCode));
@@ -30,7 +30,7 @@ class CurrencyFactory extends Factory
             'company_id' => Company::factory(),
             'code' => $code,
             'name' => $currency['name'],
-            'prefix' => $currency['prefix'],
+            'symbol' => $currency['symbol'],
         ];
     }
 
@@ -39,7 +39,7 @@ class CurrencyFactory extends Factory
         return $this->state(fn () => [
             'code' => 'BAM',
             'name' => 'Konvertibilna Marka',
-            'prefix' => 'KM',
+            'symbol' => 'KM',
         ]);
     }
 
@@ -48,7 +48,7 @@ class CurrencyFactory extends Factory
         return $this->state(fn () => [
             'code' => 'EUR',
             'name' => 'Euro',
-            'prefix' => '€',
+            'symbol' => '€',
         ]);
     }
 
@@ -57,7 +57,7 @@ class CurrencyFactory extends Factory
         return $this->state(fn () => [
             'code' => 'USD',
             'name' => 'US Dollar',
-            'prefix' => '$',
+            'symbol' => '$',
         ]);
     }
 
@@ -66,7 +66,7 @@ class CurrencyFactory extends Factory
         return $this->state(fn () => [
             'code' => 'GBP',
             'name' => 'British Pound',
-            'prefix' => '£',
+            'symbol' => '£',
         ]);
     }
 }

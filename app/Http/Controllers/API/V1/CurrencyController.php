@@ -27,6 +27,10 @@ class CurrencyController extends Controller
         $validated = $request->validated();
         $validated['code'] = strtoupper($validated['code']);
 
+        if (($validated['is_default'] ?? false) === true) {
+            $company->currencies()->update(['is_default' => false]);
+        }
+
         $currency = $company->currencies()->create($validated);
 
         return new CurrencyResource($currency);
@@ -45,6 +49,10 @@ class CurrencyController extends Controller
 
         if (isset($validated['code'])) {
             $validated['code'] = strtoupper($validated['code']);
+        }
+
+        if (($validated['is_default'] ?? false) === true) {
+            $company->currencies()->whereKeyNot($currency->getKey())->update(['is_default' => false]);
         }
 
         $currency->update($validated);
