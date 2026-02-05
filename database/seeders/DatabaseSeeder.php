@@ -7,6 +7,7 @@ use App\Models\BankAccount;
 use App\Models\Contract;
 use App\Models\ContractItem;
 use App\Models\Currency;
+use App\Models\Enums\ArticleTypeEnum;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Enums\DocumentTemplateEnum;
 use App\Models\Enums\LanguageEnum;
@@ -150,11 +151,22 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Create articles for each company (test data for leak detection)
-        $duskoCompany->articles()->createMany([
-            ['name' => 'Dusko Article 1', 'type' => 'products'],
-            ['name' => 'Dusko Article 2', 'type' => 'services'],
-            ['name' => 'Dusko Article 3', 'type' => 'products'],
-        ]);
+        Article::factory()
+            ->for($duskoCompany)
+            ->createMany([
+                [
+                    'name' => 'Dusko Article 1',
+                    'type' => ArticleTypeEnum::PRODUCTS,
+                ],
+                [
+                    'name' => 'Dusko Article 2',
+                    'type' => ArticleTypeEnum::SERVICES,
+                ],
+                [
+                    'name' => 'Dusko Article 3',
+                    'type' => ArticleTypeEnum::PRODUCTS,
+                ],
+            ]);
 
         $sandroCompany->articles()->createMany([
             ['name' => 'Sandro Article 1', 'type' => 'products'],

@@ -41,7 +41,7 @@ class InvoiceResource extends JsonResource
             'subtotal' => $this->subtotal,
             'tax_total' => $this->tax_total,
             'discount_total' => $this->discount_total,
-            'total' => number_format($this->total/100, 2),
+            'total' => $this->total,
             'items' => InvoiceItemResource::collection($this->whenLoaded('items')),
             'client' => $this->whenLoaded('client', function () {
                 return ClientResource::make($this->client);

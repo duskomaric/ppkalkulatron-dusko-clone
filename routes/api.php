@@ -14,6 +14,7 @@ use App\Http\Controllers\API\V1\ProformaController;
 use App\Http\Controllers\API\V1\ContractController;
 use App\Http\Controllers\API\V1\QuoteController;
 use App\Http\Controllers\API\V1\DocumentNumberController;
+use App\Http\Controllers\API\V1\MeController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -25,6 +26,9 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('users', UserController::class);
             Route::apiResource('companies', CompanyController::class);
         });
+
+        // Current user context
+        Route::get('me', [MeController::class, 'show']);
 
         Route::prefix('me')->group(function () {
             Route::get('settings', [UserSettingController::class, 'show']);

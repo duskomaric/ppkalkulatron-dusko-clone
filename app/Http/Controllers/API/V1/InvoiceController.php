@@ -67,18 +67,22 @@ class InvoiceController extends Controller
     #[Endpoint(operationId: 'showInvoice', title: 'Show invoice', description: 'Get invoice')]
     public function show(Company $company, Invoice $invoice): InvoiceResource
     {
-        return new InvoiceResource($invoice->load(['items', 'source', 'parent', 'children']));
+        return new InvoiceResource($invoice->load(['client', 'items', 'source', 'parent', 'children']));
     }
 
     #[Endpoint(operationId: 'updateInvoice', title: 'Update invoice', description: 'Update invoice')]
     public function update(UpdateInvoiceRequest $request, Company $company, Invoice $invoice): InvoiceResource
     {
-        $invoice->update($request->validated());
+        $data = $request->validated();
+        $items = $data['items'] ?? null;
+        unset($data['items']);
+
+        $invoice->update($data);
 
         // Update items if provided
-        if ($request->has('items')) {
+        if ($items !== null) {
             $invoice->items()->delete();
-            foreach ($request->input('items') as $itemData) {
+            foreach ($items as $itemData) {
                 $invoice->items()->create($itemData);
             }
         }
