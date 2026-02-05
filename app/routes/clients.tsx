@@ -17,7 +17,6 @@ import {
   CheckCircleIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
-import { Drawer } from "~/components/layout/Drawer";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
@@ -27,6 +26,8 @@ import { EntityCard } from "~/components/ui/EntityCard";
 import { EmptyState } from "~/components/ui/EmptyState";
 import { DetailsItem } from "~/components/ui/DetailsItem";
 import { LoadingState } from "~/components/ui/LoadingState";
+import { DetailDrawer } from "~/components/ui/DetailDrawer";
+import { FormDrawer } from "~/components/ui/FormDrawer";
 import type { PaginationMeta } from "~/types/api";
 
 export default function ClientsPage() {
@@ -287,223 +288,166 @@ export default function ClientsPage() {
       )}
 
       {/* VIEW DRAWER */}
-      <Drawer
+      <DetailDrawer
         title="Detalji klijenta"
         isOpen={viewDrawerOpen}
         onClose={() => setViewDrawerOpen(false)}
+        entityName={activeClient?.name || ""}
+        entityIcon={ContactRoundIcon}
+        badges={
+          activeClient && (
+            <StatusBadge
+              label={activeClient.is_active ? 'Aktivan' : 'Neaktivan'}
+              color={activeClient.is_active ? 'green' : 'gray'}
+            />
+          )
+        }
+        onEdit={openEditForm}
+        onDelete={() => setIsDeleteModalOpen(true)}
       >
         {activeClient && (
-          <div className="flex flex-col gap-4">
-            {/* Header Card */}
-            <div className="flex items-center gap-3 p-3 bg-white/5 rounded-[20px] border border-white/10 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-2 opacity-5">
-                <ContactRoundIcon className="h-12 w-12 text-white" />
-              </div>
-              <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center text-white font-black text-lg shadow-glow-primary z-10 shrink-0">
-                {activeClient.name.substring(0, 2).toUpperCase()}
-              </div>
-              <div className="z-10 min-w-0">
-                <p className="font-black text-base text-white tracking-tighter italic leading-none truncate">{activeClient.name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <StatusBadge
-                    label={activeClient.is_active ? 'Aktivan' : 'Neaktivan'}
-                    color={activeClient.is_active ? 'green' : 'gray'}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Data Grid */}
-            <div className="grid grid-cols-2 gap-2">
-              <DetailsItem icon={MailIcon} label="Email" value={activeClient.email} />
-              <DetailsItem icon={PhoneIcon} label="Telefon" value={activeClient.phone} />
-              <DetailsItem icon={MapPinIcon} label="Adresa" value={activeClient.address} />
-              <DetailsItem icon={MapPinIcon} label="Grad" value={activeClient.city} />
-              <DetailsItem icon={HashIcon} label="ZIP" value={activeClient.zip} />
-              <DetailsItem icon={GlobeIcon} label="Država" value={activeClient.country} />
-              <DetailsItem icon={HashIcon} label="VAT ID" value={activeClient.vat_id} />
-              <DetailsItem icon={HashIcon} label="TAX ID" value={activeClient.tax_id} />
-              <DetailsItem icon={CheckCircleIcon} label="Status" value={activeClient.is_active} />
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-col gap-2 pt-2">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all group"
-                >
-                  <TrashIcon className="h-3.5 w-3.5 transition-transform group-hover:rotate-12" />
-                  Obriši
-                </button>
-                <button
-                  onClick={openEditForm}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  <PencilIcon className="h-3.5 w-3.5" />
-                  Uredi
-                </button>
-              </div>
-              <button
-                onClick={() => setViewDrawerOpen(false)}
-                className="w-full py-3 bg-white/5 text-gray-400 border border-white/5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all"
-              >
-                Zatvori
-              </button>
-            </div>
+          <div className="grid grid-cols-2 gap-2">
+            <DetailsItem icon={MailIcon} label="Email" value={activeClient.email} />
+            <DetailsItem icon={PhoneIcon} label="Telefon" value={activeClient.phone} />
+            <DetailsItem icon={MapPinIcon} label="Adresa" value={activeClient.address} />
+            <DetailsItem icon={MapPinIcon} label="Grad" value={activeClient.city} />
+            <DetailsItem icon={HashIcon} label="ZIP" value={activeClient.zip} />
+            <DetailsItem icon={GlobeIcon} label="Država" value={activeClient.country} />
+            <DetailsItem icon={HashIcon} label="VAT ID" value={activeClient.vat_id} />
+            <DetailsItem icon={HashIcon} label="TAX ID" value={activeClient.tax_id} />
+            <DetailsItem icon={CheckCircleIcon} label="Status" value={activeClient.is_active} />
           </div>
         )}
-      </Drawer>
+      </DetailDrawer>
 
       {/* FORM DRAWER (Create/Edit) */}
-      <Drawer
+      <FormDrawer
         title={formMode === 'create' ? "Novi klijent" : "Uredi klijenta"}
         isOpen={formDrawerOpen}
         onClose={() => setFormDrawerOpen(false)}
+        onSubmit={handleFormSubmit}
+        loading={loading}
+        submitLabel={formMode === 'create' ? "Kreiraj klijenta" : "Sačuvaj izmjene"}
       >
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+        <Input
+          label="Naziv klijenta"
+          name="name"
+          required
+          value={formData.name}
+          onChange={handleInputChange}
+          placeholder="npr. PlusPlus d.o.o."
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Naziv klijenta"
-            name="name"
-            required
-            value={formData.name}
+            label="Email"
+            name="email"
+            type="email"
+            icon={MailIcon}
+            value={formData.email || ""}
             onChange={handleInputChange}
-            placeholder="npr. PlusPlus d.o.o."
+            placeholder="info@klijent.com"
           />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Email"
-              name="email"
-              type="email"
-              icon={MailIcon}
-              value={formData.email || ""}
-              onChange={handleInputChange}
-              placeholder="info@klijent.com"
-            />
-            <Input
-              label="Telefon"
-              name="phone"
-              icon={PhoneIcon}
-              value={formData.phone || ""}
-              onChange={handleInputChange}
-              placeholder="+387 61 ..."
-            />
-          </div>
-
           <Input
-            label="Adresa"
-            name="address"
-            icon={MapPinIcon}
-            value={formData.address || ""}
+            label="Telefon"
+            name="phone"
+            icon={PhoneIcon}
+            value={formData.phone || ""}
             onChange={handleInputChange}
-            placeholder="Ulica i broj"
+            placeholder="+387 61 ..."
           />
+        </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-1">
-              <Input
-                label="ZIP"
-                name="zip"
-                value={formData.zip || ""}
-                onChange={handleInputChange}
-                placeholder="71000"
-              />
-            </div>
-            <div className="col-span-2">
-              <Input
-                label="Grad"
-                name="city"
-                value={formData.city || ""}
-                onChange={handleInputChange}
-                placeholder="Sarajevo"
-              />
-            </div>
+        <Input
+          label="Adresa"
+          name="address"
+          icon={MapPinIcon}
+          value={formData.address || ""}
+          onChange={handleInputChange}
+          placeholder="Ulica i broj"
+        />
+
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-1">
+            <Input
+              label="ZIP"
+              name="zip"
+              value={formData.zip || ""}
+              onChange={handleInputChange}
+              placeholder="71000"
+            />
           </div>
+          <div className="col-span-2">
+            <Input
+              label="Grad"
+              name="city"
+              value={formData.city || ""}
+              onChange={handleInputChange}
+              placeholder="Sarajevo"
+            />
+          </div>
+        </div>
 
+        <Input
+          label="Država"
+          name="country"
+          icon={GlobeIcon}
+          value={formData.country || ""}
+          onChange={handleInputChange}
+          placeholder="Bosna i Hercegovina"
+        />
+
+        <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Država"
-            name="country"
-            icon={GlobeIcon}
-            value={formData.country || ""}
+            label="VAT ID"
+            name="vat_id"
+            icon={HashIcon}
+            value={formData.vat_id || ""}
             onChange={handleInputChange}
-            placeholder="Bosna i Hercegovina"
+            placeholder="Identifikacioni broj"
           />
+          <Input
+            label="TAX ID"
+            name="tax_id"
+            icon={HashIcon}
+            value={formData.tax_id || ""}
+            onChange={handleInputChange}
+            placeholder="Porezni broj"
+          />
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="VAT ID"
-              name="vat_id"
-              icon={HashIcon}
-              value={formData.vat_id || ""}
+        <label
+          htmlFor="is_active"
+          className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 cursor-pointer"
+        >
+          <div className="relative flex items-center">
+            <input
+              type="checkbox"
+              id="is_active"
+              name="is_active"
+              checked={formData.is_active}
               onChange={handleInputChange}
-              placeholder="Identifikacioni broj"
+              className="sr-only peer"
             />
-            <Input
-              label="TAX ID"
-              name="tax_id"
-              icon={HashIcon}
-              value={formData.tax_id || ""}
-              onChange={handleInputChange}
-              placeholder="Porezni broj"
-            />
-          </div>
 
-          <label
-            htmlFor="is_active"
-            className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 cursor-pointer"
-          >
-            <div className="relative flex items-center">
-              <input
-                type="checkbox"
-                id="is_active"
-                name="is_active"
-                checked={formData.is_active}
-                onChange={handleInputChange}
-                className="sr-only peer"
-              />
-
-              <div className="w-9 h-5 bg-white/10 rounded-full
-                      peer-focus:outline-none
-                      peer-checked:bg-primary
-                      after:content-['']
-                      after:absolute after:top-[2px] after:left-[2px]
-                      after:h-4 after:w-4 after:rounded-full
-                      after:bg-gray-400 after:border after:border-gray-300
-                      after:transition-all
-                      peer-checked:after:translate-x-full
-                      peer-checked:after:bg-white">
-              </div>
+            <div className="w-9 h-5 bg-white/10 rounded-full
+                    peer-focus:outline-none
+                    peer-checked:bg-primary
+                    after:content-['']
+                    after:absolute after:top-[2px] after:left-[2px]
+                    after:h-4 after:w-4 after:rounded-full
+                    after:bg-gray-400 after:border after:border-gray-300
+                    after:transition-all
+                    peer-checked:after:translate-x-full
+                    peer-checked:after:bg-white">
             </div>
-
-            <span className="text-[13px] font-bold text-gray-300">
-              Klijent je aktivan
-            </span>
-          </label>
-
-
-          <div className="flex flex-col gap-2 pt-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-primary text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <span>{formMode === 'create' ? "Kreiraj klijenta" : "Sačuvaj izmjene"}</span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormDrawerOpen(false)}
-              className="w-full py-3 bg-white/5 text-gray-400 border border-white/5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all"
-            >
-              Odustani
-            </button>
           </div>
-        </form>
-      </Drawer>
+
+          <span className="text-[13px] font-bold text-gray-300">
+            Klijent je aktivan
+          </span>
+        </label>
+      </FormDrawer>
     </AppLayout>
   );
 }

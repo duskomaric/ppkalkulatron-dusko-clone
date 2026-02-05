@@ -14,7 +14,6 @@ import {
     CheckCircleIcon,
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
-import { Drawer } from "~/components/layout/Drawer";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
@@ -24,6 +23,8 @@ import { EntityCard } from "~/components/ui/EntityCard";
 import { EmptyState } from "~/components/ui/EmptyState";
 import { DetailsItem } from "~/components/ui/DetailsItem";
 import { LoadingState } from "~/components/ui/LoadingState";
+import { DetailDrawer } from "~/components/ui/DetailDrawer";
+import { FormDrawer } from "~/components/ui/FormDrawer";
 import type { PaginationMeta } from "~/types/api";
 
 export default function ArticlesPage() {
@@ -300,34 +301,30 @@ export default function ArticlesPage() {
                 />
             )}
 
-            <Drawer
+            <DetailDrawer
                 title="Detalji artikla"
                 isOpen={viewDrawerOpen}
                 onClose={() => setViewDrawerOpen(false)}
+                entityName={activeArticle?.name || ""}
+                entityIcon={BoxesIcon}
+                badges={
+                    activeArticle && (
+                        <>
+                            <StatusBadge
+                                label={activeArticle.is_active ? 'Aktivan' : 'Neaktivan'}
+                                color={activeArticle.is_active ? 'green' : 'gray'}
+                            />
+                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/10 text-primary`}>
+                                {activeArticle.type_label}
+                            </span>
+                        </>
+                    )
+                }
+                onEdit={openEditForm}
+                onDelete={() => setIsDeleteModalOpen(true)}
             >
                 {activeArticle && (
                     <div className="flex flex-col gap-4">
-                        <div className="flex items-center gap-3 p-4 bg-white/5 rounded-[24px] border border-white/10 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-5">
-                                <BoxesIcon className="h-16 w-16 text-white" />
-                            </div>
-                            <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20 bg-primary z-10 shrink-0`}>
-                                {activeArticle.name.substring(0, 1).toUpperCase()}
-                            </div>
-                            <div className="z-10 min-w-0">
-                                <p className="font-black text-lg text-white tracking-tighter italic leading-tight truncate">{activeArticle.name}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <StatusBadge
-                                        label={activeArticle.is_active ? 'Aktivan' : 'Neaktivan'}
-                                        color={activeArticle.is_active ? 'green' : 'gray'}
-                                    />
-                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/10 text-primary`}>
-                                        {activeArticle.type_label}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
                         {activeArticle.description && (
                             <div className="p-3 bg-white/5 rounded-xl border border-white/5">
                                 <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest mb-1">Opis</p>
@@ -352,159 +349,114 @@ export default function ArticlesPage() {
                             <DetailsItem icon={HashIcon} label="Porezna kategorija" value={activeArticle.tax_category} />
                             <DetailsItem icon={CheckCircleIcon} label="Status" value={activeArticle.is_active} />
                         </div>
-
-                        <div className="flex flex-col gap-2 pt-2">
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setIsDeleteModalOpen(true)}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all group"
-                                >
-                                    <TrashIcon className="h-3.5 w-3.5 transition-transform group-hover:rotate-12" />
-                                    Obriši
-                                </button>
-                                <button
-                                    onClick={openEditForm}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all"
-                                >
-                                    <PencilIcon className="h-3.5 w-3.5" />
-                                    Uredi
-                                </button>
-                            </div>
-                            <button
-                                onClick={() => setViewDrawerOpen(false)}
-                                className="w-full py-3.5 bg-white/5 text-gray-400 border border-white/5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all"
-                            >
-                                Zatvori
-                            </button>
-                        </div>
                     </div>
                 )}
-            </Drawer>
+            </DetailDrawer>
 
-            <Drawer
+            <FormDrawer
                 title={formMode === 'create' ? "Novi artikal" : "Uredi artikal"}
                 isOpen={formDrawerOpen}
                 onClose={() => setFormDrawerOpen(false)}
+                onSubmit={handleFormSubmit}
+                loading={loading}
+                submitLabel={formMode === 'create' ? "Kreiraj artikal" : "Sačuvaj izmjene"}
             >
-                <form onSubmit={handleFormSubmit} className="space-y-4">
-                    <Input
-                        label="Naziv artikla"
-                        name="name"
-                        required
-                        value={formData.name}
+                <Input
+                    label="Naziv artikla"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="npr. Web Razvoj"
+                />
+
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Opis</label>
+                    <textarea
+                        name="description"
+                        value={formData.description || ""}
                         onChange={handleInputChange}
-                        placeholder="npr. Web Razvoj"
+                        rows={3}
+                        className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-gray-700 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-bold text-sm outline-none resize-none"
+                        placeholder="Kratki opis artikla..."
                     />
+                </div>
 
+                <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Opis</label>
-                        <textarea
-                            name="description"
-                            value={formData.description || ""}
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Tip</label>
+                        <select
+                            name="type"
+                            value={formData.type}
                             onChange={handleInputChange}
-                            rows={3}
-                            className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-gray-700 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-bold text-sm outline-none resize-none"
-                            placeholder="Kratki opis artikla..."
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Tip</label>
-                            <select
-                                name="type"
-                                value={formData.type}
-                                onChange={handleInputChange}
-                                className="w-full px-4 py-3.5 bg-[#16161E] border border-white/10 rounded-2xl text-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-black text-[11px] uppercase tracking-widest appearance-none outline-none"
-                            >
-                                <option value="goods">ROBA</option>
-                                <option value="services">USLUGE</option>
-                                <option value="products">PROIZVODI</option>
-                            </select>
-                        </div>
-                        <Input
-                            label="Cijena (EUR)"
-                            name="price"
-                            type="number"
-                            step="0.01"
-                            icon={DollarIcon}
-                            value={formData.price}
-                            onChange={handleInputChange}
-                            placeholder="0.00"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input
-                            label="Jedinica mjere"
-                            name="unit"
-                            value={formData.unit}
-                            onChange={handleInputChange}
-                            placeholder="kom, sat, kg..."
-                        />
-                        <Input
-                            label="Porezna kategorija"
-                            name="tax_category"
-                            value={formData.tax_category}
-                            onChange={handleInputChange}
-                            placeholder="VAT20"
-                        />
-                    </div>
-
-                    <label
-                        htmlFor="is_active"
-                        className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 cursor-pointer"
-                    >
-                        <div className="relative flex items-center">
-                            <input
-                                type="checkbox"
-                                id="is_active"
-                                name="is_active"
-                                checked={formData.is_active}
-                                onChange={handleInputChange}
-                                className="sr-only peer"
-                            />
-
-                            <div className="w-9 h-5 bg-white/10 rounded-full
-                      peer-focus:outline-none
-                      peer-checked:bg-primary
-                      after:content-['']
-                      after:absolute after:top-[2px] after:left-[2px]
-                      after:h-4 after:w-4 after:rounded-full
-                      after:bg-gray-400 after:border after:border-gray-300
-                      after:transition-all
-                      peer-checked:after:translate-x-full
-                      peer-checked:after:bg-white">
-                            </div>
-                        </div>
-
-                        <span className="text-[13px] font-bold text-gray-300">
-                            Artikal je aktivan
-                        </span>
-                    </label>
-
-                    <div className="flex flex-col gap-2 pt-2">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-3.5 bg-primary text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                            className="w-full px-4 py-3.5 bg-[#16161E] border border-white/10 rounded-2xl text-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-black text-[11px] uppercase tracking-widest appearance-none outline-none"
                         >
-                            {loading ? (
-                                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            ) : (
-                                <span>{formMode === 'create' ? "Kreiraj artikal" : "Sačuvaj izmjene"}</span>
-                            )}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setFormDrawerOpen(false)}
-                            className="w-full py-3 bg-white/5 text-gray-400 border border-white/5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all"
-                        >
-                            Odustani
-                        </button>
+                            <option value="goods">ROBA</option>
+                            <option value="services">USLUGE</option>
+                            <option value="products">PROIZVODI</option>
+                        </select>
                     </div>
-                </form>
-            </Drawer>
+                    <Input
+                        label="Cijena (EUR)"
+                        name="price"
+                        type="number"
+                        step="0.01"
+                        icon={DollarIcon}
+                        value={formData.price}
+                        onChange={handleInputChange}
+                        placeholder="0.00"
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <Input
+                        label="Jedinica mjere"
+                        name="unit"
+                        value={formData.unit}
+                        onChange={handleInputChange}
+                        placeholder="kom, sat, kg..."
+                    />
+                    <Input
+                        label="Porezna kategorija"
+                        name="tax_category"
+                        value={formData.tax_category}
+                        onChange={handleInputChange}
+                        placeholder="VAT20"
+                    />
+                </div>
+
+                <label
+                    htmlFor="is_active"
+                    className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 cursor-pointer"
+                >
+                    <div className="relative flex items-center">
+                        <input
+                            type="checkbox"
+                            id="is_active"
+                            name="is_active"
+                            checked={formData.is_active}
+                            onChange={handleInputChange}
+                            className="sr-only peer"
+                        />
+
+                        <div className="w-9 h-5 bg-white/10 rounded-full
+                    peer-focus:outline-none
+                    peer-checked:bg-primary
+                    after:content-['']
+                    after:absolute after:top-[2px] after:left-[2px]
+                    after:h-4 after:w-4 after:rounded-full
+                    after:bg-gray-400 after:border after:border-gray-300
+                    after:transition-all
+                    peer-checked:after:translate-x-full
+                    peer-checked:after:bg-white">
+                        </div>
+                    </div>
+
+                    <span className="text-[13px] font-bold text-gray-300">
+                        Artikal je aktivan
+                    </span>
+                </label>
+            </FormDrawer>
         </AppLayout>
     );
 }
