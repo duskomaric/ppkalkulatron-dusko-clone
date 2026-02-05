@@ -4,8 +4,8 @@ import type { AppConfigResponse, CurrenciesResponse } from "~/types/config";
 /**
  * Get current user context with form options (languages, frequencies, templates)
  */
-export async function getMe(token: string): Promise<AppConfigResponse> {
-    return fetchApi<AppConfigResponse>("/me", { token });
+export async function getMe(token: string, companySlug: string): Promise<AppConfigResponse> {
+    return fetchApi<AppConfigResponse>(`/${companySlug}/me`, { token });
 }
 
 /**

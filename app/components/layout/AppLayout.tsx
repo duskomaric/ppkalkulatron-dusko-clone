@@ -7,7 +7,10 @@ import {
   UserIcon,
   ChevronUpIcon,
   ChevronRightIcon,
-  BoxesIcon
+  BoxesIcon,
+  CreditCardIcon,
+  CurrencyEuroIcon,
+  Building2Icon
 } from "~/components/ui/icons";
 import { Drawer } from "./Drawer";
 import type { Company } from "~/types/company";
@@ -246,18 +249,86 @@ export function AppLayout({
       </Drawer>
 
       <Drawer title="Podešavanja" isOpen={activeDrawer === 'settings'} onClose={() => setActiveDrawer(null)}>
-        <div className="grid grid-cols-2 gap-3">
-          <button className="p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-center hover:border-primary/50 hover:bg-primary/5 transition-all group cursor-pointer">
-            <div className="h-10 w-10 bg-[var(--color-border)] rounded-xl flex items-center justify-center mx-auto mb-3 text-[var(--color-text-dim)] group-hover:text-primary shadow-sm transition-all border border-[var(--color-border)]">
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => {
+              setActiveDrawer(null);
+              navigate("/settings/company");
+            }}
+            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer shadow-glow-primary/5"
+          >
+            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              <Building2Icon className="h-5 w-5" />
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Profil kompanije</h3>
+              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Podaci o firmi, adresa i JIB/PIB</p>
+            </div>
+            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveDrawer(null);
+              navigate("/settings/general");
+            }}
+            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
+          >
+            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
               <CogIcon className="h-5 w-5" />
             </div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]">Opšte</span>
+            <div className="flex-1 text-left">
+              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Generalno</h3>
+              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Postavke kompanije i faktura</p>
+            </div>
+            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
           </button>
-          <button className="p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-center hover:border-primary/50 hover:bg-primary/5 transition-all group cursor-pointer">
-            <div className="h-10 w-10 bg-[var(--color-border)] rounded-xl flex items-center justify-center mx-auto mb-3 text-[var(--color-text-dim)] group-hover:text-primary shadow-sm transition-all border border-[var(--color-border)]">
+
+          <button
+            onClick={() => {
+              setActiveDrawer(null);
+              navigate("/settings/bank-accounts");
+            }}
+            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
+          >
+            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              <CreditCardIcon className="h-5 w-5" />
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Bankovni Računi</h3>
+              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Upravljanje računima za isplatu</p>
+            </div>
+            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveDrawer(null);
+              navigate("/settings/currencies");
+            }}
+            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
+          >
+            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              <CurrencyEuroIcon className="h-5 w-5" />
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Valute</h3>
+              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Konfiguracija valuta i formata</p>
+            </div>
+            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
+          </button>
+
+          <button
+            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
+          >
+            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
               <BoxesIcon className="h-5 w-5" />
             </div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]">Pretplata</span>
+            <div className="flex-1 text-left">
+              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Pretplata</h3>
+              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Planovi i detalji plaćanja</p>
+            </div>
+            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
           </button>
         </div>
       </Drawer>

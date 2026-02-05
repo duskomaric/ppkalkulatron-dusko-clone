@@ -15,18 +15,68 @@ import {
     Building2Icon
 } from "~/components/ui/icons";
 import type { Company } from "~/types/company";
+import { FormDrawer } from "~/components/ui/FormDrawer";
+import { Input } from "~/components/ui/Input";
+import { Toast, type ToastType } from "~/components/ui/Toast";
+import { updateUser } from "~/api/users";
 
 export default function ProfilePage() {
-    const { user, logoutAction } = useAuth();
+    const { user, token, logoutAction, updateUserAction } = useAuth();
     const { theme, setTheme } = useTheme();
     const navigate = useNavigate();
+    
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
+        message: "",
+        type: "success",
+        isVisible: false,
+    });
+
+    // User Edit State
+    const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
+    const [userLoading, setUserLoading] = useState(false);
+    const [userForm, setUserForm] = useState({
+        first_name: "",
+        last_name: "",
+        email: "",
+    });
 
     useEffect(() => {
         if (user && user.companies.length > 0 && !selectedCompany) {
             setSelectedCompany(user.companies[0]);
         }
     }, [user, selectedCompany]);
+
+    useEffect(() => {
+        if (user) {
+            setUserForm({
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+            });
+        }
+    }, [user]);
+
+    const showToast = (message: string, type: ToastType) => {
+        setToast({ message, type, isVisible: true });
+    };
+
+    const handleUserUpdate = async (e: React.SyntheticEvent) => {
+        e.preventDefault();
+        if (!user || !token) return;
+
+        setUserLoading(true);
+        try {
+            const response = await updateUser(user.id, token, userForm);
+            updateUserAction(response.data);
+            showToast("Profil uspješno ažuriran", "success");
+            setIsUserDrawerOpen(false);
+        } catch (error) {
+            showToast("Greška pri ažuriranju profila", "error");
+        } finally {
+            setUserLoading(false);
+        }
+    };
 
     const themes = [
         { id: "light", label: "Svijetla", icon: SunIcon },
@@ -101,7 +151,10 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] overflow-hidden">
-                        <button className="w-full flex items-center justify-between p-4 hover:bg-[var(--color-surface-hover)] transition-all text-left cursor-pointer">
+                        <button 
+                            onClick={() => setIsUserDrawerOpen(true)}
+                            className="w-full flex items-center justify-between p-4 hover:bg-[var(--color-surface-hover)] transition-all text-left cursor-pointer"
+                        >
                             <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 bg-[var(--color-border)] rounded-lg flex items-center justify-center text-[var(--color-text-dim)]">
                                     <UserIcon className="h-4 w-4" />
@@ -110,7 +163,9 @@ export default function ProfilePage() {
                             </div>
                             <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-dim)]" />
                         </button>
+                        
                         <div className="h-[1px] w-full bg-[var(--color-border)] mx-4" />
+                        
                         <button
                             onClick={handleLogout}
                             className="w-full flex items-center justify-between p-4 hover:bg-red-500/10 transition-all text-left group cursor-pointer"
@@ -133,6 +188,51 @@ export default function ProfilePage() {
                     </p>
                 </div>
             </div>
+
+            {/* User Edit Drawer */}
+            <FormDrawer
+                isOpen={isUserDrawerOpen}
+                onClose={() => setIsUserDrawerOpen(false)}
+                title="Uredi podatke"
+                onSubmit={handleUserUpdate}
+                loading={userLoading}
+                submitLabel="Sačuvaj izmjene"
+            >
+                <div className="space-y-3">
+                    <Input
+                        label="Ime"
+                        value={userForm.first_name}
+                        onChange={(val) => setUserForm({ ...userForm, first_name: val })}
+                        placeholder="Ime"
+                        required
+                        icon={UserIcon}
+                    />
+                    <Input
+                        label="Prezime"
+                        value={userForm.last_name}
+                        onChange={(val) => setUserForm({ ...userForm, last_name: val })}
+                        placeholder="Prezime"
+                        required
+                        icon={UserIcon}
+                    />
+                    <Input
+                        label="Email"
+                        value={userForm.email}
+                        onChange={(val) => setUserForm({ ...userForm, email: val })}
+                        placeholder="Email"
+                        type="email"
+                        required
+                        icon={MailIcon}
+                    />
+                </div>
+            </FormDrawer>
+
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.isVisible}
+                onClose={() => setToast({ ...toast, isVisible: false })}
+            />
         </AppLayout>
     );
 }

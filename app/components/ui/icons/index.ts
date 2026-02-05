@@ -36,3 +36,6 @@ export * from './StickyNoteIcon';
 export * from './RepeatIcon';
 export * from './SearchIcon';
 export * from './CreditCardIcon';
+export * from './ArrowLeftIcon';
+export * from './HomeIcon';
+export * from './CurrencyEuroIcon';

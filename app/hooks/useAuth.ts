@@ -37,6 +37,11 @@ export function useAuth() {
     setUser(null);
   };
 
+  const updateUserAction = (updatedUser: User) => {
+    localStorage.setItem("auth_user", JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+
   return {
     user,
     token,
@@ -44,5 +49,6 @@ export function useAuth() {
     loading,
     loginAction,
     logoutAction,
+    updateUserAction,
   };
 }

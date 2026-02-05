@@ -146,7 +146,7 @@ export default function InvoicesPage() {
         getClients(selectedCompany.slug, token, 1),
         getArticles(selectedCompany.slug, token, 1),
         getCurrencies(selectedCompany.slug, token),
-        getMe(token)
+        getMe(token, selectedCompany.slug)
       ]);
       setClients(clientsRes.data);
       setArticles(articlesRes.data);

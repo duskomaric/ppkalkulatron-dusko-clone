@@ -1,0 +1,217 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
+import { useAuth } from "~/hooks/useAuth";
+import { AppLayout } from "~/components/layout/AppLayout";
+import {
+    ArrowLeftIcon,
+    CheckCircleIcon
+} from "~/components/ui/icons";
+import type { Company } from "~/types/company";
+import { Toast, type ToastType } from "~/components/ui/Toast";
+import { updateCompany } from "~/api/companies";
+
+export default function CompanyProfilePage() {
+    const { user, token, updateUserAction } = useAuth();
+    const navigate = useNavigate();
+    
+    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
+        message: "",
+        type: "success",
+        isVisible: false,
+    });
+
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        city: "",
+        postal_code: "",
+        country: "",
+        website: "",
+        identification_number: "",
+        vat_number: "",
+    });
+
+    useEffect(() => {
+        if (user && user.companies.length > 0 && !selectedCompany) {
+            setSelectedCompany(user.companies[0]);
+        }
+    }, [user, selectedCompany]);
+
+    useEffect(() => {
+        if (selectedCompany) {
+            setFormData({
+                name: selectedCompany.name || "",
+                email: selectedCompany.email || "",
+                phone: selectedCompany.phone || "",
+                address: selectedCompany.address || "",
+                city: selectedCompany.city || "",
+                postal_code: selectedCompany.postal_code || "",
+                country: selectedCompany.country || "",
+                website: selectedCompany.website || "",
+                identification_number: selectedCompany.identification_number || "",
+                vat_number: selectedCompany.vat_number || "",
+            });
+        }
+    }, [selectedCompany]);
+
+    const showToast = (message: string, type: ToastType) => {
+        setToast({ message, type, isVisible: true });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedCompany || !token) return;
+
+        setLoading(true);
+        try {
+            const response = await updateCompany(selectedCompany.id, token, formData);
+            setSelectedCompany(response.data);
+            
+            if (user) {
+                const updatedCompanies = user.companies.map(c => 
+                    c.id === response.data.id ? response.data : c
+                );
+                updateUserAction({ ...user, companies: updatedCompanies });
+            }
+            
+            showToast("Podaci o kompaniji uspješno ažurirani", "success");
+        } catch (error) {
+            showToast("Greška pri ažuriranju podataka kompanije", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!selectedCompany) return null;
+
+    return (
+        <AppLayout
+            title="Profil kompanije"
+            selectedCompany={selectedCompany}
+            onCompanyChange={setSelectedCompany}
+        >
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.isVisible}
+                onClose={() => setToast({ ...toast, isVisible: false })}
+            />
+
+            <div className="mb-6">
+                <button 
+                    onClick={() => navigate(-1)} 
+                    className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-dim)] hover:text-primary transition-colors mb-4 cursor-pointer"
+                >
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    Nazad
+                </button>
+                <h1 className="text-2xl font-black text-[var(--color-text-main)]">Profil kompanije</h1>
+                <p className="text-[var(--color-text-dim)]">Osnovni podaci o vašoj firmi koji se koriste na dokumentima.</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 sm:p-8 space-y-6">
+                    <FormInput
+                        label="Naziv kompanije"
+                        value={formData.name}
+                        onChange={(val: string) => setFormData({ ...formData, name: val })}
+                        placeholder="Naziv kompanije"
+                        required
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <FormInput
+                            label="Email"
+                            value={formData.email}
+                            onChange={(val: string) => setFormData({ ...formData, email: val })}
+                            placeholder="Email"
+                            type="email"
+                        />
+                        <FormInput
+                            label="Telefon"
+                            value={formData.phone}
+                            onChange={(val: string) => setFormData({ ...formData, phone: val })}
+                            placeholder="Telefon"
+                        />
+                    </div>
+                    <FormInput
+                        label="Adresa"
+                        value={formData.address}
+                        onChange={(val: string) => setFormData({ ...formData, address: val })}
+                        placeholder="Adresa"
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <FormInput
+                            label="Grad"
+                            value={formData.city}
+                            onChange={(val: string) => setFormData({ ...formData, city: val })}
+                            placeholder="Grad"
+                        />
+                        <FormInput
+                            label="Poštanski broj"
+                            value={formData.postal_code}
+                            onChange={(val: string) => setFormData({ ...formData, postal_code: val })}
+                            placeholder="Poštanski broj"
+                        />
+                    </div>
+                    <FormInput
+                        label="Država"
+                        value={formData.country}
+                        onChange={(val: string) => setFormData({ ...formData, country: val })}
+                        placeholder="Država"
+                    />
+                    <FormInput
+                        label="Web stranica"
+                        value={formData.website}
+                        onChange={(val: string) => setFormData({ ...formData, website: val })}
+                        placeholder="Web stranica"
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <FormInput
+                            label="JIB"
+                            value={formData.identification_number}
+                            onChange={(val: string) => setFormData({ ...formData, identification_number: val })}
+                            placeholder="JIB"
+                        />
+                        <FormInput
+                            label="PIB"
+                            value={formData.vat_number}
+                            onChange={(val: string) => setFormData({ ...formData, vat_number: val })}
+                            placeholder="PIB"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                    <button
+                        disabled={loading}
+                        type="submit"
+                        className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-8 rounded-xl shadow-glow-primary transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                    >
+                        {loading ? "Čuvanje..." : "Sačuvaj Promjene"}
+                        {!loading && <CheckCircleIcon className="h-5 w-5" />}
+                    </button>
+                </div>
+            </form>
+        </AppLayout>
+    );
+}
+
+function FormInput({ label, value, onChange, type = "text", required = false, placeholder }: any) {
+    return (
+        <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-dim)] pl-1">{label}</label>
+            <input
+                type={type}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                required={required}
+                placeholder={placeholder}
+                className="w-full h-11 px-4 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-medium placeholder:text-[var(--color-text-muted)]"
+            />
+        </div>
+    );
+}
