@@ -7,9 +7,9 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, message }: EmptyStateProps) {
     return (
-        <div className="py-20 text-center bg-[#16161E]/40 border border-dashed border-white/5 rounded-2xl">
-            <Icon className="h-8 w-8 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">{message}</p>
+        <div className="py-20 text-center bg-[var(--color-surface)]/60 border border-dashed border-[var(--color-border)] rounded-2xl">
+            <Icon className="h-8 w-8 text-[var(--color-text-dim)] mx-auto mb-4" />
+            <p className="text-[var(--color-text-muted)] font-bold uppercase tracking-widest text-xs">{message}</p>
         </div>
     );
 }

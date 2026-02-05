@@ -1,4 +1,4 @@
-import React, {type ReactNode, type FormEvent, type SyntheticEvent} from "react";
+import React, { type ReactNode, type FormEvent, type SyntheticEvent } from "react";
 import { Drawer } from "../layout/Drawer";
 
 interface FormDrawerProps {
@@ -44,7 +44,7 @@ export function FormDrawer({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3.5 bg-white/5 text-gray-400 border border-white/5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all"
+                        className="w-full py-3.5 bg-[var(--color-border)] text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-all"
                     >
                         Odustani
                     </button>

@@ -24,6 +24,8 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+import { ThemeProvider } from "./components/ui/ThemeProvider";
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -40,7 +42,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

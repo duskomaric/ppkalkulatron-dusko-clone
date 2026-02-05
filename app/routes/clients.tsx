@@ -216,7 +216,7 @@ export default function ClientsPage() {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <ContactRoundIcon className="w-3 h-3 text-primary" />
-                <span className="text-base font-black text-white tracking-tighter italic leading-none group-hover:text-primary transition-colors">
+                <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-none group-hover:text-primary transition-colors">
                   {client.name}
                 </span>
               </div>
@@ -226,17 +226,17 @@ export default function ClientsPage() {
               />
             </div>
 
-            <div className="h-[1px] w-full bg-white/5" />
+            <div className="h-[1px] w-full bg-[var(--color-border)]" />
 
             <div className="flex justify-between items-end">
               <div className="flex gap-4">
                 {client.email && (
                   <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1 text-gray-600">
+                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                       <MailIcon className="w-2 h-2" />
                       <span className="text-[7px] font-black uppercase tracking-tighter">Email</span>
                     </div>
-                    <p className="text-[9px] font-bold text-gray-400 truncate max-w-[100px]">
+                    <p className="text-[9px] font-bold text-[var(--color-text-muted)] truncate max-w-[100px]">
                       {client.email}
                     </p>
                   </div>
@@ -244,11 +244,11 @@ export default function ClientsPage() {
 
                 {client.phone && (
                   <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1 text-gray-600">
+                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                       <PhoneIcon className="w-2 h-2" />
                       <span className="text-[7px] font-black uppercase tracking-tighter">Telefon</span>
                     </div>
-                    <p className="text-[9px] font-bold text-gray-400">
+                    <p className="text-[9px] font-bold text-[var(--color-text-muted)]">
                       {client.phone}
                     </p>
                   </div>
@@ -257,11 +257,11 @@ export default function ClientsPage() {
 
               {(client.address || client.city) && (
                 <div className="text-right flex flex-col items-end gap-0.5">
-                  <div className="flex items-center gap-1 text-gray-600">
+                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                     <MapPinIcon className="w-2 h-2" />
                     <span className="text-[7px] font-black uppercase tracking-tighter">Lokacija</span>
                   </div>
-                  <p className="text-[9px] font-black text-white tracking-tight italic leading-none">
+                  <p className="text-[9px] font-black text-[var(--color-text-main)] tracking-tight italic leading-none">
                     <span className="text-primary text-[7px] not-italic opacity-70 mr-1">{client.zip}</span> {client.city}
                   </p>
                 </div>
@@ -418,7 +418,7 @@ export default function ClientsPage() {
 
         <label
           htmlFor="is_active"
-          className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 cursor-pointer"
+          className="flex items-center gap-3 p-3 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] cursor-pointer"
         >
           <div className="relative flex items-center">
             <input
@@ -430,7 +430,7 @@ export default function ClientsPage() {
               className="sr-only peer"
             />
 
-            <div className="w-9 h-5 bg-white/10 rounded-full
+            <div className="w-9 h-5 bg-[var(--color-border-strong)] rounded-full
                     peer-focus:outline-none
                     peer-checked:bg-primary
                     after:content-['']
@@ -443,7 +443,7 @@ export default function ClientsPage() {
             </div>
           </div>
 
-          <span className="text-[13px] font-bold text-gray-300">
+          <span className="text-[13px] font-bold text-[var(--color-text-muted)]">
             Klijent je aktivan
           </span>
         </label>

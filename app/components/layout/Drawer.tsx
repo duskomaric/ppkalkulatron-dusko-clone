@@ -32,17 +32,17 @@ export const Drawer: React.FC<DrawerProps> = ({ title, children, isOpen, onClose
       ></div>
 
       {/* Drawer Container */}
-      <div className="relative w-full max-w-lg bg-[#0F0F13]/95 backdrop-blur-2xl rounded-t-[32px] sm:rounded-[40px] shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden animate-slide-in-bottom border-t sm:border border-white/10 flex flex-col max-h-[94vh] sm:max-h-[90vh]">
+      <div className="relative w-full max-w-lg bg-[var(--color-surface)]/95 backdrop-blur-2xl rounded-t-[32px] sm:rounded-[40px] shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden animate-slide-in-bottom border-t sm:border border-[var(--color-border)] flex flex-col max-h-[94vh] sm:max-h-[90vh]">
 
         {/* Mobile Pull Handle */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-10 h-1 bg-white/10 rounded-full"></div>
+          <div className="w-10 h-1 bg-[var(--color-border)] rounded-full"></div>
         </div>
 
         {/* Header */}
         <div className="px-6 py-4 flex items-center justify-between sticky top-0 z-10">
           <div className="flex flex-col">
-            <h2 className="text-lg font-black text-white tracking-tight italic leading-tight">
+            <h2 className="text-lg font-black text-[var(--color-text-main)] tracking-tight italic leading-tight">
               {title}
             </h2>
             <div className="h-0.5 w-8 bg-primary rounded-full mt-1 opacity-50"></div>
@@ -50,7 +50,7 @@ export const Drawer: React.FC<DrawerProps> = ({ title, children, isOpen, onClose
 
           <button
             onClick={onClose}
-            className="cursor-pointer h-10 w-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-[14px] text-gray-400 hover:text-white transition-all border border-white/5 group active:scale-90"
+            className="cursor-pointer h-10 w-10 flex items-center justify-center bg-[var(--color-border)] hover:bg-[var(--color-surface-hover)] rounded-[14px] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-all border border-[var(--color-border)] group active:scale-90"
             aria-label="Zatvori"
           >
             <XIcon className="h-5 w-5 transition-transform group-hover:rotate-90" />

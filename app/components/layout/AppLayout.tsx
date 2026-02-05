@@ -74,7 +74,7 @@ export function AppLayout({
 
   return (
     <div
-      className="min-h-screen bg-[#0B0B0F] flex flex-col pb-32 overflow-hidden relative"
+      className="min-h-screen flex flex-col pb-32 overflow-hidden relative"
       style={{
         /* 1. Primarna baza koju koriste tvoji custom CSS efekti */
         "--primary-base": currentRGB,
@@ -95,7 +95,7 @@ export function AppLayout({
       <div className="glow-ball bg-primary/10 w-[400px] h-[400px] top-[40%] left-[20%] blur-[120px] pointer-events-none absolute"></div>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 h-[60px] flex items-center bg-[#0B0B0F]/20 backdrop-blur-lg border-b border-white/5">
+      <header className="sticky top-0 z-40 h-[60px] flex items-center bg-[var(--color-bg)]/20 backdrop-blur-lg border-b border-[var(--color-border)]">
         <div className="max-w-[1200px] w-full mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Link
@@ -108,12 +108,12 @@ export function AppLayout({
             {selectedCompany && (
               <button
                 onClick={() => setActiveDrawer("company")}
-                className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 hover:bg-white/5 rounded-xl transition-all border border-transparent"
+                className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-surface-hover)] rounded-xl transition-all border border-transparent"
               >
-                <span className="text-xs font-bold text-white truncate max-w-[120px] sm:max-w-none">
+                <span className="text-xs font-bold text-[var(--color-text-main)] truncate max-w-[120px] sm:max-w-none">
                   {selectedCompany.name}
                 </span>
-                <svg className="h-3.5 w-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-3.5 w-3.5 text-[var(--color-text-dim)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="M19 9l-7 7-7-7" strokeWidth="2.5" />
                 </svg>
               </button>
@@ -123,13 +123,13 @@ export function AppLayout({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveDrawer("settings")}
-              className="cursor-pointer h-9 w-9 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+              className="cursor-pointer h-9 w-9 flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:bg-[var(--color-surface-hover)] rounded-xl transition-all"
             >
               <CogIcon className="h-5 w-5" />
             </button>
             <button
               onClick={() => setActiveDrawer("user")}
-              className="cursor-pointer h-9 w-9 bg-white/5 text-gray-300 rounded-xl flex items-center justify-center font-bold text-xs border border-white/10 hover:border-primary transition-all"
+              className="cursor-pointer h-9 w-9 bg-[var(--color-surface)] text-[var(--color-text-muted)] rounded-xl flex items-center justify-center font-bold text-xs border border-[var(--color-border)] hover:border-primary hover:text-primary transition-all"
             >
               <UserIcon className="h-5 w-5" />
             </button>
@@ -140,7 +140,7 @@ export function AppLayout({
       {/* Main Content */}
       <main className="flex-grow max-w-[1200px] w-full mx-auto px-5 py-6 relative">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-black text-white tracking-tight italic">
+          <h1 className="text-2xl font-black text-[var(--color-text-main)] tracking-tight italic">
             {(APP_CONFIG.titles as any)[title.toLowerCase()] || title}
           </h1>
           {actions}
@@ -150,7 +150,7 @@ export function AppLayout({
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-5 md:bottom-6 flex justify-center pointer-events-auto">
-        <nav className="bg-black/50 backdrop-blur-2xl border border-white/10 rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/60 px-5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-around gap-2 sm:gap-6 w-full max-w-md sm:max-w-lg">
+        <nav className="bg-[var(--color-glass)] backdrop-blur-2xl border border-[var(--color-border-strong)] rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/20 px-5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-around gap-2 sm:gap-6 w-full max-w-md sm:max-w-lg">
           {NAV_ITEMS.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -162,11 +162,11 @@ export function AppLayout({
                 title={item.title}
                 className={`cursor-pointer group flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'scale-110 sm:scale-125 -translate-y-1' : 'hover:scale-110'}`}
               >
-                <div className={`relative p-2.5 sm:p-3 rounded-2xl transition-all duration-300 ${isActive ? 'bg-primary/25 shadow-glow-primary ring-1 ring-primary/40' : 'bg-white/5 group-hover:bg-white/10'}`}>
-                  <Icon className={`h-6 w-6 sm:h-7 sm:w-7 ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-gray-200'}`} />
+                <div className={`relative p-2.5 sm:p-3 rounded-2xl transition-all duration-300 ${isActive ? 'bg-primary/25 shadow-glow-primary ring-1 ring-primary/40' : 'bg-[var(--color-surface)] group-hover:bg-[var(--color-surface-hover)]'}`}>
+                  <Icon className={`h-6 w-6 sm:h-7 sm:w-7 ${isActive ? 'text-primary' : 'text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]'}`} />
                   {isActive && <span className="absolute inset-0 rounded-2xl bg-primary/20 animate-pulse-slow pointer-events-none" />}
                 </div>
-                <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mt-1 hidden sm:block ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mt-1 hidden sm:block ${isActive ? 'text-primary' : 'text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]'}`}>
                   {item.label}
                 </span>
               </Link>
@@ -195,15 +195,15 @@ export function AppLayout({
                 onCompanyChange(company);
                 setActiveDrawer(null);
               }}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${selectedCompany?.id === company.id ? "border-primary bg-primary/10 ring-1 ring-primary/20" : "border-white/5 bg-white/5 hover:bg-white/10"
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedCompany?.id === company.id ? "border-primary bg-primary/10 ring-1 ring-primary/20" : "border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)]"
                 }`}
             >
-              <div className={`h-10 w-10 rounded-lg flex items-center justify-center font-black text-xs shadow-glow-primary shrink-0 ${selectedCompany?.id === company.id ? "bg-primary text-white" : "bg-[#1C1C26] text-gray-600"}`}>
+              <div className={`h-10 w-10 rounded-lg flex items-center justify-center font-black text-xs shadow-glow-primary shrink-0 ${selectedCompany?.id === company.id ? "bg-primary text-white" : "bg-[var(--color-border)] text-[var(--color-text-dim)]"}`}>
                 {company.name.substring(0, 2).toUpperCase()}
               </div>
               <div className="text-left min-w-0">
-                <p className="text-sm font-black text-white leading-none mb-1 truncate">{company.name}</p>
-                <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest">VAT: {company.vat_number}</p>
+                <p className="text-sm font-black text-[var(--color-text-main)] leading-none mb-1 truncate">{company.name}</p>
+                <p className="text-[8px] font-black text-[var(--color-text-dim)] uppercase tracking-widest">VAT: {company.vat_number}</p>
               </div>
             </button>
           ))}
@@ -211,25 +211,31 @@ export function AppLayout({
       </Drawer>
 
       <Drawer title="Moj nalog" isOpen={activeDrawer === 'user'} onClose={() => setActiveDrawer(null)}>
-        <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl mb-4 border border-white/5 relative overflow-hidden">
+        <div className="flex items-center gap-4 p-4 bg-[var(--color-surface)] rounded-2xl mb-4 border border-[var(--color-border)] relative overflow-hidden">
           <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center text-white font-black text-lg shadow-glow-primary shrink-0 z-10">
             {user?.first_name[0]}{user?.last_name[0]}
           </div>
           <div className="z-10">
-            <p className="font-black text-base text-white leading-tight italic tracking-tight">{user?.first_name} {user?.last_name}</p>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">{user?.email}</p>
+            <p className="font-black text-base text-[var(--color-text-main)] leading-tight italic tracking-tight">{user?.first_name} {user?.last_name}</p>
+            <p className="text-[10px] text-[var(--color-text-muted)] font-bold uppercase tracking-wider mt-0.5">{user?.email}</p>
           </div>
         </div>
         <div className="space-y-1.5">
-          <button className="w-full text-left p-3.5 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all flex items-center gap-3 border border-transparent hover:border-white/5 group">
-            <div className="h-7 w-7 bg-white/5 rounded-lg flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors">
+          <button
+            onClick={() => {
+              setActiveDrawer(null);
+              navigate("/profile");
+            }}
+            className="w-full text-left p-3.5 text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] rounded-xl transition-all flex items-center gap-3 border border-transparent hover:border-[var(--color-border)] group cursor-pointer"
+          >
+            <div className="h-7 w-7 bg-[var(--color-border)] rounded-lg flex items-center justify-center text-[var(--color-text-dim)] group-hover:text-primary transition-colors">
               <UserIcon className="h-4 w-4" />
             </div>
             Moj Profil
           </button>
           <button
             onClick={handleLogout}
-            className="w-full text-left p-3.5 text-xs font-black uppercase tracking-widest text-red-400/80 hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all flex items-center gap-3 border border-transparent hover:border-red-400/20 group"
+            className="w-full text-left p-3.5 text-xs font-black uppercase tracking-widest text-red-400/80 hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all flex items-center gap-3 border border-transparent hover:border-red-400/20 group cursor-pointer"
           >
             <div className="h-7 w-7 bg-red-400/10 rounded-lg flex items-center justify-center text-red-400 transition-colors">
               <ChevronRightIcon className="h-4 w-4" />
@@ -241,17 +247,17 @@ export function AppLayout({
 
       <Drawer title="Podešavanja" isOpen={activeDrawer === 'settings'} onClose={() => setActiveDrawer(null)}>
         <div className="grid grid-cols-2 gap-3">
-          <button className="p-5 bg-white/5 border border-white/5 rounded-2xl text-center hover:border-primary/50 hover:bg-primary/5 transition-all group">
-            <div className="h-10 w-10 bg-[#1C1C26] rounded-xl flex items-center justify-center mx-auto mb-3 text-gray-500 group-hover:text-primary shadow-sm transition-all border border-white/5">
+          <button className="p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-center hover:border-primary/50 hover:bg-primary/5 transition-all group cursor-pointer">
+            <div className="h-10 w-10 bg-[var(--color-border)] rounded-xl flex items-center justify-center mx-auto mb-3 text-[var(--color-text-dim)] group-hover:text-primary shadow-sm transition-all border border-[var(--color-border)]">
               <CogIcon className="h-5 w-5" />
             </div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-gray-500 group-hover:text-white">Opšte</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]">Opšte</span>
           </button>
-          <button className="p-5 bg-white/5 border border-white/5 rounded-2xl text-center hover:border-primary/50 hover:bg-primary/5 transition-all group">
-            <div className="h-10 w-10 bg-[#1C1C26] rounded-xl flex items-center justify-center mx-auto mb-3 text-gray-500 group-hover:text-primary shadow-sm transition-all border border-white/5">
+          <button className="p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-center hover:border-primary/50 hover:bg-primary/5 transition-all group cursor-pointer">
+            <div className="h-10 w-10 bg-[var(--color-border)] rounded-xl flex items-center justify-center mx-auto mb-3 text-[var(--color-text-dim)] group-hover:text-primary shadow-sm transition-all border border-[var(--color-border)]">
               <BoxesIcon className="h-5 w-5" />
             </div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-gray-500 group-hover:text-white">Pretplata</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]">Pretplata</span>
           </button>
         </div>
       </Drawer>

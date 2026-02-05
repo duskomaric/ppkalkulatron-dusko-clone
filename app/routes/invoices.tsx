@@ -94,7 +94,7 @@ export default function InvoicesPage() {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <HashIcon className="w-3 h-3 text-primary" />
-                <span className="text-base font-black text-white tracking-tighter italic leading-none group-hover:text-primary transition-colors">
+                <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-none group-hover:text-primary transition-colors">
                   {inv.invoice_number}
                 </span>
               </div>
@@ -113,27 +113,27 @@ export default function InvoicesPage() {
             </div>
 
             {/* Separator */}
-            <div className="h-[1px] w-full bg-white/5" />
+            <div className="h-[1px] w-full bg-[var(--color-border)]" />
 
             {/* Donji dio: Datumi i Iznos */}
             <div className="flex justify-between items-end">
               <div className="flex gap-4">
                 <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1 text-gray-600">
+                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                     <Calendar1Icon className="w-2.5 h-2.5" />
                     <span className="text-[7px] font-black uppercase">Datum</span>
                   </div>
-                  <p className="text-[9px] font-bold text-gray-400">
+                  <p className="text-[9px] font-bold text-[var(--color-text-muted)]">
                     {inv.date}
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1 text-gray-600">
+                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                     <Clock1Icon className="w-2.5 h-2.5" />
                     <span className="text-[7px] font-black uppercase">Dospijeće</span>
                   </div>
-                  <p className="text-[9px] font-bold text-red-400/80">
+                  <p className="text-[9px] font-bold text-red-500">
                     {inv.due_date}
                   </p>
                 </div>
@@ -141,7 +141,7 @@ export default function InvoicesPage() {
 
               {/* Total - Desni fokus */}
               <div className="text-right">
-                <p className="text-lg font-black text-white tracking-tighter italic">
+                <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
                   {inv.total} {inv.currency}
                 </p>
               </div>

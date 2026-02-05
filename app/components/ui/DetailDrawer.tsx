@@ -33,15 +33,15 @@ export function DetailDrawer({
         >
             <div className="flex flex-col gap-4">
                 {/* Header Card */}
-                <div className="flex items-center gap-3 p-4 bg-white/5 rounded-[24px] border border-white/10 relative overflow-hidden group">
+                <div className="flex items-center gap-3 p-4 bg-[var(--color-border)] rounded-[24px] border border-[var(--color-border-strong)] relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-5">
-                        <EntityIcon className="h-16 w-16 text-white" />
+                        <EntityIcon className="h-16 w-16 text-[var(--color-text-main)]" />
                     </div>
                     <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20 bg-primary z-10 shrink-0`}>
                         {entityName.substring(0, 2).toUpperCase()}
                     </div>
                     <div className="z-10 min-w-0">
-                        <p className="font-black text-lg text-white tracking-tighter italic leading-tight truncate">{entityName}</p>
+                        <p className="font-black text-lg text-[var(--color-text-main)] tracking-tighter italic leading-tight truncate">{entityName}</p>
                         <div className="flex items-center gap-2 mt-1">
                             {badges}
                         </div>
@@ -75,7 +75,7 @@ export function DetailDrawer({
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-full py-3.5 bg-white/5 text-gray-400 border border-white/5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all"
+                        className="w-full py-3.5 bg-[var(--color-border)] text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-all"
                     >
                         Zatvori
                     </button>

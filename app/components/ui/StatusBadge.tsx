@@ -10,11 +10,11 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ label, color, className = "" }: StatusBadgeProps) {
     const colorClasses = {
-        green: "bg-green-500/10 text-green-400 border-green-500/20",
-        gray: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-        red: "bg-red-500/10 text-red-400 border-red-500/20",
-        amber: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-        blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+        green: "bg-[var(--color-success)]/10 text-[var(--color-success)] border-[var(--color-success)]/20",
+        gray: "bg-[var(--color-gray)]/10 text-[var(--color-gray)] border-[var(--color-gray)]/20",
+        red: "bg-[var(--color-error)]/10 text-[var(--color-error)] border-[var(--color-error)]/20",
+        amber: "bg-[var(--color-warning)]/10 text-[var(--color-warning)] border-[var(--color-warning)]/20",
+        blue: "bg-[var(--color-info)]/10 text-[var(--color-info)] border-[var(--color-info)]/20",
     };
 
     return (

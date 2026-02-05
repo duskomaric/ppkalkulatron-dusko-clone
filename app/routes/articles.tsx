@@ -233,10 +233,10 @@ export default function ArticlesPage() {
                                     <BoxesIcon className="w-3.5 h-3.5 text-primary" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-base font-black text-white tracking-tighter italic leading-tight group-hover:text-primary transition-colors">
+                                    <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-tight group-hover:text-primary transition-colors">
                                         {article.name}
                                     </span>
-                                    <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">{article.type_label}</p>
+                                    <p className="text-[8px] font-bold text-[var(--color-text-dim)] uppercase tracking-widest">{article.type_label}</p>
                                 </div>
                             </div>
                             <div className="flex gap-2">
@@ -247,37 +247,37 @@ export default function ArticlesPage() {
                             </div>
                         </div>
 
-                        <div className="h-[1px] w-full bg-white/5" />
+                        <div className="h-[1px] w-full bg-[var(--color-border)]" />
 
                         <div className="flex justify-between items-end">
                             <div className="flex gap-4">
                                 <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-1 text-gray-600">
+                                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                                         <TagIcon className="w-2 h-2" />
                                         <span className="text-[7px] font-black uppercase tracking-tighter">Jedinica</span>
                                     </div>
-                                    <p className="text-[9px] font-bold text-gray-400">
+                                    <p className="text-[9px] font-bold text-[var(--color-text-muted)]">
                                         {article.unit}
                                     </p>
                                 </div>
 
                                 <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-1 text-gray-600">
+                                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                                         <HashIcon className="w-2 h-2" />
                                         <span className="text-[7px] font-black uppercase tracking-tighter">Porez</span>
                                     </div>
-                                    <p className="text-[9px] font-bold text-gray-400">
+                                    <p className="text-[9px] font-bold text-[var(--color-text-muted)]">
                                         {article.tax_category}
                                     </p>
                                 </div>
                             </div>
 
                             <div className="text-right">
-                                <div className="flex items-center gap-1 text-gray-600 justify-end mb-0.5">
+                                <div className="flex items-center gap-1 text-[var(--color-text-dim)] justify-end mb-0.5">
                                     <DollarIcon className="w-2 h-2" />
                                     <span className="text-[7px] font-black uppercase tracking-tighter">Cijena</span>
                                 </div>
-                                <p className="text-lg font-black text-white tracking-tighter italic leading-none">
+                                <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic leading-none">
                                     {article.prices_meta && Object.values(article.prices_meta)[0]} <span className="text-[10px] opacity-60 not-italic uppercase">{article.prices_meta && Object.keys(article.prices_meta)[0]}</span>
                                 </p>
                             </div>
@@ -326,9 +326,9 @@ export default function ArticlesPage() {
                 {activeArticle && (
                     <div className="flex flex-col gap-4">
                         {activeArticle.description && (
-                            <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                                <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest mb-1">Opis</p>
-                                <p className="text-[11px] font-bold text-gray-300 italic leading-relaxed">{activeArticle.description}</p>
+                            <div className="p-3 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]">
+                                <p className="text-[7px] font-black text-[var(--color-text-dim)] uppercase tracking-widest mb-1">Opis</p>
+                                <p className="text-[11px] font-bold text-[var(--color-text-muted)] italic leading-relaxed">{activeArticle.description}</p>
                             </div>
                         )}
 
@@ -371,25 +371,25 @@ export default function ArticlesPage() {
                 />
 
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Opis</label>
+                    <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-dim)] ml-1">Opis</label>
                     <textarea
                         name="description"
                         value={formData.description || ""}
                         onChange={handleInputChange}
                         rows={3}
-                        className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-gray-700 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-bold text-sm outline-none resize-none"
+                        className="w-full px-5 py-3.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] placeholder:text-[var(--color-text-dim)] focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-bold text-sm outline-none resize-none"
                         placeholder="Kratki opis artikla..."
                     />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-500 ml-1">Tip</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-dim)] ml-1">Tip</label>
                         <select
                             name="type"
                             value={formData.type}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-3.5 bg-[#16161E] border border-white/10 rounded-2xl text-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-black text-[11px] uppercase tracking-widest appearance-none outline-none"
+                            className="w-full px-4 py-3.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-black text-[11px] uppercase tracking-widest appearance-none outline-none"
                         >
                             <option value="goods">ROBA</option>
                             <option value="services">USLUGE</option>
@@ -427,7 +427,7 @@ export default function ArticlesPage() {
 
                 <label
                     htmlFor="is_active"
-                    className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 cursor-pointer"
+                    className="flex items-center gap-3 p-3 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] cursor-pointer"
                 >
                     <div className="relative flex items-center">
                         <input
@@ -439,7 +439,7 @@ export default function ArticlesPage() {
                             className="sr-only peer"
                         />
 
-                        <div className="w-9 h-5 bg-white/10 rounded-full
+                        <div className="w-9 h-5 bg-[var(--color-border-strong)] rounded-full
                     peer-focus:outline-none
                     peer-checked:bg-primary
                     after:content-['']
@@ -452,7 +452,7 @@ export default function ArticlesPage() {
                         </div>
                     </div>
 
-                    <span className="text-[13px] font-bold text-gray-300">
+                    <span className="text-[13px] font-bold text-[var(--color-text-muted)]">
                         Artikal je aktivan
                     </span>
                 </label>

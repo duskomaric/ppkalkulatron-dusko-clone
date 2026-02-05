@@ -25,3 +25,8 @@ export * from './AlertTriangleIcon';
 export * from './LockIcon';
 export * from './TagIcon';
 export * from './DollarIcon';
+export * from './MoonIcon';
+export * from './SunIcon';
+export * from './MonitorIcon';
+export * from './LogOutIcon';
+export * from './Building2Icon';

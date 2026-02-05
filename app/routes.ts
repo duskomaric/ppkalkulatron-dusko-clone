@@ -5,5 +5,6 @@ export default [
   route("invoices", "routes/invoices.tsx"),
   route("clients", "routes/clients.tsx"),
   route("articles", "routes/articles.tsx"),
+  route("profile", "routes/profile.tsx"),
   route("protocol", "routes/protocol.tsx"),
 ] satisfies RouteConfig;
