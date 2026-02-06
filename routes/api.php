@@ -27,7 +27,7 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('companies', CompanyController::class);
         });
 
-        // Current user context
+        // Current user settings
         Route::prefix('me')->group(function () {
             Route::get('settings', [UserSettingController::class, 'show']);
             Route::patch('settings', [UserSettingController::class, 'update']);
