@@ -215,12 +215,10 @@ export default function ArticlesPage() {
                 message={`Da li ste sigurni da želite trajno obrisati artikal ${activeArticle?.name}? Ova akcija se ne može poništiti.`}
             />
 
-            <div className="space-y-4">
+            {/* Mobile: cards */}
+            <div className="md:hidden space-y-4">
                 {articles.map((article) => (
-                    <EntityCard
-                        key={article.id}
-                        onClick={() => handleRowClick(article)}
-                    >
+                    <EntityCard key={article.id} onClick={() => handleRowClick(article)}>
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                                 <div className="p-1.5 rounded-lg bg-primary/10">
@@ -233,16 +231,12 @@ export default function ArticlesPage() {
                                     <p className="text-[10px] font-bold text-[var(--color-text-dim)] uppercase tracking-widest">{article.type_label}</p>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                <StatusBadge
-                                    label={article.type_label}
-                                    color={article.type === 'products' ? 'blue' : 'amber'}
-                                />
-                            </div>
+                            <StatusBadge
+                                label={article.type_label}
+                                color={article.type === 'products' ? 'blue' : 'amber'}
+                            />
                         </div>
-
                         <div className="h-[1px] w-full bg-[var(--color-border)]" />
-
                         <div className="flex justify-between items-end">
                             <div className="flex gap-4">
                                 <div className="flex flex-col gap-0.5">
@@ -250,41 +244,80 @@ export default function ArticlesPage() {
                                         <TagIcon className="w-2.5 h-2.5" />
                                         <span className="text-[9px] font-black uppercase tracking-tight">Jedinica</span>
                                     </div>
-                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">
-                                        {article.unit}
-                                    </p>
+                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">{article.unit}</p>
                                 </div>
-
                                 <div className="flex flex-col gap-0.5">
                                     <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                                         <HashIcon className="w-2.5 h-2.5" />
                                         <span className="text-[9px] font-black uppercase tracking-tight">Porez</span>
                                     </div>
-                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">
-                                        {article.tax_category}
-                                    </p>
+                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">{article.tax_category}</p>
                                 </div>
                             </div>
-
                             <div className="text-right">
                                 <div className="flex items-center gap-1 text-[var(--color-text-dim)] justify-end mb-0.5">
                                     <DollarIcon className="w-2.5 h-2.5" />
                                     <span className="text-[9px] font-black uppercase tracking-tight">Cijena</span>
                                 </div>
                                 <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic leading-none">
-                                    {article.prices_meta && Object.values(article.prices_meta)[0]} <span className="text-[11px] opacity-60 not-italic uppercase">{article.prices_meta && Object.keys(article.prices_meta)[0]}</span>
+                                    {article.prices_meta && Object.values(article.prices_meta)[0]}{' '}
+                                    <span className="text-[11px] opacity-60 not-italic uppercase">
+                                        {article.prices_meta && Object.keys(article.prices_meta)[0]}
+                                    </span>
                                 </p>
                             </div>
                         </div>
                     </EntityCard>
                 ))}
-
-                {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
-
-                {!loading && articles.length === 0 && (
-                    <EmptyState icon={BoxesIcon} message="Nema pronađenih artikala" />
-                )}
             </div>
+
+            {/* Desktop: table */}
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-[var(--color-border)]">
+                <table className="w-full">
+                    <thead>
+                        <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
+                            <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Naziv</th>
+                            <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Tip</th>
+                            <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Jedinica</th>
+                            <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Porez</th>
+                            <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Cijena</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {articles.map((article) => {
+                            const firstPrice = article.prices_meta && Object.entries(article.prices_meta)[0];
+                            return (
+                                <tr
+                                    key={article.id}
+                                    onClick={() => handleRowClick(article)}
+                                    className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors last:border-b-0"
+                                >
+                                    <td className="py-3 px-4">
+                                        <span className="font-black text-[var(--color-text-main)] tracking-tight">{article.name}</span>
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        <StatusBadge
+                                            label={article.type_label}
+                                            color={article.type === 'products' ? 'blue' : 'amber'}
+                                        />
+                                    </td>
+                                    <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{article.unit}</td>
+                                    <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{article.tax_category}</td>
+                                    <td className="py-3 px-4 text-right font-black text-[var(--color-text-main)]">
+                                        {firstPrice ? `${firstPrice[1]} ${firstPrice[0]}` : '—'}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
+
+            {!loading && articles.length === 0 && (
+                <EmptyState icon={BoxesIcon} message="Nema pronađenih artikala" />
+            )}
 
             {pagination && (
                 <Pagination

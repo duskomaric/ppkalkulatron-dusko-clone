@@ -345,10 +345,10 @@ export default function InvoicesPage() {
         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
 
-      <div className="space-y-3">
+      {/* Mobile: cards */}
+      <div className="md:hidden space-y-3">
         {invoices.map((inv) => (
           <EntityCard key={inv.id} onClick={() => handleRowClick(inv)}>
-            {/* Top: Number and Status */}
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <HashIcon className="w-3 h-3 text-primary" />
@@ -361,19 +361,13 @@ export default function InvoicesPage() {
                 color={(inv.status_color as BadgeColor) || "gray"}
               />
             </div>
-
-            {/* Middle: Client */}
             <div className="flex items-center gap-2">
               <ContactRoundIcon className="w-3.5 h-3.5 text-[var(--color-text-dim)]" />
               <span className="text-xs font-bold text-[var(--color-text-muted)] tracking-tight truncate">
                 {inv.client?.name || 'Nepoznat klijent'}
               </span>
             </div>
-
-            {/* Separator */}
             <div className="h-[1px] w-full bg-[var(--color-border)]" />
-
-            {/* Bottom: Dates and Total */}
             <div className="flex justify-between items-end">
               <div className="flex gap-4">
                 <div className="flex flex-col gap-0.5">
@@ -381,38 +375,72 @@ export default function InvoicesPage() {
                     <Calendar1Icon className="w-2.5 h-2.5" />
                     <span className="text-[9px] font-black uppercase">Datum</span>
                   </div>
-                  <p className="text-xs font-bold text-[var(--color-text-muted)]">
-                    {inv.date}
-                  </p>
+                  <p className="text-xs font-bold text-[var(--color-text-muted)]">{inv.date}</p>
                 </div>
-
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                     <Clock1Icon className="w-2.5 h-2.5" />
                     <span className="text-[9px] font-black uppercase">Dospijeće</span>
                   </div>
-                  <p className="text-xs font-bold text-red-500">
-                    {inv.due_date}
-                  </p>
+                  <p className="text-xs font-bold text-red-500">{inv.due_date}</p>
                 </div>
               </div>
-
-              {/* Total */}
-              <div className="text-right">
-                <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
-                  {formatPrice(inv.total)} {inv.currency}
-                </p>
-              </div>
+              <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
+                {formatPrice(inv.total)} {inv.currency}
+              </p>
             </div>
           </EntityCard>
         ))}
-
-        {loading && <LoadingState />}
-
-        {!loading && invoices.length === 0 && (
-          <EmptyState icon={XIcon} message="Nema pronađenih računa" />
-        )}
       </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-[var(--color-border)]">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
+              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Broj</th>
+              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Klijent</th>
+              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Datum</th>
+              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Dospijeće</th>
+              <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Ukupno</th>
+              <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {invoices.map((inv) => (
+              <tr
+                key={inv.id}
+                onClick={() => handleRowClick(inv)}
+                className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors last:border-b-0"
+              >
+                <td className="py-3 px-4">
+                  <span className="font-black text-[var(--color-text-main)] tracking-tight">{inv.invoice_number}</span>
+                </td>
+                <td className="py-3 px-4 text-sm font-bold text-[var(--color-text-muted)]">
+                  {inv.client?.name || 'Nepoznat klijent'}
+                </td>
+                <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{inv.date}</td>
+                <td className="py-3 px-4 text-sm text-red-500">{inv.due_date}</td>
+                <td className="py-3 px-4 text-right font-black text-[var(--color-text-main)]">
+                  {formatPrice(inv.total)} {inv.currency}
+                </td>
+                <td className="py-3 px-4 text-right">
+                  <StatusBadge
+                    label={inv.status_label}
+                    color={(inv.status_color as BadgeColor) || "gray"}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {loading && <LoadingState />}
+
+      {!loading && invoices.length === 0 && (
+        <EmptyState icon={XIcon} message="Nema pronađenih računa" />
+      )}
 
       {/* Pagination */}
       {pagination && (

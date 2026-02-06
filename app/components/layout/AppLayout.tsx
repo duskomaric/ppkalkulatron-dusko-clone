@@ -108,7 +108,7 @@ export function AppLayout({
 
   return (
     <div
-      className="min-h-screen flex flex-col pb-32 overflow-hidden relative"
+      className="min-h-screen flex flex-col pb-32 md:pb-8 overflow-hidden relative"
       style={{
         "--primary-base": currentRGB,
         "--color-primary": `rgb(${currentRGB})`,
@@ -131,6 +131,22 @@ export function AppLayout({
             >
               <CalculatorIcon className="h-5 w-5" />
             </Link>
+
+            {/* Desktop nav - hidden on mobile */}
+            <nav className="hidden md:flex items-center gap-1">
+              {NAV_ITEMS.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.id}
+                    to={item.path}
+                    className={`px-3 py-2 rounded-xl text-sm font-bold transition-all ${isActive ? "bg-primary/20 text-primary" : "text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]"}`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
 
             {selectedCompany && (
               <button
@@ -178,8 +194,8 @@ export function AppLayout({
         {children}
       </main>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-5 md:bottom-6 flex justify-center pointer-events-auto">
+      {/* Bottom Navigation - mobile only */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-5 flex justify-center pointer-events-auto">
         <nav className="bg-[var(--color-glass)] backdrop-blur-2xl border border-[var(--color-border-strong)] rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/20 px-5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-around gap-2 sm:gap-6 w-full max-w-md sm:max-w-lg">
           {NAV_ITEMS.map((item) => {
             const isActive = location.pathname === item.path;
@@ -208,7 +224,7 @@ export function AppLayout({
       {/* Back to Top */}
       <button
         onClick={scrollToTop}
-        className={`fixed right-6 bottom-32 z-[60] h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white shadow-glow-primary transition-all duration-300 transform ${showBackToTop ? "scale-100 opacity-100 translate-y-0" : "scale-0 opacity-0 translate-y-10"
+        className={`fixed right-6 bottom-32 md:bottom-8 z-[60] h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white shadow-glow-primary transition-all duration-300 transform ${showBackToTop ? "scale-100 opacity-100 translate-y-0" : "scale-0 opacity-0 translate-y-10"
           } hover:scale-110 active:scale-95`}
         aria-label="Back to top"
       >

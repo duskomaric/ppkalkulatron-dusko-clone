@@ -201,12 +201,10 @@ export default function ClientsPage() {
         message={`Da li ste sigurni da želite trajno obrisati klijenta ${activeClient?.name}? Ova akcija se ne može poništiti.`}
       />
 
-      <div className="space-y-4">
+      {/* Mobile: cards */}
+      <div className="md:hidden space-y-4">
         {clients.map((client) => (
-          <EntityCard
-            key={client.id}
-            onClick={() => handleRowClick(client)}
-          >
+          <EntityCard key={client.id} onClick={() => handleRowClick(client)}>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <ContactRoundIcon className="w-3 h-3 text-primary" />
@@ -219,9 +217,7 @@ export default function ClientsPage() {
                 color={client.is_active ? 'green' : 'gray'}
               />
             </div>
-
             <div className="h-[1px] w-full bg-[var(--color-border)]" />
-
             <div className="flex justify-between items-end">
               <div className="flex gap-4">
                 {client.email && (
@@ -230,25 +226,19 @@ export default function ClientsPage() {
                       <MailIcon className="w-2.5 h-2.5" />
                       <span className="text-[9px] font-black uppercase tracking-tight">Email</span>
                     </div>
-                    <p className="text-xs font-bold text-[var(--color-text-muted)] truncate max-w-[150px]">
-                      {client.email}
-                    </p>
+                    <p className="text-xs font-bold text-[var(--color-text-muted)] truncate max-w-[150px]">{client.email}</p>
                   </div>
                 )}
-
                 {client.phone && (
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                       <PhoneIcon className="w-2.5 h-2.5" />
                       <span className="text-[9px] font-black uppercase tracking-tight">Telefon</span>
                     </div>
-                    <p className="text-xs font-bold text-[var(--color-text-muted)]">
-                      {client.phone}
-                    </p>
+                    <p className="text-xs font-bold text-[var(--color-text-muted)]">{client.phone}</p>
                   </div>
                 )}
               </div>
-
               {(client.address || client.city) && (
                 <div className="text-right flex flex-col items-end gap-0.5">
                   <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
@@ -263,13 +253,50 @@ export default function ClientsPage() {
             </div>
           </EntityCard>
         ))}
-
-        {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
-
-        {!loading && clients.length === 0 && (
-          <EmptyState icon={XIcon} message="Nema pronađenih klijenata" />
-        )}
       </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-[var(--color-border)]">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
+              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Naziv</th>
+              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Email</th>
+              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Telefon</th>
+              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Grad</th>
+              <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clients.map((client) => (
+              <tr
+                key={client.id}
+                onClick={() => handleRowClick(client)}
+                className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors last:border-b-0"
+              >
+                <td className="py-3 px-4">
+                  <span className="font-black text-[var(--color-text-main)] tracking-tight">{client.name}</span>
+                </td>
+                <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{client.email || '—'}</td>
+                <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{client.phone || '—'}</td>
+                <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{client.city || '—'}</td>
+                <td className="py-3 px-4 text-right">
+                  <StatusBadge
+                    label={client.is_active ? 'Aktivan' : 'Neaktivan'}
+                    color={client.is_active ? 'green' : 'gray'}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
+
+      {!loading && clients.length === 0 && (
+        <EmptyState icon={XIcon} message="Nema pronađenih klijenata" />
+      )}
 
       {/* Pagination */}
       {pagination && (

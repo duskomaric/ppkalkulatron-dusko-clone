@@ -174,7 +174,7 @@ export default function BankAccountsPage() {
 
             {editingItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <form onSubmit={handleSave} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                    <form onSubmit={handleSave} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 w-full max-w-md md:max-w-lg shadow-2xl">
                         <h3 className="text-xl font-black mb-6 border-b border-[var(--color-border)] pb-4">
                             {editingItem.id ? "Izmjeni Račun" : "Novi Račun"}
                         </h3>
