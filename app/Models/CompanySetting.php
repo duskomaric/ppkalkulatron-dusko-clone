@@ -30,8 +30,6 @@ class CompanySetting extends Model
         'default_invoice_template' => 'string',
         'default_invoice_due_days' => 'integer',
         'default_invoice_language' => 'string',
-        'default_invoice_language' => 'string',
-        // 'default_invoice_currency' => 'string', // Removed per request
         'invoice_numbering_reset_yearly' => 'boolean',
         'invoice_numbering_pad_zeros' => 'integer',
         'invoice_numbering_starting_number' => 'integer',
