@@ -68,7 +68,7 @@ export function SearchSelect<T>({
     return (
         <div className="space-y-1.5 w-full" ref={containerRef}>
             {label && (
-                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
+                <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
                     {label}
                     {required && <span className="text-primary ml-0.5">*</span>}
                 </label>
@@ -163,7 +163,7 @@ export function SearchSelect<T>({
             </div>
 
             {error && (
-                <p className="text-[9px] font-bold text-red-500 ml-1 uppercase tracking-tight">
+                <p className="text-[10px] font-bold text-red-500 ml-1 uppercase tracking-tight">
                     {error}
                 </p>
             )}

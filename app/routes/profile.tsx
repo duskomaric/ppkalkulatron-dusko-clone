@@ -11,21 +11,18 @@ import {
     MonitorIcon,
     LogOutIcon,
     ChevronRightIcon,
-    MailIcon,
-    Building2Icon
+    MailIcon, Building2Icon
 } from "~/components/ui/icons";
-import type { Company } from "~/types/company";
 import { FormDrawer } from "~/components/ui/FormDrawer";
-import { Input } from "~/components/ui/Input";
+import { FormInput } from "~/components/ui/Input";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { updateUser } from "~/api/users";
 
 export default function ProfilePage() {
-    const { user, token, logoutAction, updateUserAction } = useAuth();
+    const { user, token, selectedCompany, updateSelectedCompany, logoutAction, updateUserAction } = useAuth();
     const { theme, setTheme } = useTheme();
     const navigate = useNavigate();
     
-    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
         message: "",
         type: "success",
@@ -41,11 +38,7 @@ export default function ProfilePage() {
         email: "",
     });
 
-    useEffect(() => {
-        if (user && user.companies.length > 0 && !selectedCompany) {
-            setSelectedCompany(user.companies[0]);
-        }
-    }, [user, selectedCompany]);
+    // Init company handled by useAuth
 
     useEffect(() => {
         if (user) {
@@ -93,7 +86,7 @@ export default function ProfilePage() {
         <AppLayout
             title="Profil"
             selectedCompany={selectedCompany}
-            onCompanyChange={setSelectedCompany}
+            onCompanyChange={updateSelectedCompany}
         >
             <div className="space-y-6 pb-20">
                 {/* User Info Card */}
@@ -198,27 +191,27 @@ export default function ProfilePage() {
                 loading={userLoading}
                 submitLabel="Sačuvaj izmjene"
             >
-                <div className="space-y-3">
-                    <Input
+                <div className="space-y-4">
+                    <FormInput
                         label="Ime"
                         value={userForm.first_name}
-                        onChange={(val) => setUserForm({ ...userForm, first_name: val })}
+                        onChange={(val: string) => setUserForm({ ...userForm, first_name: val })}
                         placeholder="Ime"
                         required
                         icon={UserIcon}
                     />
-                    <Input
+                    <FormInput
                         label="Prezime"
                         value={userForm.last_name}
-                        onChange={(val) => setUserForm({ ...userForm, last_name: val })}
+                        onChange={(val: string) => setUserForm({ ...userForm, last_name: val })}
                         placeholder="Prezime"
                         required
                         icon={UserIcon}
                     />
-                    <Input
+                    <FormInput
                         label="Email"
                         value={userForm.email}
-                        onChange={(val) => setUserForm({ ...userForm, email: val })}
+                        onChange={(val: string) => setUserForm({ ...userForm, email: val })}
                         placeholder="Email"
                         type="email"
                         required

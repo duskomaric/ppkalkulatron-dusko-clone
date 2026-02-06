@@ -2,18 +2,19 @@ import React, { useEffect, useState } from "react";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { useAuth } from "~/hooks/useAuth";
 import { getMe } from "~/api/config";
-import { updateCompanySettings } from "~/api/settings";
-import type { CompanySettings, AppConfigData } from "~/types/config";
-import type { Company } from "~/types/company";
+import { updateCompanySettings, getBankAccounts, getCurrencies } from "~/api/settings";
+import type { CompanySettings, AppConfigData, BankAccount, Currency } from "~/types/config";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { CheckCircleIcon, ArrowLeftIcon } from "~/components/ui/icons";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
+import { FormInput, FormSelect, FormTextarea } from "~/components/ui/Input";
 
 export default function GeneralSettingsPage() {
-    const { user, token } = useAuth();
+    const { user, selectedCompany, updateSelectedCompany, token } = useAuth();
     const navigate = useNavigate();
-    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [configData, setConfigData] = useState<AppConfigData | null>(null);
+    const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+    const [currencies, setCurrencies] = useState<Currency[]>([]);
     const [loading, setLoading] = useState(true);
     const [formData, setFormData] = useState<CompanySettings | null>(null);
     const [saving, setSaving] = useState(false);
@@ -29,11 +30,7 @@ export default function GeneralSettingsPage() {
         setToast({ message, type, isVisible: true });
     };
 
-    useEffect(() => {
-        if (user && user.companies.length > 0 && !selectedCompany) {
-            setSelectedCompany(user.companies[0]);
-        }
-    }, [user, selectedCompany]);
+    // Init company handled by useAuth
 
     useEffect(() => {
         if (!token || !selectedCompany) return;
@@ -41,9 +38,16 @@ export default function GeneralSettingsPage() {
         const loadData = async () => {
             setLoading(true);
             try {
-                const meRes = await getMe(token, selectedCompany.slug);
+                const [meRes, bankAccountsRes, currenciesRes] = await Promise.all([
+                    getMe(token, selectedCompany.slug),
+                    getBankAccounts(selectedCompany.slug, token),
+                    getCurrencies(selectedCompany.slug, token)
+                ]);
+                
                 setConfigData(meRes.data);
                 setFormData(meRes.data.company_settings);
+                setBankAccounts(bankAccountsRes.data);
+                setCurrencies(currenciesRes.data);
             } catch (error) {
                 console.error("Failed to load settings", error);
                 showToast("Failed to load settings", "error");
@@ -77,7 +81,7 @@ export default function GeneralSettingsPage() {
         <AppLayout
             title="Generalno"
             selectedCompany={selectedCompany}
-            onCompanyChange={setSelectedCompany}
+            onCompanyChange={updateSelectedCompany}
         >
             <Toast
                 message={toast.message}
@@ -130,6 +134,21 @@ export default function GeneralSettingsPage() {
                                 onChange={(val: string) => setFormData({ ...formData, default_invoice_language: val })}
                                 options={configData.languages}
                             />
+                            <FormSelect
+                                label="Podrazumijevana Valuta"
+                                value={formData.default_invoice_currency || ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_invoice_currency: val })}
+                                options={currencies.map(c => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
+                            />
+                            <FormSelect
+                                label="Podrazumijevani Bankovni Račun"
+                                value={formData.default_bank_account_id || ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_bank_account_id: val ? parseInt(val) : null })}
+                                options={[
+                                    { value: "", label: "Nije odabrano" },
+                                    ...bankAccounts.map(b => ({ value: b.id.toString(), label: `${b.bank_name} (${b.account_number})` }))
+                                ]}
+                            />
                         </div>
                     </div>
 
@@ -170,6 +189,25 @@ export default function GeneralSettingsPage() {
                         </div>
                     </div>
 
+                    {/* Footer / Notes */}
+                    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6">
+                        <h3 className="text-lg font-black text-[var(--color-text-main)] border-b border-[var(--color-border)] pb-2 mb-6">
+                            Podnožje i Napomene
+                        </h3>
+                        <div className="space-y-6">
+                            <FormTextarea
+                                label="Linije u podnožju fakture"
+                                value={formData.invoice_footer_lines?.join('\n') || ""}
+                                onChange={(val: string) => setFormData({ ...formData, invoice_footer_lines: val.split('\n') })}
+                                rows={4}
+                                placeholder="Unesite svaku liniju u novi red..."
+                            />
+                            <p className="text-[10px] text-[var(--color-text-dim)] font-medium -mt-4 pl-1">
+                                Ove linije će biti prikazane na dnu svake fakture (npr. podaci o registraciji, napomene o porezu itd.)
+                            </p>
+                        </div>
+                    </div>
+
                     <div className="flex justify-end pt-4">
                         <button
                             disabled={saving}
@@ -183,44 +221,5 @@ export default function GeneralSettingsPage() {
                 </form>
             )}
         </AppLayout>
-    );
-}
-
-function FormInput({ label, value, onChange, type = "text", required = false, maxLength }: any) {
-    return (
-        <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-dim)] pl-1">{label}</label>
-            <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                required={required}
-                maxLength={maxLength}
-                className="w-full h-11 px-4 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-medium placeholder:text-[var(--color-text-muted)]"
-            />
-        </div>
-    );
-}
-
-function FormSelect({ label, value, onChange, options }: any) {
-    return (
-        <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-dim)] pl-1">{label}</label>
-            <div className="relative">
-                <select
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    className="w-full h-11 px-4 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-medium appearance-none cursor-pointer"
-                >
-                    <option value="">Odaberi...</option>
-                    {options.map((opt: any) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)] pointer-events-none">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </div>
-            </div>
-        </div>
     );
 }

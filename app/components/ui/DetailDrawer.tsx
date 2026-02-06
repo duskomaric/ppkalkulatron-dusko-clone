@@ -57,25 +57,25 @@ export function DetailDrawer({
                         {onDelete && (
                             <button
                                 onClick={onDelete}
-                                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all group"
+                                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[11px] uppercase tracking-[0.15em] hover:bg-red-500 hover:text-white transition-all group"
                             >
-                                <TrashIcon className="h-3.5 w-3.5 transition-transform group-hover:rotate-12" />
+                                <TrashIcon className="h-4 w-4 transition-transform group-hover:rotate-12" />
                                 Obriši
                             </button>
                         )}
                         {onEdit && (
                             <button
                                 onClick={onEdit}
-                                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all"
+                                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-black text-[11px] uppercase tracking-[0.15em] shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all"
                             >
-                                <PencilIcon className="h-3.5 w-3.5" />
+                                <PencilIcon className="h-4 w-4" />
                                 Uredi
                             </button>
                         )}
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-full py-3.5 bg-[var(--color-border)] text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl font-black text-[9px] uppercase tracking-widest hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-all"
+                        className="w-full py-3.5 bg-[var(--color-border)] text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl font-black text-[10px] uppercase tracking-widest hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-all"
                     >
                         Zatvori
                     </button>

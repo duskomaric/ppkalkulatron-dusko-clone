@@ -19,7 +19,7 @@ export function StatusBadge({ label, color, className = "" }: StatusBadgeProps) 
 
     return (
         <span
-            className={`px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-wider border backdrop-blur-md ${colorClasses[color]} ${className}`}
+            className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border backdrop-blur-md ${colorClasses[color]} ${className}`}
         >
             {label}
         </span>

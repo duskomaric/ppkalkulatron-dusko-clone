@@ -18,6 +18,7 @@ export interface CompanySettings {
     default_invoice_due_days: number | null;
     default_invoice_language: string | null;
     default_invoice_currency: string | null;
+    default_bank_account_id: number | null;
     invoice_numbering_reset_yearly: boolean;
     invoice_numbering_pad_zeros: number;
     invoice_numbering_starting_number: number;
@@ -55,6 +56,7 @@ export interface CurrencyInput {
 }
 
 export interface AppConfigData {
+    user: import("./user").User;
     company_settings: CompanySettings;
     languages: SelectOption[];
     frequencies: SelectOption[];

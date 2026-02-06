@@ -1,25 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { AppLayout } from "~/components/layout/AppLayout";
-import type { Company } from "~/types/company";
+import { useAuth } from "~/hooks/useAuth";
 
 export default function ProtocolHandler() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { selectedCompany, updateSelectedCompany } = useAuth();
     const url = searchParams.get("url");
-    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
     useEffect(() => {
         if (url) {
-            // Decode the protocol URL: web+kalkulatron://something
-            // Extract the path after the protocol
             const path = url.replace("web+kalkulatron://", "");
-
             if (path) {
-                // Redirect to the internal path
                 navigate(`/${path}`, { replace: true });
             } else {
-                // Fallback to dashboard/root
                 navigate("/", { replace: true });
             }
         } else {
@@ -31,7 +26,7 @@ export default function ProtocolHandler() {
         <AppLayout
             title="Protokol"
             selectedCompany={selectedCompany}
-            onCompanyChange={setSelectedCompany}
+            onCompanyChange={updateSelectedCompany}
         >
             <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
                 <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>

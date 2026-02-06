@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import { getArticles, createArticle, updateArticle, deleteArticle } from "~/api/articles";
 import type { Article } from "~/types/article";
-import type { Company } from "~/types/company";
 import {
     BoxesIcon,
     TrashIcon,
@@ -28,9 +27,8 @@ import { FormDrawer } from "~/components/ui/FormDrawer";
 import type { PaginationMeta } from "~/types/api";
 
 export default function ArticlesPage() {
-    const { user, token, isAuthenticated } = useAuth();
+    const { user, selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
 
-    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [articles, setArticles] = useState<Article[]>([]);
     const [pagination, setPagination] = useState<PaginationMeta | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -64,11 +62,7 @@ export default function ArticlesPage() {
         price: 0
     });
 
-    useEffect(() => {
-        if (user && user.companies.length > 0 && !selectedCompany) {
-            setSelectedCompany(user.companies[0]);
-        }
-    }, [user, selectedCompany]);
+    // Init company handled by useAuth
 
     const showToast = (message: string, type: ToastType) => {
         setToast({ message, type, isVisible: true });
@@ -194,7 +188,7 @@ export default function ArticlesPage() {
         <AppLayout
             title="articles"
             selectedCompany={selectedCompany}
-            onCompanyChange={setSelectedCompany}
+            onCompanyChange={updateSelectedCompany}
             actions={
                 <button
                     onClick={openCreateForm}
@@ -236,7 +230,7 @@ export default function ArticlesPage() {
                                     <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-tight group-hover:text-primary transition-colors">
                                         {article.name}
                                     </span>
-                                    <p className="text-[8px] font-bold text-[var(--color-text-dim)] uppercase tracking-widest">{article.type_label}</p>
+                                    <p className="text-[10px] font-bold text-[var(--color-text-dim)] uppercase tracking-widest">{article.type_label}</p>
                                 </div>
                             </div>
                             <div className="flex gap-2">
@@ -253,20 +247,20 @@ export default function ArticlesPage() {
                             <div className="flex gap-4">
                                 <div className="flex flex-col gap-0.5">
                                     <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                                        <TagIcon className="w-2 h-2" />
-                                        <span className="text-[7px] font-black uppercase tracking-tighter">Jedinica</span>
+                                        <TagIcon className="w-2.5 h-2.5" />
+                                        <span className="text-[9px] font-black uppercase tracking-tight">Jedinica</span>
                                     </div>
-                                    <p className="text-[9px] font-bold text-[var(--color-text-muted)]">
+                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">
                                         {article.unit}
                                     </p>
                                 </div>
 
                                 <div className="flex flex-col gap-0.5">
                                     <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                                        <HashIcon className="w-2 h-2" />
-                                        <span className="text-[7px] font-black uppercase tracking-tighter">Porez</span>
+                                        <HashIcon className="w-2.5 h-2.5" />
+                                        <span className="text-[9px] font-black uppercase tracking-tight">Porez</span>
                                     </div>
-                                    <p className="text-[9px] font-bold text-[var(--color-text-muted)]">
+                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">
                                         {article.tax_category}
                                     </p>
                                 </div>
@@ -274,11 +268,11 @@ export default function ArticlesPage() {
 
                             <div className="text-right">
                                 <div className="flex items-center gap-1 text-[var(--color-text-dim)] justify-end mb-0.5">
-                                    <DollarIcon className="w-2 h-2" />
-                                    <span className="text-[7px] font-black uppercase tracking-tighter">Cijena</span>
+                                    <DollarIcon className="w-2.5 h-2.5" />
+                                    <span className="text-[9px] font-black uppercase tracking-tight">Cijena</span>
                                 </div>
                                 <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic leading-none">
-                                    {article.prices_meta && Object.values(article.prices_meta)[0]} <span className="text-[10px] opacity-60 not-italic uppercase">{article.prices_meta && Object.keys(article.prices_meta)[0]}</span>
+                                    {article.prices_meta && Object.values(article.prices_meta)[0]} <span className="text-[11px] opacity-60 not-italic uppercase">{article.prices_meta && Object.keys(article.prices_meta)[0]}</span>
                                 </p>
                             </div>
                         </div>
@@ -327,8 +321,8 @@ export default function ArticlesPage() {
                     <div className="flex flex-col gap-4">
                         {activeArticle.description && (
                             <div className="p-3 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]">
-                                <p className="text-[7px] font-black text-[var(--color-text-dim)] uppercase tracking-widest mb-1">Opis</p>
-                                <p className="text-[11px] font-bold text-[var(--color-text-muted)] italic leading-relaxed">{activeArticle.description}</p>
+                                <p className="text-[10px] font-black text-[var(--color-text-dim)] uppercase tracking-widest mb-1">Opis</p>
+                                <p className="text-sm font-bold text-[var(--color-text-muted)] italic leading-relaxed">{activeArticle.description}</p>
                             </div>
                         )}
 

@@ -33,7 +33,7 @@ export function AppLayout({
   onCompanyChange,
   actions
 }: AppLayoutProps) {
-  const { user, token, logoutAction, loading } = useAuth();
+  const { user, token, logoutAction, loading, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeDrawer, setActiveDrawer] = useState<"company" | "user" | "settings" | null>(null);
@@ -41,6 +41,18 @@ export function AppLayout({
 
   // Get dynamic color based on path from central utility
   const currentRGB = getThemeByPath(location.pathname);
+
+  // Refresh user data (companies + subscription) once when settings drawer opens
+  const settingsRefreshedRef = React.useRef(false);
+  useEffect(() => {
+    if (activeDrawer === "settings" && !settingsRefreshedRef.current) {
+      settingsRefreshedRef.current = true;
+      refreshUser();
+    }
+    if (activeDrawer !== "settings") {
+      settingsRefreshedRef.current = false;
+    }
+  }, [activeDrawer, refreshUser]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -73,22 +85,34 @@ export function AppLayout({
     navigate("/");
   };
 
+  // Subscription logic
+  const getSubscriptionInfo = () => {
+    if (!selectedCompany?.subscription_ends_at) {
+      return { isLifetime: true, daysLeft: null, label: "Lifetime" };
+    }
+    const endDate = new Date(selectedCompany.subscription_ends_at);
+    const now = new Date();
+    const diffTime = endDate.getTime() - now.getTime();
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return {
+      isLifetime: false,
+      daysLeft,
+      label: endDate.toLocaleDateString("bs-BA", { day: "2-digit", month: "2-digit", year: "numeric" }),
+    };
+  };
+
+  const subInfo = getSubscriptionInfo();
+  const hasSubNotification = !subInfo.isLifetime && subInfo.daysLeft !== null && subInfo.daysLeft < 30;
+
   if (loading || !token) return null;
 
   return (
     <div
       className="min-h-screen flex flex-col pb-32 overflow-hidden relative"
       style={{
-        /* 1. Primarna baza koju koriste tvoji custom CSS efekti */
         "--primary-base": currentRGB,
-
-        /* 2. Forsiramo Tailwindov --color-primary da koristi ovu bazu */
         "--color-primary": `rgb(${currentRGB})`,
-
-        /* 3. Forsiramo hover i ostale izvedene varijable */
         "--color-primary-hover": `color-mix(in srgb, rgb(${currentRGB}), white 20%)`,
-
-        /* 4. Ažuriramo sjenke */
         "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`
       } as React.CSSProperties}
     >
@@ -126,9 +150,12 @@ export function AppLayout({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveDrawer("settings")}
-              className="cursor-pointer h-9 w-9 flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:bg-[var(--color-surface-hover)] rounded-xl transition-all"
+              className="relative cursor-pointer h-9 w-9 flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:bg-[var(--color-surface-hover)] rounded-xl transition-all"
             >
               <CogIcon className="h-5 w-5" />
+              {hasSubNotification && (
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full border border-[var(--color-bg)] shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse" />
+              )}
             </button>
             <button
               onClick={() => setActiveDrawer("user")}
@@ -169,7 +196,7 @@ export function AppLayout({
                   <Icon className={`h-6 w-6 sm:h-7 sm:w-7 ${isActive ? 'text-primary' : 'text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]'}`} />
                   {isActive && <span className="absolute inset-0 rounded-2xl bg-primary/20 animate-pulse-slow pointer-events-none" />}
                 </div>
-                <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mt-1 hidden sm:block ${isActive ? 'text-primary' : 'text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]'}`}>
+                <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mt-1 hidden sm:block ${isActive ? 'text-primary' : 'text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]'}`}>
                   {item.label}
                 </span>
               </Link>
@@ -206,7 +233,7 @@ export function AppLayout({
               </div>
               <div className="text-left min-w-0">
                 <p className="text-sm font-black text-[var(--color-text-main)] leading-none mb-1 truncate">{company.name}</p>
-                <p className="text-[8px] font-black text-[var(--color-text-dim)] uppercase tracking-widest">VAT: {company.vat_number}</p>
+                <p className="text-[10px] font-black text-[var(--color-text-dim)] uppercase tracking-widest">VAT: {company.vat_number}</p>
               </div>
             </button>
           ))}
@@ -250,6 +277,55 @@ export function AppLayout({
 
       <Drawer title="Podešavanja" isOpen={activeDrawer === 'settings'} onClose={() => setActiveDrawer(null)}>
         <div className="flex flex-col gap-3">
+          {/* Subscription / License Status */}
+          <div className={`relative overflow-hidden rounded-2xl p-5 transition-all ${
+            hasSubNotification
+              ? 'bg-red-500/10 border border-red-500/20'
+              : subInfo.isLifetime
+                ? 'bg-emerald-500/10 border border-emerald-500/20'
+                : 'bg-[var(--color-surface)] border border-[var(--color-border)]'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  hasSubNotification
+                    ? 'bg-red-500/20 text-red-400'
+                    : subInfo.isLifetime
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-primary/10 text-primary'
+                }`}>
+                  <BoxesIcon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--color-text-main)]">Licenca</h3>
+                  <p className={`text-xs font-bold mt-0.5 ${
+                    hasSubNotification
+                      ? 'text-red-400'
+                      : subInfo.isLifetime
+                        ? 'text-emerald-400'
+                        : 'text-[var(--color-text-dim)]'
+                  }`}>
+                    {subInfo.isLifetime
+                      ? "Lifetime Plan"
+                      : hasSubNotification
+                        ? `Ističe za ${subInfo.daysLeft} dana`
+                        : `Važi do ${subInfo.label}`
+                    }
+                  </p>
+                </div>
+              </div>
+              {subInfo.isLifetime && (
+                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">
+                  ∞
+                </span>
+              )}
+              {hasSubNotification && (
+                <span className="h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+              )}
+            </div>
+          </div>
+
+          {/* Settings Navigation */}
           <button
             onClick={() => {
               setActiveDrawer(null);
@@ -314,19 +390,6 @@ export function AppLayout({
             <div className="flex-1 text-left">
               <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Valute</h3>
               <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Konfiguracija valuta i formata</p>
-            </div>
-            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
-          </button>
-
-          <button
-            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
-          >
-            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-              <BoxesIcon className="h-5 w-5" />
-            </div>
-            <div className="flex-1 text-left">
-              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Pretplata</h3>
-              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Planovi i detalji plaćanja</p>
             </div>
             <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
           </button>

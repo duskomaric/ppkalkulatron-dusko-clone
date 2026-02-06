@@ -8,16 +8,15 @@ import {
     deleteBankAccount
 } from "~/api/settings";
 import type { BankAccount } from "~/types/config";
-import type { Company } from "~/types/company";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { PlusIcon, PencilIcon, TrashIcon, ArrowLeftIcon } from "~/components/ui/icons";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
+import { FormInput } from "~/components/ui/Input";
 
 export default function BankAccountsPage() {
-    const { user, token } = useAuth();
+    const { user, selectedCompany, updateSelectedCompany, token } = useAuth();
     const navigate = useNavigate();
-    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [accounts, setAccounts] = useState<BankAccount[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -37,11 +36,7 @@ export default function BankAccountsPage() {
         setToast({ message, type, isVisible: true });
     };
 
-    useEffect(() => {
-        if (user && user.companies.length > 0 && !selectedCompany) {
-            setSelectedCompany(user.companies[0]);
-        }
-    }, [user, selectedCompany]);
+    // Init company handled by useAuth
 
     const loadAccounts = async () => {
         if (!selectedCompany || !token) return;
@@ -97,7 +92,7 @@ export default function BankAccountsPage() {
         <AppLayout
             title="Bankovni Računi"
             selectedCompany={selectedCompany}
-            onCompanyChange={setSelectedCompany}
+            onCompanyChange={updateSelectedCompany}
         >
             <Toast
                 message={toast.message}
@@ -145,9 +140,7 @@ export default function BankAccountsPage() {
                                     <p className="text-sm text-[var(--color-text-dim)] font-mono mt-1 tracking-wide">{acc.account_number}</p>
                                 </div>
                                 {acc.is_default && (
-                                    <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider">
-                                        Default
-                                    </span>
+                                    <span className="text-primary text-lg" title="Podrazumijevani račun">★</span>
                                 )}
                             </div>
                             <div className="flex gap-4 text-xs font-bold text-[var(--color-text-muted)] mt-4 pt-4 border-t border-[var(--color-border)]">
@@ -198,19 +191,11 @@ export default function BankAccountsPage() {
                                 onChange={(val: string) => setEditingItem({ ...editingItem, account_number: val })}
                                 required
                             />
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormInput
-                                    label="Valuta"
-                                    value={editingItem.currency || ""}
-                                    onChange={(val: string) => setEditingItem({ ...editingItem, currency: val })}
-                                    required
-                                />
-                                <FormInput
-                                    label="SWIFT (opciono)"
-                                    value={editingItem.swift || ""}
-                                    onChange={(val: string) => setEditingItem({ ...editingItem, swift: val })}
-                                />
-                            </div>
+                            <FormInput
+                                label="SWIFT (opciono)"
+                                value={editingItem.swift || ""}
+                                onChange={(val: string) => setEditingItem({ ...editingItem, swift: val })}
+                            />
                             <div className="flex items-center gap-3 pt-2">
                                 <input
                                     type="checkbox"
@@ -252,21 +237,5 @@ export default function BankAccountsPage() {
                 type="danger"
             />
         </AppLayout>
-    );
-}
-
-function FormInput({ label, value, onChange, type = "text", required = false, maxLength }: any) {
-    return (
-        <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-dim)] pl-1">{label}</label>
-            <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                required={required}
-                maxLength={maxLength}
-                className="w-full h-11 px-4 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-medium placeholder:text-[var(--color-text-muted)]"
-            />
-        </div>
     );
 }

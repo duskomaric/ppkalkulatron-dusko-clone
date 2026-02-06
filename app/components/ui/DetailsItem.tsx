@@ -14,8 +14,8 @@ export function DetailsItem({ icon: Icon, label, value, color }: DetailsItemProp
                 <Icon className="h-3.5 w-3.5" />
             </div>
             <div className="min-w-0">
-                <p className="text-[7px] font-black text-[var(--color-text-dim)] uppercase tracking-widest leading-none mb-0.5">{label}</p>
-                <p className="text-[10px] font-bold text-[var(--color-text-main)] truncate italic leading-none">
+                <p className="text-[10px] font-black text-[var(--color-text-dim)] uppercase tracking-[0.1em] leading-none mb-1">{label}</p>
+                <p className="text-sm font-bold text-[var(--color-text-main)] truncate italic leading-tight">
                     {typeof value === 'boolean' ? (value ? 'Aktivan' : 'Neaktivan') : (value || '-')}
                 </p>
             </div>

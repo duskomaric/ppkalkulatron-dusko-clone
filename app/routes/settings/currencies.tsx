@@ -8,16 +8,15 @@ import {
 } from "~/api/settings";
 import { getCurrencies } from "~/api/config";
 import type { Currency } from "~/types/config";
-import type { Company } from "~/types/company";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { PlusIcon, PencilIcon, TrashIcon, ArrowLeftIcon } from "~/components/ui/icons";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
+import { FormInput } from "~/components/ui/Input";
 
 export default function CurrenciesPage() {
-    const { user, token } = useAuth();
+    const { user, selectedCompany, updateSelectedCompany, token } = useAuth();
     const navigate = useNavigate();
-    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [currencies, setCurrencies] = useState<Currency[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -37,11 +36,7 @@ export default function CurrenciesPage() {
         setToast({ message, type, isVisible: true });
     };
 
-    useEffect(() => {
-        if (user && user.companies.length > 0 && !selectedCompany) {
-            setSelectedCompany(user.companies[0]);
-        }
-    }, [user, selectedCompany]);
+    // Init company handled by useAuth
 
     const loadData = async () => {
         if (!selectedCompany || !token) return;
@@ -97,7 +92,7 @@ export default function CurrenciesPage() {
         <AppLayout
             title="Valute"
             selectedCompany={selectedCompany}
-            onCompanyChange={setSelectedCompany}
+            onCompanyChange={updateSelectedCompany}
         >
             <Toast
                 message={toast.message}
@@ -141,15 +136,13 @@ export default function CurrenciesPage() {
                         <div key={curr.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl relative group shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 bg-[var(--color-surface-hover)] rounded-full flex items-center justify-center text-xl font-black text-primary">
+                                    <div className="h-10 min-w-10 px-2 bg-[var(--color-surface-hover)] rounded-full flex items-center justify-center text-primary font-black text-sm">
                                         {curr.symbol}
                                     </div>
                                     <span className="font-bold text-[var(--color-text-main)] text-lg">{curr.code}</span>
                                 </div>
                                 {curr.is_default && (
-                                    <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider">
-                                        Default
-                                    </span>
+                                    <span className="text-primary text-lg" title="Podrazumijevana valuta">★</span>
                                 )}
                             </div>
                             <p className="text-sm text-[var(--color-text-dim)] font-medium pl-1">{curr.name}</p>
@@ -245,21 +238,5 @@ export default function CurrenciesPage() {
                 type="danger"
             />
         </AppLayout>
-    );
-}
-
-function FormInput({ label, value, onChange, type = "text", required = false, maxLength }: any) {
-    return (
-        <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-dim)] pl-1">{label}</label>
-            <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                required={required}
-                maxLength={maxLength}
-                className="w-full h-11 px-4 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-medium placeholder:text-[var(--color-text-muted)]"
-            />
-        </div>
     );
 }

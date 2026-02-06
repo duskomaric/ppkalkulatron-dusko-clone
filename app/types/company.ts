@@ -14,7 +14,7 @@ export interface Company {
   identification_number: string;
   vat_number: string;
   is_active: boolean;
-  subscription_ends_at: string;
+  subscription_ends_at: string | null;
   created_at: string;
   updated_at: string;
   users?: UserSummary[];

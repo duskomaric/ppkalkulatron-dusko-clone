@@ -6,15 +6,14 @@ import {
     ArrowLeftIcon,
     CheckCircleIcon
 } from "~/components/ui/icons";
-import type { Company } from "~/types/company";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { updateCompany } from "~/api/companies";
+import { FormInput } from "~/components/ui/Input";
 
 export default function CompanyProfilePage() {
-    const { user, token, updateUserAction } = useAuth();
+    const { user, token, selectedCompany, updateSelectedCompany, updateUserAction } = useAuth();
     const navigate = useNavigate();
     
-    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
         message: "",
         type: "success",
@@ -35,11 +34,7 @@ export default function CompanyProfilePage() {
         vat_number: "",
     });
 
-    useEffect(() => {
-        if (user && user.companies.length > 0 && !selectedCompany) {
-            setSelectedCompany(user.companies[0]);
-        }
-    }, [user, selectedCompany]);
+    // Init company handled by useAuth
 
     useEffect(() => {
         if (selectedCompany) {
@@ -69,7 +64,7 @@ export default function CompanyProfilePage() {
         setLoading(true);
         try {
             const response = await updateCompany(selectedCompany.id, token, formData);
-            setSelectedCompany(response.data);
+            updateSelectedCompany(response.data);
             
             if (user) {
                 const updatedCompanies = user.companies.map(c => 
@@ -92,7 +87,7 @@ export default function CompanyProfilePage() {
         <AppLayout
             title="Profil kompanije"
             selectedCompany={selectedCompany}
-            onCompanyChange={setSelectedCompany}
+            onCompanyChange={updateSelectedCompany}
         >
             <Toast
                 message={toast.message}
@@ -197,21 +192,5 @@ export default function CompanyProfilePage() {
                 </div>
             </form>
         </AppLayout>
-    );
-}
-
-function FormInput({ label, value, onChange, type = "text", required = false, placeholder }: any) {
-    return (
-        <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-dim)] pl-1">{label}</label>
-            <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                required={required}
-                placeholder={placeholder}
-                className="w-full h-11 px-4 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-medium placeholder:text-[var(--color-text-muted)]"
-            />
-        </div>
     );
 }

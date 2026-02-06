@@ -51,9 +51,8 @@ const emptyInvoiceItem: InvoiceItemInput = {
 };
 
 export default function InvoicesPage() {
-  const { user, token, isAuthenticated } = useAuth();
+  const { user, selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
 
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -115,12 +114,7 @@ export default function InvoicesPage() {
     }).format(amount / 100);
   };
 
-  // Init company
-  useEffect(() => {
-    if (user && user.companies.length > 0 && !selectedCompany) {
-      setSelectedCompany(user.companies[0]);
-    }
-  }, [user, selectedCompany]);
+  // Init company handled by useAuth
 
   // Fetch invoices
   const fetchInvoices = useCallback(async (page: number = 1) => {
@@ -334,7 +328,7 @@ export default function InvoicesPage() {
     <AppLayout
       title="invoices"
       selectedCompany={selectedCompany}
-      onCompanyChange={setSelectedCompany}
+      onCompanyChange={updateSelectedCompany}
       actions={
         <button
           onClick={openCreateForm}
@@ -370,8 +364,8 @@ export default function InvoicesPage() {
 
             {/* Middle: Client */}
             <div className="flex items-center gap-2">
-              <ContactRoundIcon className="w-3 h-3 text-[var(--color-text-dim)]" />
-              <span className="text-[11px] font-bold text-[var(--color-text-muted)] tracking-tight truncate">
+              <ContactRoundIcon className="w-3.5 h-3.5 text-[var(--color-text-dim)]" />
+              <span className="text-xs font-bold text-[var(--color-text-muted)] tracking-tight truncate">
                 {inv.client?.name || 'Nepoznat klijent'}
               </span>
             </div>
@@ -385,9 +379,9 @@ export default function InvoicesPage() {
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                     <Calendar1Icon className="w-2.5 h-2.5" />
-                    <span className="text-[7px] font-black uppercase">Datum</span>
+                    <span className="text-[9px] font-black uppercase">Datum</span>
                   </div>
-                  <p className="text-[9px] font-bold text-[var(--color-text-muted)]">
+                  <p className="text-xs font-bold text-[var(--color-text-muted)]">
                     {inv.date}
                   </p>
                 </div>
@@ -395,9 +389,9 @@ export default function InvoicesPage() {
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
                     <Clock1Icon className="w-2.5 h-2.5" />
-                    <span className="text-[7px] font-black uppercase">Dospijeće</span>
+                    <span className="text-[9px] font-black uppercase">Dospijeće</span>
                   </div>
-                  <p className="text-[9px] font-bold text-red-500">
+                  <p className="text-xs font-bold text-red-500">
                     {inv.due_date}
                   </p>
                 </div>

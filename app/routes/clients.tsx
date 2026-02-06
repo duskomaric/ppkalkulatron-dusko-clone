@@ -3,7 +3,6 @@ import { useAuth } from "~/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
 import { getClients, createClient, updateClient, deleteClient } from "~/api/clients";
 import type { Client } from "~/types/client";
-import type { Company } from "~/types/company";
 import {
   ContactRoundIcon,
   XIcon,
@@ -31,9 +30,8 @@ import { FormDrawer } from "~/components/ui/FormDrawer";
 import type { PaginationMeta } from "~/types/api";
 
 export default function ClientsPage() {
-  const { user, token, isAuthenticated } = useAuth();
+  const { user, selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
 
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,11 +67,7 @@ export default function ClientsPage() {
     is_active: true,
   });
 
-  useEffect(() => {
-    if (user && user.companies.length > 0 && !selectedCompany) {
-      setSelectedCompany(user.companies[0]);
-    }
-  }, [user, selectedCompany]);
+  // Init company handled by useAuth
 
   const showToast = (message: string, type: ToastType) => {
     setToast({ message, type, isVisible: true });
@@ -180,7 +174,7 @@ export default function ClientsPage() {
     <AppLayout
       title="clients"
       selectedCompany={selectedCompany}
-      onCompanyChange={setSelectedCompany}
+      onCompanyChange={updateSelectedCompany}
       actions={
         <button
           onClick={openCreateForm}
@@ -233,10 +227,10 @@ export default function ClientsPage() {
                 {client.email && (
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                      <MailIcon className="w-2 h-2" />
-                      <span className="text-[7px] font-black uppercase tracking-tighter">Email</span>
+                      <MailIcon className="w-2.5 h-2.5" />
+                      <span className="text-[9px] font-black uppercase tracking-tight">Email</span>
                     </div>
-                    <p className="text-[9px] font-bold text-[var(--color-text-muted)] truncate max-w-[100px]">
+                    <p className="text-xs font-bold text-[var(--color-text-muted)] truncate max-w-[150px]">
                       {client.email}
                     </p>
                   </div>
@@ -245,10 +239,10 @@ export default function ClientsPage() {
                 {client.phone && (
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                      <PhoneIcon className="w-2 h-2" />
-                      <span className="text-[7px] font-black uppercase tracking-tighter">Telefon</span>
+                      <PhoneIcon className="w-2.5 h-2.5" />
+                      <span className="text-[9px] font-black uppercase tracking-tight">Telefon</span>
                     </div>
-                    <p className="text-[9px] font-bold text-[var(--color-text-muted)]">
+                    <p className="text-xs font-bold text-[var(--color-text-muted)]">
                       {client.phone}
                     </p>
                   </div>
@@ -258,11 +252,11 @@ export default function ClientsPage() {
               {(client.address || client.city) && (
                 <div className="text-right flex flex-col items-end gap-0.5">
                   <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                    <MapPinIcon className="w-2 h-2" />
-                    <span className="text-[7px] font-black uppercase tracking-tighter">Lokacija</span>
+                    <MapPinIcon className="w-2.5 h-2.5" />
+                    <span className="text-[9px] font-black uppercase tracking-tight">Lokacija</span>
                   </div>
-                  <p className="text-[9px] font-black text-[var(--color-text-main)] tracking-tight italic leading-none">
-                    <span className="text-primary text-[7px] not-italic opacity-70 mr-1">{client.zip}</span> {client.city}
+                  <p className="text-xs font-black text-[var(--color-text-main)] tracking-tight italic leading-none">
+                    <span className="text-primary text-[9px] not-italic opacity-70 mr-1">{client.zip}</span> {client.city}
                   </p>
                 </div>
               )}
