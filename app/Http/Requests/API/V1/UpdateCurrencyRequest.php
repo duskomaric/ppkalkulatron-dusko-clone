@@ -26,8 +26,9 @@ class UpdateCurrencyRequest extends FormRequest
 
         return [
             'code' => 'sometimes|string|size:3|unique:currencies,code,' . $currencyId . ',id,company_id,' . $companyId,
-            'prefix' => 'sometimes|nullable|string|max:10',
+            'symbol' => 'sometimes|string|max:10',
             'name' => 'sometimes|string|max:255',
+            'is_default' => 'sometimes|boolean',
         ];
     }
 

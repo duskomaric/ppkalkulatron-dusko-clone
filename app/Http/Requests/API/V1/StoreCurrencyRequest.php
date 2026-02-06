@@ -25,8 +25,9 @@ class StoreCurrencyRequest extends FormRequest
 
         return [
             'code' => 'required|string|size:3|unique:currencies,code,NULL,id,company_id,' . $companyId,
-            'prefix' => 'nullable|string|max:10',
+            'symbol' => 'required|string|max:10',
             'name' => 'required|string|max:255',
+            'is_default' => 'sometimes|boolean',
         ];
     }
 
