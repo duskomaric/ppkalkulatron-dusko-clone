@@ -5,6 +5,8 @@ namespace App\Models\Enums;
 enum LanguageEnum: string
 {
     case English = 'en';
+    case Bosnian = 'bs';
+    case Croatian = 'hr';
     case SerbianLatin = 'sr-Latn';
     case SerbianCyrillic = 'sr-Cyrl';
     case French = 'fr';
@@ -16,8 +18,10 @@ enum LanguageEnum: string
     {
         return match ($this) {
             self::English => 'English',
-            self::SerbianLatin => 'Serbian (Latin)',
-            self::SerbianCyrillic => 'Serbian (Cyrillic)',
+            self::Bosnian => 'Bosanski',
+            self::Croatian => 'Hrvatski',
+            self::SerbianLatin => 'Srpski (Latinica)',
+            self::SerbianCyrillic => 'Srpski (Ćirilica)',
             self::French => 'French',
             self::German => 'German',
             self::Italian => 'Italian',
