@@ -8,6 +8,8 @@ interface CurrencyInputProps {
     required?: boolean;
     disabled?: boolean;
     className?: string;
+    /** Ikona unutar inputa (lijeva strana) */
+    icon?: React.ElementType;
 }
 
 /**
@@ -25,7 +27,8 @@ export function CurrencyInput({
     label,
     required,
     disabled,
-    className = ""
+    className = "",
+    icon: Icon
 }: CurrencyInputProps) {
     // Display value formatted with 2 decimals
     const formatDisplay = (cents: number): string => {
@@ -81,12 +84,17 @@ export function CurrencyInput({
     return (
         <div className={`space-y-1.5 ${className}`}>
             {label && (
-                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
+                <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
                     {label}
                     {required && <span className="text-primary ml-0.5">*</span>}
                 </label>
             )}
             <div className="relative">
+                {Icon && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                        <Icon className="h-4 w-4" />
+                    </div>
+                )}
                 <input
                     type="text"
                     inputMode="numeric"
@@ -95,7 +103,7 @@ export function CurrencyInput({
                     onFocus={handleFocus}
                     onKeyDown={handleKeyDown}
                     disabled={disabled}
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm px-4 py-2.5 pr-12 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all text-right"
+                    className={`w-full h-[44px] min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm py-2.5 pr-12 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all text-right ${Icon ? "pl-10" : "px-4"}`}
                 />
                 {currency && (
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--color-text-dim)]">

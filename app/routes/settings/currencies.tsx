@@ -9,8 +9,10 @@ import {
 import { getCurrencies } from "~/api/config";
 import type { Currency } from "~/types/config";
 import { Toast, type ToastType } from "~/components/ui/Toast";
+import { Toggle } from "~/components/ui/Toggle";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
-import { PlusIcon, PencilIcon, TrashIcon, ArrowLeftIcon } from "~/components/ui/icons";
+import { PencilIcon, TrashIcon, ArrowLeftIcon } from "~/components/ui/icons";
+import { CreateButton } from "~/components/ui/CreateButton";
 import { useNavigate } from "react-router";
 import { FormInput } from "~/components/ui/Input";
 
@@ -113,15 +115,12 @@ export default function CurrenciesPage() {
                     <h1 className="text-2xl font-black text-[var(--color-text-main)]">Valute</h1>
                     <p className="text-[var(--color-text-dim)]">Upravljajte listom valuta koje vaša kompanija koristi.</p>
                 </div>
-                <button
+                <CreateButton
+                    label="Nova valuta"
                     onClick={() => setEditingItem({
                         code: "", name: "", symbol: "", is_default: false
                     })}
-                    className="bg-primary hover:bg-primary-hover text-white font-bold py-2.5 px-6 rounded-xl shadow-glow-primary transition-all flex items-center gap-2"
-                >
-                    <PlusIcon className="h-5 w-5" />
-                    Nova Valuta
-                </button>
+                />
             </div>
 
             {loading && (
@@ -197,15 +196,13 @@ export default function CurrenciesPage() {
                                 onChange={(val: string) => setEditingItem({ ...editingItem, name: val })}
                                 required
                             />
-                            <div className="flex items-center gap-3 pt-2">
-                                <input
-                                    type="checkbox"
+                            <div className="pt-2">
+                                <Toggle
                                     id="is_default_curr"
                                     checked={editingItem.is_default || false}
-                                    onChange={(e) => setEditingItem({ ...editingItem, is_default: e.target.checked })}
-                                    className="w-5 h-5 accent-primary rounded cursor-pointer"
+                                    onChange={(v) => setEditingItem({ ...editingItem, is_default: v })}
+                                    label="Postavi kao podrazumijevanu"
                                 />
-                                <label htmlFor="is_default_curr" className="text-sm font-bold text-[var(--color-text-main)] cursor-pointer">Postavi kao podrazumijevanu</label>
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-[var(--color-border)]">

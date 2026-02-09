@@ -2,7 +2,9 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import { getArticles, createArticle, updateArticle, deleteArticle } from "~/api/articles";
+import { getCurrencies, getMe } from "~/api/config";
 import type { Article } from "~/types/article";
+import type { Currency, SelectOption } from "~/types/config";
 import {
     BoxesIcon,
     TrashIcon,
@@ -13,6 +15,7 @@ import {
     CheckCircleIcon,
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
+import { CreateButton } from "~/components/ui/CreateButton";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
@@ -24,12 +27,17 @@ import { DetailsItem } from "~/components/ui/DetailsItem";
 import { LoadingState } from "~/components/ui/LoadingState";
 import { DetailDrawer } from "~/components/ui/DetailDrawer";
 import { FormDrawer } from "~/components/ui/FormDrawer";
+import { Toggle } from "~/components/ui/Toggle";
 import type { PaginationMeta } from "~/types/api";
 
 export default function ArticlesPage() {
     const { user, selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
 
     const [articles, setArticles] = useState<Article[]>([]);
+    const [taxRates, setTaxRates] = useState<{ value: string; label: string; rate: number }[]>([]);
+    const [currencies, setCurrencies] = useState<Currency[]>([]);
+    const [articleTypes, setArticleTypes] = useState<SelectOption[]>([]);
+    const [units, setUnits] = useState<SelectOption[]>([]);
     const [pagination, setPagination] = useState<PaginationMeta | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -51,15 +59,15 @@ export default function ArticlesPage() {
     const [formMode, setFormMode] = useState<"create" | "edit">("create");
 
     // Form State
-    const [formData, setFormData] = useState<Partial<Article> & { price?: number }>({
+    const [formData, setFormData] = useState<Partial<Article> & { pricesByCurrency?: Record<string, number> }>({
         name: "",
         description: "",
         type: "goods",
         unit: "kom",
-        tax_category: "VAT20",
+        tax_rate: null,
         is_active: true,
         prices_meta: {},
-        price: 0
+        pricesByCurrency: {}
     });
 
     // Init company handled by useAuth
@@ -72,9 +80,17 @@ export default function ArticlesPage() {
         if (!selectedCompany || !token) return;
         setLoading(true);
         try {
-            const response = await getArticles(selectedCompany.slug, token, page);
-            setArticles(response.data);
-            setPagination(response.meta);
+            const [articlesRes, currenciesRes, meRes] = await Promise.all([
+                getArticles(selectedCompany.slug, token, page),
+                getCurrencies(selectedCompany.slug, token),
+                getMe(token, selectedCompany.slug),
+            ]);
+            setArticles(articlesRes.data);
+            setCurrencies(currenciesRes.data);
+            setArticleTypes(meRes.data.article_types || []);
+            setUnits(meRes.data.units || []);
+            setTaxRates(meRes.data.tax_rates || []);
+            setPagination(articlesRes.meta);
             setCurrentPage(page);
         } catch (error: any) {
             showToast(error.message || "Greška pri dohvatanju artikala", "error");
@@ -96,15 +112,17 @@ export default function ArticlesPage() {
 
     const openCreateForm = () => {
         setFormMode("create");
+        const initialPrices: Record<string, number> = {};
+        currencies.forEach(c => { initialPrices[c.code] = 0; });
         setFormData({
             name: "",
             description: "",
-            type: "goods",
-            unit: "kom",
-            tax_category: "VAT20",
+            type: articleTypes[0]?.value ?? "goods",
+            unit: units[0]?.value ?? "kom",
+            tax_rate: taxRates[0]?.value ?? null,
             is_active: true,
             prices_meta: {},
-            price: 0
+            pricesByCurrency: initialPrices
         });
         setFormDrawerOpen(true);
     };
@@ -112,10 +130,14 @@ export default function ArticlesPage() {
     const openEditForm = () => {
         if (!activeArticle) return;
         setFormMode("edit");
-        const firstCurrency = activeArticle.prices_meta ? Object.keys(activeArticle.prices_meta)[0] : null;
+        const pricesByCurrency: Record<string, number> = {};
+        currencies.forEach(c => {
+            pricesByCurrency[c.code] = activeArticle.prices_meta?.[c.code] ?? 0;
+        });
         setFormData({
             ...activeArticle,
-            price: firstCurrency ? (activeArticle.prices_meta?.[firstCurrency] || 0) : 0
+            tax_rate: activeArticle.tax_rate?.label ?? null,
+            pricesByCurrency
         });
         setViewDrawerOpen(false);
         setFormDrawerOpen(true);
@@ -127,12 +149,21 @@ export default function ArticlesPage() {
 
         setLoading(true);
 
-        // Preparation of data for API
+        // Build prices_meta from pricesByCurrency (filter out zeros if desired, or keep all)
+        const prices_meta: Record<string, number> = {};
+        Object.entries(formData.pricesByCurrency || {}).forEach(([code, val]) => {
+            if (val != null && !Number.isNaN(val)) prices_meta[code] = val;
+        });
+
         const apiData = {
-            ...formData,
-            prices_meta: formData.prices_meta || { BAM: formData.price || 0 }
+            name: formData.name,
+            description: formData.description ?? null,
+            type: formData.type ?? "goods",
+            unit: formData.unit ?? "kom",
+            tax_rate: formData.tax_rate ?? null,
+            is_active: formData.is_active ?? true,
+            prices_meta
         };
-        delete (apiData as any).price;
 
         try {
             if (formMode === "create") {
@@ -175,6 +206,8 @@ export default function ArticlesPage() {
             finalValue = (e.target as HTMLInputElement).checked;
         } else if (type === 'number') {
             finalValue = value === "" ? 0 : parseFloat(value);
+        } else if (name === 'tax_rate') {
+            finalValue = value === "" ? null : value;
         }
 
         setFormData(prev => ({
@@ -190,14 +223,7 @@ export default function ArticlesPage() {
             selectedCompany={selectedCompany}
             onCompanyChange={updateSelectedCompany}
             actions={
-                <button
-                    onClick={openCreateForm}
-                    className="cursor-pointer h-10 w-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold text-sm border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-glow-primary"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14" /><path d="M12 5v14" />
-                    </svg>
-                </button>
+                <CreateButton label="Novi artikal" onClick={openCreateForm} />
             }
         >
             <Toast
@@ -251,66 +277,92 @@ export default function ArticlesPage() {
                                         <HashIcon className="w-2.5 h-2.5" />
                                         <span className="text-[9px] font-black uppercase tracking-tight">Porez</span>
                                     </div>
-                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">{article.tax_category}</p>
+                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">
+                                        {article.tax_rate ? `${article.tax_rate.label} (${article.tax_rate.rate}%)` : "—"}
+                                    </p>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <div className="flex items-center gap-1 text-[var(--color-text-dim)] justify-end mb-0.5">
-                                    <DollarIcon className="w-2.5 h-2.5" />
-                                    <span className="text-[9px] font-black uppercase tracking-tight">Cijena</span>
+                            <div className="text-right flex flex-col gap-0.5">
+                                <span className="text-[9px] font-black uppercase tracking-tight text-[var(--color-text-dim)]">Cijene</span>
+                                <div className="flex flex-wrap justify-end gap-x-2 gap-y-0.5">
+                                    {article.prices_meta && typeof article.prices_meta === 'object' && !Array.isArray(article.prices_meta)
+                                        ? Object.entries(article.prices_meta)
+                                            .sort(([a], [b]) => a.localeCompare(b))
+                                            .map(([curr, amt]) => (
+                                                <p key={curr} className="text-sm font-black text-[var(--color-text-main)] tracking-tighter italic leading-none">
+                                                    {amt != null ? new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amt) : "0.00"}{" "}
+                                                    <span className="text-[10px] opacity-60 not-italic uppercase font-bold">{curr}</span>
+                                                </p>
+                                            ))
+                                        : <p className="text-sm font-bold text-[var(--color-text-dim)]">—</p>
+                                    }
                                 </div>
-                                <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic leading-none">
-                                    {article.prices_meta && Object.values(article.prices_meta)[0]}{' '}
-                                    <span className="text-[11px] opacity-60 not-italic uppercase">
-                                        {article.prices_meta && Object.keys(article.prices_meta)[0]}
-                                    </span>
-                                </p>
                             </div>
                         </div>
                     </EntityCard>
                 ))}
             </div>
 
-            {/* Desktop: table */}
-            <div className="hidden md:block overflow-x-auto rounded-xl border border-[var(--color-border)]">
-                <table className="w-full">
-                    <thead>
-                        <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
-                            <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Naziv</th>
-                            <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Tip</th>
-                            <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Jedinica</th>
-                            <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Porez</th>
-                            <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Cijena</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {articles.map((article) => {
-                            const firstPrice = article.prices_meta && Object.entries(article.prices_meta)[0];
-                            return (
-                                <tr
-                                    key={article.id}
-                                    onClick={() => handleRowClick(article)}
-                                    className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors last:border-b-0"
-                                >
-                                    <td className="py-3 px-4">
-                                        <span className="font-black text-[var(--color-text-main)] tracking-tight">{article.name}</span>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <StatusBadge
-                                            label={article.type_label}
-                                            color={article.type === 'products' ? 'blue' : 'amber'}
-                                        />
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{article.unit}</td>
-                                    <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{article.tax_category}</td>
-                                    <td className="py-3 px-4 text-right font-black text-[var(--color-text-main)]">
-                                        {firstPrice ? `${firstPrice[1]} ${firstPrice[0]}` : '—'}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+            {/* Desktop: card list (1 kolona, bez ikone na cijeni - isto kao mobile) */}
+            <div className="hidden md:block space-y-4">
+                {articles.map((article) => (
+                    <EntityCard key={article.id} onClick={() => handleRowClick(article)}>
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-primary/10">
+                                    <BoxesIcon className="w-3.5 h-3.5 text-primary" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-tight group-hover:text-primary transition-colors">
+                                        {article.name}
+                                    </span>
+                                    <p className="text-[10px] font-bold text-[var(--color-text-dim)] uppercase tracking-widest">{article.type_label}</p>
+                                </div>
+                            </div>
+                            <StatusBadge
+                                label={article.type_label}
+                                color={article.type === 'products' ? 'blue' : 'amber'}
+                            />
+                        </div>
+                        <div className="h-[1px] w-full bg-[var(--color-border)]" />
+                        <div className="flex justify-between items-end">
+                            <div className="flex gap-4">
+                                <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
+                                        <TagIcon className="w-2.5 h-2.5" />
+                                        <span className="text-[9px] font-black uppercase tracking-tight">Jedinica</span>
+                                    </div>
+                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">{article.unit}</p>
+                                </div>
+                                <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
+                                        <HashIcon className="w-2.5 h-2.5" />
+                                        <span className="text-[9px] font-black uppercase tracking-tight">Porez</span>
+                                    </div>
+                                    <p className="text-xs font-bold text-[var(--color-text-muted)]">
+                                        {article.tax_rate ? `${article.tax_rate.label} (${article.tax_rate.rate}%)` : "—"}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="text-right flex flex-col gap-0.5">
+                                <span className="text-[9px] font-black uppercase tracking-tight text-[var(--color-text-dim)]">Cijene</span>
+                                <div className="flex flex-wrap justify-end gap-x-2 gap-y-0.5">
+                                    {article.prices_meta && typeof article.prices_meta === 'object' && !Array.isArray(article.prices_meta)
+                                        ? Object.entries(article.prices_meta)
+                                            .sort(([a], [b]) => a.localeCompare(b))
+                                            .map(([curr, amt]) => (
+                                                <p key={curr} className="text-sm font-black text-[var(--color-text-main)] tracking-tighter italic leading-none">
+                                                    {amt != null ? new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amt) : "0.00"}{" "}
+                                                    <span className="text-[10px] opacity-60 not-italic uppercase font-bold">{curr}</span>
+                                                </p>
+                                            ))
+                                        : <p className="text-sm font-bold text-[var(--color-text-dim)]">—</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </EntityCard>
+                ))}
             </div>
 
             {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
@@ -373,7 +425,7 @@ export default function ArticlesPage() {
 
                         <div className="grid grid-cols-2 gap-2">
                             <DetailsItem icon={TagIcon} label="Jedinica mjere" value={activeArticle.unit} />
-                            <DetailsItem icon={HashIcon} label="Porezna kategorija" value={activeArticle.tax_category} />
+                            <DetailsItem icon={HashIcon} label="Porezna stopa" value={activeArticle.tax_rate ? `${activeArticle.tax_rate.label} (${activeArticle.tax_rate.rate}%)` : "—"} />
                             <DetailsItem icon={CheckCircleIcon} label="Status" value={activeArticle.is_active} />
                         </div>
                     </div>
@@ -409,80 +461,90 @@ export default function ArticlesPage() {
                     />
                 </div>
 
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-dim)] ml-1">Tip</label>
+                    <select
+                        name="type"
+                        value={formData.type}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-black text-[11px] uppercase tracking-widest appearance-none outline-none"
+                    >
+                        {articleTypes.map((at) => (
+                            <option key={at.value} value={at.value}>{at.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {currencies.length > 0 ? (
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Cijene po valuti (sa porezom)</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {currencies.map((curr) => (
+                                <Input
+                                    key={curr.code}
+                                    label={curr.code}
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={formData.pricesByCurrency?.[curr.code] ?? ""}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            pricesByCurrency: {
+                                                ...(prev.pricesByCurrency || {}),
+                                                [curr.code]: Number.isNaN(val) ? 0 : val
+                                            }
+                                        }));
+                                    }}
+                                    placeholder="0.00"
+                                />
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-xs text-[var(--color-text-dim)]">Dodajte valute u podešavanjima kompanije</p>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-dim)] ml-1">Tip</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1">Jedinica mjere</label>
                         <select
-                            name="type"
-                            value={formData.type}
+                            name="unit"
+                            value={formData.unit}
                             onChange={handleInputChange}
                             className="w-full px-4 py-3.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-black text-[11px] uppercase tracking-widest appearance-none outline-none"
                         >
-                            <option value="goods">ROBA</option>
-                            <option value="services">USLUGE</option>
-                            <option value="products">PROIZVODI</option>
+                            {units.map((u) => (
+                                <option key={u.value} value={u.value}>{u.label}</option>
+                            ))}
                         </select>
                     </div>
-                    <Input
-                        label="Cijena (EUR)"
-                        name="price"
-                        type="number"
-                        step="0.01"
-                        icon={DollarIcon}
-                        value={formData.price}
-                        onChange={handleInputChange}
-                        placeholder="0.00"
-                    />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <Input
-                        label="Jedinica mjere"
-                        name="unit"
-                        value={formData.unit}
-                        onChange={handleInputChange}
-                        placeholder="kom, sat, kg..."
-                    />
-                    <Input
-                        label="Porezna kategorija"
-                        name="tax_category"
-                        value={formData.tax_category}
-                        onChange={handleInputChange}
-                        placeholder="VAT20"
-                    />
-                </div>
-
-                <label
-                    htmlFor="is_active"
-                    className="flex items-center gap-3 p-3 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] cursor-pointer"
-                >
-                    <div className="relative flex items-center">
-                        <input
-                            type="checkbox"
-                            id="is_active"
-                            name="is_active"
-                            checked={formData.is_active}
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-dim)] ml-1">Porezna stopa (OFS)</label>
+                        <select
+                            name="tax_rate"
+                            value={formData.tax_rate ?? ""}
                             onChange={handleInputChange}
-                            className="sr-only peer"
-                        />
-
-                        <div className="w-9 h-5 bg-[var(--color-border-strong)] rounded-full
-                    peer-focus:outline-none
-                    peer-checked:bg-primary
-                    after:content-['']
-                    after:absolute after:top-[2px] after:left-[2px]
-                    after:h-4 after:w-4 after:rounded-full
-                    after:bg-gray-400 after:border after:border-gray-300
-                    after:transition-all
-                    peer-checked:after:translate-x-full
-                    peer-checked:after:bg-white">
-                        </div>
+                            className="w-full px-4 py-3.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-black text-[11px] uppercase tracking-widest appearance-none outline-none"
+                        >
+                            <option value="">—</option>
+                            {taxRates.map((tr) => (
+                                <option key={tr.value} value={tr.value}>
+                                    {tr.label}
+                                </option>
+                            ))}
+                        </select>
                     </div>
+                </div>
 
-                    <span className="text-[13px] font-bold text-[var(--color-text-muted)]">
-                        Artikal je aktivan
-                    </span>
-                </label>
+                <Toggle
+                    id="is_active"
+                    name="is_active"
+                    checked={formData.is_active}
+                    onChange={(v) => handleInputChange({ target: { name: "is_active", type: "checkbox", checked: v } } as React.ChangeEvent<HTMLInputElement>)}
+                    label="Artikal je aktivan"
+                />
             </FormDrawer>
         </AppLayout>
     );

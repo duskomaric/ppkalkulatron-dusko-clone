@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { useAuth } from "~/hooks/useAuth";
 import { getMe } from "~/api/config";
-import { updateCompanySettings, getBankAccounts, getCurrencies } from "~/api/settings";
-import type { CompanySettings, AppConfigData, BankAccount, Currency } from "~/types/config";
+import { updateCompanySettings, getCurrencies } from "~/api/settings";
+import type { CompanySettings, AppConfigData, Currency } from "~/types/config";
 import { Toast, type ToastType } from "~/components/ui/Toast";
-import { CheckCircleIcon, ArrowLeftIcon } from "~/components/ui/icons";
+import { Toggle } from "~/components/ui/Toggle";
+import { CheckCircleIcon, ArrowLeftIcon, MailIcon } from "~/components/ui/icons";
 import { useNavigate } from "react-router";
 import { FormInput, FormSelect, FormTextarea } from "~/components/ui/Input";
 
@@ -13,7 +14,6 @@ export default function GeneralSettingsPage() {
     const { user, selectedCompany, updateSelectedCompany, token } = useAuth();
     const navigate = useNavigate();
     const [configData, setConfigData] = useState<AppConfigData | null>(null);
-    const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
     const [currencies, setCurrencies] = useState<Currency[]>([]);
     const [loading, setLoading] = useState(true);
     const [formData, setFormData] = useState<CompanySettings | null>(null);
@@ -38,15 +38,13 @@ export default function GeneralSettingsPage() {
         const loadData = async () => {
             setLoading(true);
             try {
-                const [meRes, bankAccountsRes, currenciesRes] = await Promise.all([
+                const [meRes, currenciesRes] = await Promise.all([
                     getMe(token, selectedCompany.slug),
-                    getBankAccounts(selectedCompany.slug, token),
                     getCurrencies(selectedCompany.slug, token)
                 ]);
                 
                 setConfigData(meRes.data);
                 setFormData(meRes.data.company_settings);
-                setBankAccounts(bankAccountsRes.data);
                 setCurrencies(currenciesRes.data);
             } catch (error) {
                 console.error("Failed to load settings", error);
@@ -109,7 +107,7 @@ export default function GeneralSettingsPage() {
             )}
 
             {!loading && configData && formData && (
-                <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Invoice Configuration */}
                     <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6">
                         <h3 className="text-lg font-black text-[var(--color-text-main)] border-b border-[var(--color-border)] pb-2 mb-6">
@@ -140,15 +138,6 @@ export default function GeneralSettingsPage() {
                                 onChange={(val: string) => setFormData({ ...formData, default_invoice_currency: val })}
                                 options={currencies.map(c => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
                             />
-                            <FormSelect
-                                label="Podrazumijevani Bankovni Račun"
-                                value={formData.default_bank_account_id || ""}
-                                onChange={(val: string) => setFormData({ ...formData, default_bank_account_id: val ? parseInt(val) : null })}
-                                options={[
-                                    { value: "", label: "Nije odabrano" },
-                                    ...bankAccounts.map(b => ({ value: b.id.toString(), label: `${b.bank_name} (${b.account_number})` }))
-                                ]}
-                            />
                         </div>
                     </div>
 
@@ -158,16 +147,12 @@ export default function GeneralSettingsPage() {
                             Numeracija
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="flex items-center gap-3 md:col-span-2 py-2">
-                                <label className="text-sm font-bold text-[var(--color-text-main)] cursor-pointer flex items-center gap-3">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.invoice_numbering_reset_yearly}
-                                        onChange={(e) => setFormData({ ...formData, invoice_numbering_reset_yearly: e.target.checked })}
-                                        className="w-5 h-5 accent-primary rounded cursor-pointer"
-                                    />
-                                    Resetuj brojač godišnje
-                                </label>
+                            <div className="md:col-span-2">
+                                <Toggle
+                                    checked={formData.invoice_numbering_reset_yearly}
+                                    onChange={(v) => setFormData({ ...formData, invoice_numbering_reset_yearly: v })}
+                                    label="Resetuj brojač godišnje"
+                                />
                             </div>
                             <FormInput
                                 label="Početni broj"
@@ -189,22 +174,93 @@ export default function GeneralSettingsPage() {
                         </div>
                     </div>
 
-                    {/* Footer / Notes */}
+                    {/* Notes */}
                     <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6">
                         <h3 className="text-lg font-black text-[var(--color-text-main)] border-b border-[var(--color-border)] pb-2 mb-6">
-                            Podnožje i Napomene
+                            Napomene
                         </h3>
-                        <div className="space-y-6">
-                            <FormTextarea
-                                label="Linije u podnožju fakture"
-                                value={formData.invoice_footer_lines?.join('\n') || ""}
-                                onChange={(val: string) => setFormData({ ...formData, invoice_footer_lines: val.split('\n') })}
-                                rows={4}
-                                placeholder="Unesite svaku liniju u novi red..."
+                        <FormTextarea
+                            label="Podrazumijevane napomene"
+                            value={formData.default_invoice_notes || ""}
+                            onChange={(val: string) => setFormData({ ...formData, default_invoice_notes: val })}
+                            rows={2}
+                            placeholder="Tekst koji će se prikazati kao podrazumijevane napomene na novim fakturama..."
+                        />
+                        <p className="text-[10px] text-[var(--color-text-dim)] font-medium mt-2 pl-1">
+                            Prenose se na nove fakture kada korisnik ne unese napomenu.
+                        </p>
+                    </div>
+
+                    {/* Mail */}
+                    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6">
+                        <h3 className="text-lg font-black text-[var(--color-text-main)] border-b border-[var(--color-border)] pb-2 mb-6 flex items-center gap-2">
+                            <MailIcon className="h-5 w-5 text-primary" />
+                            Slanje maila
+                        </h3>
+                        <p className="text-sm text-[var(--color-text-dim)] mb-4">
+                            Podešavanja za slanje faktura i fiskalnih računa. Možete koristiti vlastiti SMTP server (Gmail, Outlook, itd.) da šaljete kao iz svog inboxa. Ako SMTP nije podešen, koristi se sistemska konfiguracija.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <FormInput
+                                label="Email adresa (from)"
+                                type="email"
+                                value={formData.mail_from_address || ""}
+                                onChange={(val: string) => setFormData({ ...formData, mail_from_address: val || null })}
+                                placeholder="npr. fakture@firma.ba"
                             />
-                            <p className="text-[10px] text-[var(--color-text-dim)] font-medium -mt-4 pl-1">
-                                Ove linije će biti prikazane na dnu svake fakture (npr. podaci o registraciji, napomene o porezu itd.)
-                            </p>
+                            <FormInput
+                                label="Ime pošiljaoca"
+                                type="text"
+                                value={formData.mail_from_name || ""}
+                                onChange={(val: string) => setFormData({ ...formData, mail_from_name: val || null })}
+                                placeholder="npr. Firma d.o.o."
+                            />
+                        </div>
+                        <h4 className="text-sm font-black text-[var(--color-text-muted)] uppercase tracking-wider mb-3">SMTP server (opciono)</h4>
+                        <p className="text-xs text-[var(--color-text-dim)] mb-4">
+                            Za Gmail: host smtp.gmail.com, port 587, encryption TLS. Za Outlook: smtp.office365.com. Uključite „manje sigurne aplikacije“ ili koristite App Password.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormInput
+                                label="SMTP host"
+                                type="text"
+                                value={formData.mail_host || ""}
+                                onChange={(val: string) => setFormData({ ...formData, mail_host: val || null })}
+                                placeholder="npr. smtp.gmail.com"
+                            />
+                            <FormInput
+                                label="SMTP port"
+                                type="number"
+                                value={formData.mail_port ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, mail_port: val ? parseInt(val, 10) : null })}
+                                placeholder="587"
+                            />
+                            <FormSelect
+                                label="Enkripcija"
+                                value={formData.mail_encryption || ""}
+                                onChange={(val: string) => setFormData({ ...formData, mail_encryption: val || null })}
+                                options={[
+                                    { value: "", label: "—" },
+                                    { value: "tls", label: "TLS" },
+                                    { value: "ssl", label: "SSL" },
+                                ]}
+                            />
+                            <FormInput
+                                label="SMTP korisničko ime"
+                                type="text"
+                                value={formData.mail_username || ""}
+                                onChange={(val: string) => setFormData({ ...formData, mail_username: val || null })}
+                                placeholder="npr. vas@email.com"
+                            />
+                            <div className="md:col-span-2">
+                                <FormInput
+                                    label="SMTP lozinka"
+                                    type="password"
+                                    value={formData.mail_password || ""}
+                                    onChange={(val: string) => setFormData({ ...formData, mail_password: val || null })}
+                                    placeholder="••••••••"
+                                />
+                            </div>
                         </div>
                     </div>
 

@@ -16,6 +16,7 @@ import {
   CheckCircleIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
+import { CreateButton } from "~/components/ui/CreateButton";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
@@ -27,6 +28,7 @@ import { DetailsItem } from "~/components/ui/DetailsItem";
 import { LoadingState } from "~/components/ui/LoadingState";
 import { DetailDrawer } from "~/components/ui/DetailDrawer";
 import { FormDrawer } from "~/components/ui/FormDrawer";
+import { Toggle } from "~/components/ui/Toggle";
 import type { PaginationMeta } from "~/types/api";
 
 export default function ClientsPage() {
@@ -176,14 +178,7 @@ export default function ClientsPage() {
       selectedCompany={selectedCompany}
       onCompanyChange={updateSelectedCompany}
       actions={
-        <button
-          onClick={openCreateForm}
-          className="cursor-pointer h-10 w-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold text-sm border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-glow-primary"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14" /><path d="M12 5v14" />
-          </svg>
-        </button>
+        <CreateButton label="Novi klijent" onClick={openCreateForm} />
       }
     >
       <Toast
@@ -255,41 +250,58 @@ export default function ClientsPage() {
         ))}
       </div>
 
-      {/* Desktop: table */}
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-[var(--color-border)]">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
-              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Naziv</th>
-              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Email</th>
-              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Telefon</th>
-              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Grad</th>
-              <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clients.map((client) => (
-              <tr
-                key={client.id}
-                onClick={() => handleRowClick(client)}
-                className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors last:border-b-0"
-              >
-                <td className="py-3 px-4">
-                  <span className="font-black text-[var(--color-text-main)] tracking-tight">{client.name}</span>
-                </td>
-                <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{client.email || '—'}</td>
-                <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{client.phone || '—'}</td>
-                <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{client.city || '—'}</td>
-                <td className="py-3 px-4 text-right">
-                  <StatusBadge
-                    label={client.is_active ? 'Aktivan' : 'Neaktivan'}
-                    color={client.is_active ? 'green' : 'gray'}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Desktop: card list (1 kolona, isto kao mobile) */}
+      <div className="hidden md:block space-y-3">
+        {clients.map((client) => (
+          <EntityCard key={client.id} onClick={() => handleRowClick(client)}>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <ContactRoundIcon className="w-3 h-3 text-primary" />
+                <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-none group-hover:text-primary transition-colors">
+                  {client.name}
+                </span>
+              </div>
+              <StatusBadge
+                label={client.is_active ? 'Aktivan' : 'Neaktivan'}
+                color={client.is_active ? 'green' : 'gray'}
+              />
+            </div>
+            <div className="h-[1px] w-full bg-[var(--color-border)]" />
+            <div className="flex justify-between items-end">
+              <div className="flex gap-4">
+                {client.email && (
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
+                      <MailIcon className="w-2.5 h-2.5" />
+                      <span className="text-[9px] font-black uppercase tracking-tight">Email</span>
+                    </div>
+                    <p className="text-xs font-bold text-[var(--color-text-muted)] truncate max-w-[150px]">{client.email}</p>
+                  </div>
+                )}
+                {client.phone && (
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
+                      <PhoneIcon className="w-2.5 h-2.5" />
+                      <span className="text-[9px] font-black uppercase tracking-tight">Telefon</span>
+                    </div>
+                    <p className="text-xs font-bold text-[var(--color-text-muted)]">{client.phone}</p>
+                  </div>
+                )}
+              </div>
+              {(client.address || client.city) && (
+                <div className="text-right flex flex-col items-end gap-0.5">
+                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
+                    <MapPinIcon className="w-2.5 h-2.5" />
+                    <span className="text-[9px] font-black uppercase tracking-tight">Lokacija</span>
+                  </div>
+                  <p className="text-xs font-black text-[var(--color-text-main)] tracking-tight italic leading-none">
+                    <span className="text-primary text-[9px] not-italic opacity-70 mr-1">{client.zip}</span> {client.city}
+                  </p>
+                </div>
+              )}
+            </div>
+          </EntityCard>
+        ))}
       </div>
 
       {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
@@ -437,37 +449,13 @@ export default function ClientsPage() {
           />
         </div>
 
-        <label
-          htmlFor="is_active"
-          className="flex items-center gap-3 p-3 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] cursor-pointer"
-        >
-          <div className="relative flex items-center">
-            <input
-              type="checkbox"
-              id="is_active"
-              name="is_active"
-              checked={formData.is_active}
-              onChange={handleInputChange}
-              className="sr-only peer"
-            />
-
-            <div className="w-9 h-5 bg-[var(--color-border-strong)] rounded-full
-                    peer-focus:outline-none
-                    peer-checked:bg-primary
-                    after:content-['']
-                    after:absolute after:top-[2px] after:left-[2px]
-                    after:h-4 after:w-4 after:rounded-full
-                    after:bg-gray-400 after:border after:border-gray-300
-                    after:transition-all
-                    peer-checked:after:translate-x-full
-                    peer-checked:after:bg-white">
-            </div>
-          </div>
-
-          <span className="text-[13px] font-bold text-[var(--color-text-muted)]">
-            Klijent je aktivan
-          </span>
-        </label>
+        <Toggle
+          id="is_active"
+          name="is_active"
+          checked={formData.is_active}
+          onChange={(v) => handleInputChange({ target: { name: "is_active", type: "checkbox", checked: v } } as React.ChangeEvent<HTMLInputElement>)}
+          label="Klijent je aktivan"
+        />
       </FormDrawer>
     </AppLayout>
   );

@@ -1,11 +1,25 @@
 export const PAGE_THEMES: Record<string, string> = {
-  "/invoices": "245, 158, 11",  // Amber
-  "/clients": "34, 197, 94",    // Green
-  "/proformas": "168, 85, 247", // Purple
-  "/quotes": "244, 63, 94",   // Rose
-  "/articles": "14, 165, 233",    // Blue
-  "/": "168, 85, 247",         // Purple (Login)
+    // Entry
+    "/": "139, 92, 246",                  // Violet – Login / entry
+
+    // Business core
+    "/invoices": "245, 158, 11",          // Amber – money / invoices
+    "/clients": "34, 197, 94",            // Green – people / partners
+    "/proformas": "236, 72, 153",         // Pink – pre-documents
+    "/quotes": "239, 68, 68",             // Red – offers / urgency
+    "/articles": "59, 130, 246",          // Blue – products / services
+
+    // Settings (teal → blue family, iste ali različite)
+    "/settings/general": "20, 184, 166",        // Teal
+    "/settings/company": "14, 165, 233",        // Sky Blue
+    "/settings/bank-accounts": "56, 189, 248",  // Light Blue
+    "/settings/currencies": "45, 212, 191",     // Aqua
+    "/settings/fiscal": "13, 148, 136",         // Deep Teal
+
+    // Profile
+    "/profile": "99, 102, 241",            // Indigo – personal space
 };
+
 
 export const DEFAULT_THEME = "34, 197, 94"; // Green
 

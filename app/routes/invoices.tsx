@@ -1,9 +1,10 @@
 import { useAuth } from "~/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
-import { getInvoices, getInvoice, createInvoice, updateInvoice } from "~/api/invoices";
+import { getInvoices, getInvoice, createInvoice, updateInvoice, fiscalizeInvoice, fiscalizeCopy, fiscalizeRefund, downloadInvoicePdf, sendInvoiceEmail } from "~/api/invoices";
 import { getClients } from "~/api/clients";
 import { getArticles } from "~/api/articles";
 import { getMe, getCurrencies } from "~/api/config";
+import { getBankAccounts } from "~/api/settings";
 import type { Invoice, InvoiceInput, InvoiceItemInput } from "~/types/invoice";
 import type { Client } from "~/types/client";
 import type { Article } from "~/types/article";
@@ -20,9 +21,18 @@ import {
   GlobeIcon,
   RepeatIcon,
   CreditCardIcon,
-  StickyNoteIcon
+  StickyNoteIcon,
+  CheckCircleIcon,
+  AlertTriangleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ExternalLinkIcon,
+  ImageIcon,
+  BoxesIcon,
+  MailIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
+import { CreateButton } from "~/components/ui/CreateButton";
 import { Toast, type ToastType } from "~/components/ui/Toast";
 import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge, type BadgeColor } from "~/components/ui/StatusBadge";
@@ -31,13 +41,16 @@ import { EmptyState } from "~/components/ui/EmptyState";
 import { LoadingState } from "~/components/ui/LoadingState";
 import { DetailsItem } from "~/components/ui/DetailsItem";
 import { DetailDrawer } from "~/components/ui/DetailDrawer";
+import { ConfirmModal } from "~/components/ui/ConfirmModal";
+import { ImageModal } from "~/components/ui/ImageModal";
 import { FormDrawer } from "~/components/ui/FormDrawer";
 import { SearchSelect } from "~/components/ui/SearchSelect";
 import { Input } from "~/components/ui/Input";
 import { InvoiceItemRow } from "~/components/invoice/InvoiceItemRow";
+import { Toggle } from "~/components/ui/Toggle";
 import type { PaginationMeta } from "~/types/api";
 
-// Empty invoice item template
+// Empty invoice item template (tax_rate in basis points: 1700 = 17%)
 const emptyInvoiceItem: InvoiceItemInput = {
   article_id: null,
   name: "",
@@ -45,7 +58,8 @@ const emptyInvoiceItem: InvoiceItemInput = {
   quantity: 1,
   unit_price: 0,
   subtotal: 0,
-  tax_rate: 0,
+  tax_rate: 1700,
+  tax_label: "A",
   tax_amount: 0,
   total: 0
 };
@@ -63,9 +77,12 @@ export default function InvoicesPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<import("~/types/config").BankAccount[]>([]);
   const [languages, setLanguages] = useState<SelectOption[]>([]);
   const [frequencies, setFrequencies] = useState<SelectOption[]>([]);
   const [templates, setTemplates] = useState<SelectOption[]>([]);
+  const [paymentTypes, setPaymentTypes] = useState<SelectOption[]>([]);
+  const [companySettings, setCompanySettings] = useState<import("~/types/config").CompanySettings | null>(null);
 
   // Toast
   const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
@@ -80,14 +97,38 @@ export default function InvoicesPage() {
   const [activeInvoice, setActiveInvoice] = useState<Invoice | null>(null);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
 
+  // Fiscal
+  const [fiscalLoading, setFiscalLoading] = useState(false);
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+
+  // PDF & Email
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailForm, setEmailForm] = useState({
+    to: "",
+    subject: "",
+    body: "",
+    attach_pdf: true,
+    attach_fiscal_record_ids: [] as number[],
+  });
+  const [fiscalImageModalOpen, setFiscalImageModalOpen] = useState(false);
+  const [fiscalImageRecordId, setFiscalImageRecordId] = useState<number | null>(null);
+
+  // Form: collapsible sections (uključuje napomenu)
+  const [showMoreFormFields, setShowMoreFormFields] = useState(false);
+
   // Form state
   const [formData, setFormData] = useState<InvoiceInput>({
     client_id: 0,
     date: new Date().toISOString().split("T")[0],
     due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    currency: "EUR",
+    currency: "BAM",
+    currency_id: null,
+    bank_account_id: null,
     language: "sr-Latn",
     invoice_template: "classic",
+    payment_type: "Cash",
     is_recurring: false,
     frequency: null,
     next_invoice_date: null,
@@ -136,23 +177,30 @@ export default function InvoicesPage() {
   const fetchReferenceData = useCallback(async () => {
     if (!selectedCompany || !token) return;
     try {
-      const [clientsRes, articlesRes, currenciesRes, meRes] = await Promise.all([
+      const [clientsRes, articlesRes, currenciesRes, bankAccountsRes, meRes] = await Promise.all([
         getClients(selectedCompany.slug, token, 1),
         getArticles(selectedCompany.slug, token, 1),
         getCurrencies(selectedCompany.slug, token),
+        getBankAccounts(selectedCompany.slug, token, 1),
         getMe(token, selectedCompany.slug)
       ]);
       setClients(clientsRes.data);
       setArticles(articlesRes.data);
       setCurrencies(currenciesRes.data);
+      setBankAccounts(bankAccountsRes.data);
       setLanguages(meRes.data.languages);
       setFrequencies(meRes.data.frequencies);
       setTemplates(meRes.data.templates);
+      setPaymentTypes(meRes.data.payment_types || []);
+      setCompanySettings(meRes.data.company_settings || null);
 
-      // Set default currency
-      const defaultCurrency = currenciesRes.data.find(c => c.is_default);
+      // Set default currency from company settings or first/default
+      const settings = meRes.data.company_settings;
+      const defaultCurrency = settings?.default_invoice_currency
+        ? currenciesRes.data.find(c => c.code === settings.default_invoice_currency) || currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0]
+        : currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0];
       if (defaultCurrency) {
-        setFormData(prev => ({ ...prev, currency: defaultCurrency.code }));
+        setFormData(prev => ({ ...prev, currency: defaultCurrency.code, currency_id: defaultCurrency.id }));
       }
     } catch (error: any) {
       showToast(error.message || "Greška pri učitavanju podataka", "error");
@@ -178,18 +226,37 @@ export default function InvoicesPage() {
     }
   };
 
-  // Open create form
+  // Refetch invoice when view drawer opens to ensure fresh fiscal_records (incl. images for copy/refund)
+  useEffect(() => {
+    if (viewDrawerOpen && activeInvoice && selectedCompany && token) {
+      getInvoice(selectedCompany.slug, activeInvoice.id, token)
+        .then((res) => {
+          setActiveInvoice(res.data);
+        })
+        .catch(() => {});
+    }
+  }, [viewDrawerOpen, activeInvoice?.id, selectedCompany?.slug, token]);
+
+  // Open create form - use company_settings defaults
   const openCreateForm = () => {
-    const defaultCurrency = currencies.find(c => c.is_default)?.code || "EUR";
+    const settings = companySettings;
+    const dueDays = settings?.default_invoice_due_days ?? 14;
+    const defaultCurrency = settings?.default_invoice_currency
+      ? currencies.find(c => c.code === settings.default_invoice_currency) || currencies.find(c => c.is_default) || currencies[0]
+      : currencies.find(c => c.is_default) || currencies[0];
+    const defaultBank = bankAccounts.find(b => b.is_default) || bankAccounts[0];
     setFormMode("create");
     setSelectedClient(null);
     setFormData({
       client_id: 0,
       date: new Date().toISOString().split("T")[0],
-      due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      currency: defaultCurrency,
-      language: "sr-Latn",
-      invoice_template: "classic",
+      due_date: new Date(Date.now() + dueDays * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      currency: defaultCurrency?.code || "BAM",
+      currency_id: defaultCurrency?.id ?? null,
+      bank_account_id: defaultBank?.id ?? null,
+      language: settings?.default_invoice_language || "sr-Latn",
+      invoice_template: settings?.default_invoice_template || "classic",
+      payment_type: companySettings?.ofs_default_payment_type || "Cash",
       is_recurring: false,
       frequency: null,
       next_invoice_date: null,
@@ -201,6 +268,7 @@ export default function InvoicesPage() {
       items: [{ ...emptyInvoiceItem }]
     });
     setFormDrawerOpen(true);
+    setShowMoreFormFields(false);
   };
 
   // Open edit form
@@ -223,12 +291,15 @@ export default function InvoicesPage() {
 
     setFormData({
       invoice_number: activeInvoice.invoice_number,
-      client_id: activeInvoice.client_id,
+      client_id: activeInvoice.client_id ?? 0,
       date: parseDateForInput(activeInvoice.date),
       due_date: parseDateForInput(activeInvoice.due_date),
       currency: activeInvoice.currency,
+      currency_id: activeInvoice.currency_id ?? null,
+      bank_account_id: activeInvoice.bank_account_id ?? null,
       language: activeInvoice.language,
       invoice_template: activeInvoice.invoice_template,
+      payment_type: activeInvoice.payment_type || "Cash",
       is_recurring: activeInvoice.is_recurring,
       frequency: activeInvoice.frequency,
       next_invoice_date: parseDateForInput(activeInvoice.next_invoice_date),
@@ -251,6 +322,7 @@ export default function InvoicesPage() {
     });
     setViewDrawerOpen(false);
     setFormDrawerOpen(true);
+    setShowMoreFormFields(true);
   };
 
   // Handle client change
@@ -293,12 +365,129 @@ export default function InvoicesPage() {
     }));
   };
 
+  // Fiscalize invoice
+  const handleFiscalize = async () => {
+    if (!selectedCompany || !token || !activeInvoice) return;
+    setFiscalLoading(true);
+    try {
+      const res = await fiscalizeInvoice(selectedCompany.slug, activeInvoice.id, token);
+      if (res.success) {
+        showToast(res.message || "Račun uspješno fiskalizovan", "success");
+        const updated = await getInvoice(selectedCompany.slug, activeInvoice.id, token);
+        setActiveInvoice(updated.data);
+        fetchInvoices(currentPage);
+      } else {
+        showToast(res.message || "Greška pri fiskalizaciji", "error");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Greška pri fiskalizaciji", "error");
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  // PDF download
+  const handleDownloadPdf = async () => {
+    if (!selectedCompany || !token || !activeInvoice) return;
+    setPdfLoading(true);
+    try {
+      await downloadInvoicePdf(selectedCompany.slug, activeInvoice.id, activeInvoice.invoice_number, token);
+      showToast("PDF preuzet", "success");
+    } catch (err: any) {
+      showToast(err.message || "Greška pri preuzimanju PDF-a", "error");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  // Open email modal - prefill with client email
+  const openEmailModal = () => {
+    const clientEmail = activeInvoice?.client?.email || "";
+    setEmailForm({
+      to: clientEmail,
+      subject: `Faktura ${activeInvoice?.invoice_number || ""}`,
+      body: `Poštovani,\n\nU prilogu vam šaljemo fakturu ${activeInvoice?.invoice_number || ""}.\n\nS poštovanjem`,
+      attach_pdf: true,
+      attach_fiscal_record_ids: (activeInvoice?.fiscal_records ?? [])
+        .filter((r) => r.fiscal_receipt_image_path)
+        .map((r) => r.id),
+    });
+    setEmailModalOpen(true);
+  };
+
+  const handleSendEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompany || !token || !activeInvoice) return;
+    if (!emailForm.to) {
+      showToast("Unesite email adresu primaoca", "error");
+      return;
+    }
+    setEmailLoading(true);
+    try {
+      await sendInvoiceEmail(selectedCompany.slug, activeInvoice.id, token, {
+        to: emailForm.to,
+        subject: emailForm.subject,
+        body: emailForm.body,
+        attach_pdf: emailForm.attach_pdf,
+        attach_fiscal_record_ids: emailForm.attach_fiscal_record_ids,
+      });
+      showToast("Faktura uspješno poslata na email", "success");
+      setEmailModalOpen(false);
+    } catch (err: any) {
+      showToast(err.message || "Greška pri slanju maila", "error");
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  // Refund / Storno fiscal invoice
+  const handleFiscalizeRefund = async () => {
+    if (!selectedCompany || !token || !activeInvoice) return;
+    setFiscalLoading(true);
+    try {
+      const res = await fiscalizeRefund(selectedCompany.slug, activeInvoice.id, token);
+      if (res.success) {
+        showToast(res.message || "Storno uspješno izvršeno", "success");
+        const updated = await getInvoice(selectedCompany.slug, activeInvoice.id, token);
+        setActiveInvoice(updated.data);
+        setRefundModalOpen(false);
+        fetchInvoices(currentPage);
+      } else {
+        showToast(res.message || "Greška pri storniranju", "error");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Greška pri storniranju", "error");
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  // Print copy of fiscal invoice
+  const handleFiscalizeCopy = async () => {
+    if (!selectedCompany || !token || !activeInvoice) return;
+    setFiscalLoading(true);
+    try {
+      const res = await fiscalizeCopy(selectedCompany.slug, activeInvoice.id, token);
+      if (res.success) {
+        showToast(res.message || "Kopija uspješno odštampana", "success");
+        const updated = await getInvoice(selectedCompany.slug, activeInvoice.id, token);
+        setActiveInvoice(updated.data);
+      } else {
+        showToast(res.message || "Greška pri štampi kopije", "error");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Greška pri štampi kopije", "error");
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
   // Form submit
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCompany || !token) return;
-    if (!formData.client_id) {
-      showToast("Morate odabrati klijenta", "error");
+    if (formMode === "create" && !selectedClient) {
+      showToast("Klijent je obavezan", "error");
       return;
     }
     if (formData.items.length === 0 || !formData.items.some(i => i.name)) {
@@ -308,15 +497,27 @@ export default function InvoicesPage() {
 
     setFormLoading(true);
     try {
+      const payload = {
+        ...formData,
+        client_id: formMode === "create" ? selectedClient!.id : (formData.client_id ?? selectedClient?.id ?? null),
+      };
       if (formMode === "create") {
-        await createInvoice(selectedCompany.slug, token, formData);
+        const res = await createInvoice(selectedCompany.slug, token, payload);
         showToast("Račun uspješno kreiran", "success");
+        setFormDrawerOpen(false);
+        const fullInvoice = await getInvoice(selectedCompany.slug, res.data.id, token);
+        setActiveInvoice(fullInvoice.data);
+        setViewDrawerOpen(true);
+        fetchInvoices(currentPage);
       } else if (activeInvoice) {
-        await updateInvoice(selectedCompany.slug, activeInvoice.id, token, formData);
+        await updateInvoice(selectedCompany.slug, activeInvoice.id, token, payload);
         showToast("Račun uspješno ažuriran", "success");
+        setFormDrawerOpen(false);
+        const updated = await getInvoice(selectedCompany.slug, activeInvoice.id, token);
+        setActiveInvoice(updated.data);
+        setViewDrawerOpen(true);
+        fetchInvoices(currentPage);
       }
-      setFormDrawerOpen(false);
-      fetchInvoices(currentPage);
     } catch (err: any) {
       showToast(err.message || "Greška pri čuvanju računa", "error");
     } finally {
@@ -330,12 +531,7 @@ export default function InvoicesPage() {
       selectedCompany={selectedCompany}
       onCompanyChange={updateSelectedCompany}
       actions={
-        <button
-          onClick={openCreateForm}
-          className="cursor-pointer h-10 w-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold text-sm border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-glow-primary"
-        >
-          <PlusIcon className="h-5 w-5" />
-        </button>
+        <CreateButton label="Novi račun" onClick={openCreateForm} />
       }
     >
       <Toast
@@ -345,7 +541,7 @@ export default function InvoicesPage() {
         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
 
-      {/* Mobile: cards */}
+      {/* Mobile: cards (original layout) */}
       <div className="md:hidden space-y-3">
         {invoices.map((inv) => (
           <EntityCard key={inv.id} onClick={() => handleRowClick(inv)}>
@@ -365,6 +561,12 @@ export default function InvoicesPage() {
               <ContactRoundIcon className="w-3.5 h-3.5 text-[var(--color-text-dim)]" />
               <span className="text-xs font-bold text-[var(--color-text-muted)] tracking-tight truncate">
                 {inv.client?.name || 'Nepoznat klijent'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CreditCardIcon className="w-3 h-3 text-[var(--color-text-dim)]" />
+              <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
+                {inv.payment_type_label || "—"}
               </span>
             </div>
             <div className="h-[1px] w-full bg-[var(--color-border)]" />
@@ -393,47 +595,58 @@ export default function InvoicesPage() {
         ))}
       </div>
 
-      {/* Desktop: table */}
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-[var(--color-border)]">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
-              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Broj</th>
-              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Klijent</th>
-              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Datum</th>
-              <th className="text-left py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Dospijeće</th>
-              <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Ukupno</th>
-              <th className="text-right py-3 px-4 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-dim)]">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoices.map((inv) => (
-              <tr
-                key={inv.id}
-                onClick={() => handleRowClick(inv)}
-                className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors last:border-b-0"
-              >
-                <td className="py-3 px-4">
-                  <span className="font-black text-[var(--color-text-main)] tracking-tight">{inv.invoice_number}</span>
-                </td>
-                <td className="py-3 px-4 text-sm font-bold text-[var(--color-text-muted)]">
-                  {inv.client?.name || 'Nepoznat klijent'}
-                </td>
-                <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">{inv.date}</td>
-                <td className="py-3 px-4 text-sm text-red-500">{inv.due_date}</td>
-                <td className="py-3 px-4 text-right font-black text-[var(--color-text-main)]">
-                  {formatPrice(inv.total)} {inv.currency}
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <StatusBadge
-                    label={inv.status_label}
-                    color={(inv.status_color as BadgeColor) || "gray"}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Desktop: card list (1 kolona, bez ikone na total) */}
+      <div className="hidden md:block space-y-3">
+        {invoices.map((inv) => (
+          <EntityCard key={inv.id} onClick={() => handleRowClick(inv)}>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <HashIcon className="w-3 h-3 text-primary" />
+                <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-none group-hover:text-primary transition-colors">
+                  {inv.invoice_number}
+                </span>
+              </div>
+              <StatusBadge
+                label={inv.status_label}
+                color={(inv.status_color as BadgeColor) || "gray"}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <ContactRoundIcon className="w-3.5 h-3.5 text-[var(--color-text-dim)]" />
+              <span className="text-xs font-bold text-[var(--color-text-muted)] tracking-tight truncate">
+                {inv.client?.name || 'Nepoznat klijent'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CreditCardIcon className="w-3 h-3 text-[var(--color-text-dim)]" />
+              <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
+                {inv.payment_type_label || "—"}
+              </span>
+            </div>
+            <div className="h-[1px] w-full bg-[var(--color-border)]" />
+            <div className="flex justify-between items-end">
+              <div className="flex gap-4">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
+                    <Calendar1Icon className="w-2.5 h-2.5" />
+                    <span className="text-[9px] font-black uppercase">Datum</span>
+                  </div>
+                  <p className="text-xs font-bold text-[var(--color-text-muted)]">{inv.date}</p>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
+                    <Clock1Icon className="w-2.5 h-2.5" />
+                    <span className="text-[9px] font-black uppercase">Dospijeće</span>
+                  </div>
+                  <p className="text-xs font-bold text-red-500">{inv.due_date}</p>
+                </div>
+              </div>
+              <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
+                {formatPrice(inv.total)} {inv.currency}
+              </p>
+            </div>
+          </EntityCard>
+        ))}
       </div>
 
       {loading && <LoadingState />}
@@ -504,6 +717,24 @@ export default function InvoicesPage() {
                 color="bg-amber-500/10 text-amber-500"
               />
               <DetailsItem
+                icon={CreditCardIcon}
+                label="Bankovni račun"
+                value={activeInvoice.bank_account ? `${activeInvoice.bank_account.bank_name} (${activeInvoice.bank_account.account_number})` : "—"}
+                color="bg-slate-500/10 text-slate-500"
+              />
+              <DetailsItem
+                icon={FileTextIcon}
+                label="Predložak"
+                value={activeInvoice.invoice_template_label || "—"}
+                color="bg-indigo-500/10 text-indigo-500"
+              />
+              <DetailsItem
+                icon={CreditCardIcon}
+                label="Način plaćanja"
+                value={activeInvoice.payment_type_label || "—"}
+                color="bg-teal-500/10 text-teal-500"
+              />
+              <DetailsItem
                 icon={RepeatIcon}
                 label="Ponavljanje"
                 value={activeInvoice.is_recurring ? activeInvoice.frequency_label : "Ne"}
@@ -542,8 +773,8 @@ export default function InvoicesPage() {
                   </div>
                   <div className="flex gap-4 text-[10px] text-[var(--color-text-dim)]">
                     <span>Kol: <strong className="text-[var(--color-text-muted)]">{item.quantity}</strong></span>
-                    <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(item.unit_price)}</strong></span>
-                    <span>PDV: <strong className="text-[var(--color-text-muted)]">{item.tax_rate}%</strong></span>
+                    <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(item.quantity > 0 ? Math.round(item.total / item.quantity) : 0)} {activeInvoice.currency}</strong></span>
+                    <span>PDV: <strong className="text-[var(--color-text-muted)]">{item.tax_rate / 100}%</strong></span>
                   </div>
                 </div>
               ))}
@@ -565,9 +796,354 @@ export default function InvoicesPage() {
                 <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(activeInvoice.total)} {activeInvoice.currency}</span>
               </div>
             </div>
+
+            {/* PDF i Email */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={pdfLoading}
+                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-primary/30 bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
+              >
+                {pdfLoading ? (
+                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+                ) : (
+                  <FileTextIcon className="h-4 w-4" />
+                )}
+                Preuzmi PDF
+              </button>
+              <button
+                type="button"
+                onClick={openEmailModal}
+                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-blue-500/30 bg-blue-500/10 text-blue-500 font-bold text-sm hover:bg-blue-500/20 transition-all cursor-pointer min-h-[44px]"
+              >
+                <MailIcon className="h-4 w-4" />
+                Pošalji mail
+              </button>
+            </div>
+
+            {/* Fiskalizacija - vizuelno odvojena sekcija */}
+            <div className="mt-8 pt-6 border-t-2 border-dashed border-[var(--color-border)]">
+              <div className={`rounded-2xl p-5 border-2 ${
+                activeInvoice.status === "refunded"
+                  ? "bg-red-500/5 border-red-500/20"
+                  : activeInvoice.status === "fiscalized"
+                    ? "bg-emerald-500/5 border-emerald-500/20"
+                    : "bg-amber-500/5 border-amber-500/20"
+              }`}>
+                <div className="flex items-center gap-2 mb-4">
+                  <FileTextIcon className={`h-5 w-5 ${
+                    activeInvoice.status === "refunded" ? "text-red-500" : activeInvoice.status === "fiscalized" ? "text-emerald-500" : "text-amber-500"
+                  }`} />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">
+                    Fiskalizacija (OFS ESIR)
+                  </span>
+                </div>
+
+                {(activeInvoice.status === "fiscalized" || activeInvoice.status === "refunded") ? (
+                  <div className="space-y-3">
+                    {/* Accordion: svi fiskalni zapisi (original, kopija, refund) - sortirani po datumu */}
+                    {activeInvoice.fiscal_records && activeInvoice.fiscal_records.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {activeInvoice.fiscal_records.map((rec) => {
+                          const isOriginal = rec.type === "original";
+                          const isCopy = rec.type === "copy";
+                          const bgClass = isOriginal
+                            ? "bg-emerald-500/10 border-emerald-500/30"
+                            : isCopy
+                              ? "bg-blue-500/10 border-blue-500/30"
+                              : "bg-red-500/10 border-red-500/30";
+                          const textClass = isOriginal ? "text-emerald-600" : isCopy ? "text-blue-600" : "text-red-600";
+                          const hoverClass = isOriginal ? "hover:bg-emerald-500/15" : isCopy ? "hover:bg-blue-500/15" : "hover:bg-red-500/15";
+
+                          return (
+                            <div
+                              key={rec.id}
+                              className={`rounded-xl border-2 overflow-hidden transition-colors ${bgClass}`}
+                            >
+                              {/* Kompaktna jedna linija */}
+                              <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 ${hoverClass}`}>
+                                <span className={`text-[9px] font-black uppercase tracking-widest shrink-0 ${textClass}`}>
+                                  {rec.type_label}
+                                </span>
+                                <span className="text-xs font-bold text-[var(--color-text-main)] truncate max-w-[120px] sm:max-w-[160px]" title={rec.fiscal_invoice_number || undefined}>
+                                  {rec.fiscal_invoice_number || "—"}
+                                </span>
+                                {rec.fiscalized_at && (
+                                  <span className="text-[9px] text-[var(--color-text-dim)] shrink-0">
+                                    {rec.fiscalized_at}
+                                  </span>
+                                )}
+                                {rec.fiscal_counter != null && (
+                                  <span className="text-[9px] text-[var(--color-text-dim)] shrink-0">
+                                    Brojač: {String(rec.fiscal_counter)}
+                                  </span>
+                                )}
+                                {rec.verification_url && (
+                                  <a
+                                    href={rec.verification_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-primary hover:text-primary/80 shrink-0"
+                                    title="Verifikacija na Poreskoj upravi"
+                                  >
+                                    <ExternalLinkIcon className="h-3.5 w-3.5" />
+                                  </a>
+                                )}
+                                {rec.fiscal_receipt_image_path && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFiscalImageRecordId(rec.id);
+                                      setFiscalImageModalOpen(true);
+                                    }}
+                                    className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 ${
+                                      isOriginal
+                                        ? "text-emerald-500 hover:bg-emerald-500/20"
+                                        : isCopy
+                                          ? "text-blue-500 hover:bg-blue-500/20"
+                                          : "text-red-500 hover:bg-red-500/20"
+                                    }`}
+                                    title="Pregled slike računa"
+                                  >
+                                    <ImageIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                        <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        <span className="text-xs font-bold text-[var(--color-text-main)]">{activeInvoice.fiscal_invoice_number}</span>
+                        {activeInvoice.fiscal_counter != null && (
+                          <span className="text-[9px] text-[var(--color-text-dim)]">Brojač: {String(activeInvoice.fiscal_counter)}</span>
+                        )}
+                        {activeInvoice.fiscal_verification_url && (
+                          <a
+                            href={activeInvoice.fiscal_verification_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex text-primary hover:text-primary/80 shrink-0"
+                            title="Verifikacija na Poreskoj upravi"
+                          >
+                            <ExternalLinkIcon className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                        {activeInvoice.fiscal_receipt_image_path && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const origRec = activeInvoice.fiscal_records?.find((r) => r.type === "original");
+                              setFiscalImageRecordId(origRec?.id ?? null);
+                              setFiscalImageModalOpen(true);
+                            }}
+                            className="p-1 rounded-lg text-emerald-500 hover:bg-emerald-500/20 transition-all cursor-pointer shrink-0"
+                            title="Pregled slike računa"
+                          >
+                            <ImageIcon className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-2">
+                      {activeInvoice.fiscal_records?.some((r) => r.type === "original") && (
+                        <button
+                          type="button"
+                          onClick={handleFiscalizeCopy}
+                          disabled={fiscalLoading}
+                          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-blue-500/30 bg-blue-500/10 text-blue-500 font-bold text-sm hover:bg-blue-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
+                        >
+                          {fiscalLoading ? (
+                            <>
+                              <span className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+                              Obrada...
+                            </>
+                          ) : (
+                            <>
+                              <FileTextIcon className="h-4 w-4" />
+                              Štampaj kopiju
+                            </>
+                          )}
+                        </button>
+                      )}
+                      {activeInvoice.fiscal_records?.some((r) => r.type === "original") &&
+                        !activeInvoice.fiscal_records?.some((r) => r.type === "refund") && (
+                          <button
+                            type="button"
+                            onClick={() => setRefundModalOpen(true)}
+                            disabled={fiscalLoading}
+                            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-red-500/30 bg-red-500/10 text-red-500 font-bold text-sm hover:bg-red-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
+                          >
+                            {fiscalLoading ? (
+                              <>
+                                <span className="animate-spin rounded-full h-4 w-4 border-2 border-red-500 border-t-transparent" />
+                                Obrada...
+                              </>
+                            ) : (
+                              <>
+                                <AlertTriangleIcon className="h-4 w-4" />
+                                Refundacija
+                              </>
+                            )}
+                          </button>
+                        )}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs text-[var(--color-text-dim)] mb-4">
+                      Račun nije fiskalizovan. Kliknite ispod da fiskalizujete i odštampate.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleFiscalize}
+                      disabled={fiscalLoading}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary/20 border-2 border-primary/30 text-primary font-bold text-sm hover:bg-primary/30 transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <CheckCircleIcon className="h-4 w-4" />
+                      {fiscalLoading ? "Fiskalizacija..." : "Fiskalizuj i štampaj"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </DetailDrawer>
+
+      {/* Fiscal image modal */}
+      <ImageModal
+        isOpen={fiscalImageModalOpen}
+        onClose={() => {
+          setFiscalImageModalOpen(false);
+          setFiscalImageRecordId(null);
+        }}
+        src={
+          activeInvoice?.fiscal_receipt_image_path || activeInvoice?.fiscal_records?.some((r) => r.fiscal_receipt_image_path)
+            ? `/${selectedCompany?.slug}/invoices/${activeInvoice?.id}/fiscal-receipt-image${fiscalImageRecordId ? `?fiscal_record_id=${fiscalImageRecordId}` : ""}`
+            : undefined
+        }
+        token={token ?? undefined}
+        alt="Fiskalni račun"
+        title="Pregled fiskalnog računa"
+      />
+
+      {/* Refund confirmation modal */}
+      <ConfirmModal
+        isOpen={refundModalOpen}
+        onClose={() => !fiscalLoading && setRefundModalOpen(false)}
+        onConfirm={handleFiscalizeRefund}
+        title="Storniraj fiskalni račun"
+        message="Da li ste sigurni da želite stornirati ovaj fiskalni račun? Ova akcija se ne može poništiti."
+        confirmLabel="Storniraj"
+        cancelLabel="Odustani"
+        type="danger"
+        loading={fiscalLoading}
+      />
+
+      {/* Send Email modal */}
+      {emailModalOpen && (
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-[12px]"
+            onClick={() => !emailLoading && setEmailModalOpen(false)}
+          />
+          <div className="relative w-full max-w-[480px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xl overflow-hidden">
+            <div className="p-6 border-b border-[var(--color-border)]">
+              <h3 className="text-lg font-black text-[var(--color-text-main)] flex items-center gap-2">
+                <MailIcon className="h-5 w-5 text-primary" />
+                Pošalji fakturu na email
+              </h3>
+            </div>
+            <form onSubmit={handleSendEmail} className="p-6 space-y-4">
+              <Input
+                label="Email primaoca"
+                type="email"
+                value={emailForm.to}
+                onChange={(e) => setEmailForm(prev => ({ ...prev, to: e.target.value }))}
+                icon={MailIcon}
+                required
+                placeholder="klijent@email.com"
+              />
+              <Input
+                label="Predmet"
+                type="text"
+                value={emailForm.subject}
+                onChange={(e) => setEmailForm(prev => ({ ...prev, subject: e.target.value }))}
+                icon={FileTextIcon}
+                required
+              />
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
+                  Tekst maila
+                </label>
+                <textarea
+                  value={emailForm.body}
+                  onChange={(e) => setEmailForm(prev => ({ ...prev, body: e.target.value }))}
+                  rows={5}
+                  required
+                  className="w-full p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 placeholder:text-[var(--color-text-dim)] resize-none"
+                  placeholder="Tekst maila..."
+                />
+              </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <Toggle
+                  checked={emailForm.attach_pdf}
+                  onChange={(v) => setEmailForm(prev => ({ ...prev, attach_pdf: v }))}
+                  label="Priloži PDF fakturu"
+                  className="!p-2"
+                />
+                {(() => {
+                  const fiscalRecordsWithImages = (activeInvoice?.fiscal_records ?? []).filter((r) => r.fiscal_receipt_image_path);
+                  if (fiscalRecordsWithImages.length === 0) return null;
+                  return (
+                    <div className="space-y-2">
+                      {fiscalRecordsWithImages.map((r) => (
+                        <Toggle
+                          key={r.id}
+                          checked={emailForm.attach_fiscal_record_ids.includes(r.id)}
+                          onChange={(v) => {
+                            setEmailForm((prev) => ({
+                              ...prev,
+                              attach_fiscal_record_ids: v
+                                ? [...prev.attach_fiscal_record_ids, r.id]
+                                : prev.attach_fiscal_record_ids.filter((id) => id !== r.id),
+                            }));
+                          }}
+                          label={`Priloži sliku fiskalnog računa (${r.type_label})`}
+                          className="!p-2"
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => !emailLoading && setEmailModalOpen(false)}
+                  disabled={emailLoading}
+                  className="flex-1 py-3 rounded-xl border border-[var(--color-border)] text-[var(--color-text-muted)] font-bold text-sm hover:bg-[var(--color-surface-hover)] transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  Odustani
+                </button>
+                <button
+                  type="submit"
+                  disabled={emailLoading}
+                  className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {emailLoading ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /> : <MailIcon className="h-4 w-4" />}
+                  {emailLoading ? "Slanje..." : "Pošalji"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Form Drawer */}
       <FormDrawer
@@ -579,170 +1155,253 @@ export default function InvoicesPage() {
         submitLabel={formMode === "create" ? "Kreiraj račun" : "Sačuvaj izmjene"}
       >
         <div className="space-y-4">
-          {/* Client Select */}
-          <SearchSelect
-            items={clients}
-            value={selectedClient}
-            onChange={handleClientChange}
-            getKey={(c) => c.id}
-            getLabel={(c) => c.name}
-            getSearchText={(c) => `${c.name} ${c.email || ""} ${c.phone || ""}`}
-            renderItem={(c, isSelected) => (
-              <div className="flex flex-col gap-0.5">
-                <span className={`text-sm font-bold ${isSelected ? "text-primary" : ""}`}>{c.name}</span>
-                {c.email && <span className="text-[10px] text-[var(--color-text-dim)]">{c.email}</span>}
-              </div>
-            )}
-            label="Klijent"
-            placeholder="Odaberi klijenta..."
-            required
-          />
+          {/* 1. Klijent - uvijek vidljiv, ikona unutar */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
+              Klijent <span className="text-primary">*</span>
+            </label>
+            <SearchSelect
+              items={clients}
+              value={selectedClient}
+              onChange={handleClientChange}
+              getKey={(c) => c.id}
+              getLabel={(c) => c.name}
+              getSearchText={(c) => `${c.name} ${c.email || ""} ${c.phone || ""}`}
+              renderItem={(c, isSelected) => (
+                <div className="flex flex-col gap-0.5">
+                  <span className={`text-sm font-bold ${isSelected ? "text-primary" : ""}`}>{c.name}</span>
+                  {c.email && <span className="text-[10px] text-[var(--color-text-dim)]">{c.email}</span>}
+                </div>
+              )}
+              icon={ContactRoundIcon}
+              placeholder="Odaberi klijenta..."
+              required
+            />
+          </div>
 
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* 2. Datum, Dospijeće, Način plaćanja - ikone unutar inputa */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-start">
             <Input
               label="Datum"
               type="date"
               value={formData.date}
               onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+              icon={Calendar1Icon}
               required
+              className="h-[44px] min-h-[44px] py-2 rounded-xl"
             />
             <Input
               label="Dospijeće"
               type="date"
               value={formData.due_date}
               onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+              icon={Clock1Icon}
               required
+              className="h-[44px] min-h-[44px] py-2 rounded-xl"
             />
-          </div>
-
-          {/* Currency & Language */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                Valuta <span className="text-primary">*</span>
+            <div className="space-y-1.5 group">
+              <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
+                Način plaćanja
               </label>
-              <select
-                value={formData.currency}
-                onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] font-bold text-sm px-5 py-3.5 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
-              >
-                {currencies.map(c => (
-                  <option key={c.id} value={c.code}>{c.code} - {c.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                Jezik
-              </label>
-              <select
-                value={formData.language}
-                onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
-                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] font-bold text-sm px-5 py-3.5 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
-              >
-                {languages.map(l => (
-                  <option key={l.value} value={l.value}>{l.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Template */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-              Predložak
-            </label>
-            <select
-              value={formData.invoice_template}
-              onChange={(e) => setFormData(prev => ({ ...prev, invoice_template: e.target.value }))}
-              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] font-bold text-sm px-5 py-3.5 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
-            >
-              {templates.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Recurring Toggle */}
-          <div className="flex items-center justify-between p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl">
-            <div className="flex items-center gap-3">
-              <RepeatIcon className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-bold text-[var(--color-text-main)]">Ponavljajući račun</p>
-                <p className="text-[10px] text-[var(--color-text-dim)]">Automatski generiši račune</p>
-              </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.is_recurring}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  is_recurring: e.target.checked,
-                  frequency: e.target.checked ? "monthly" : null,
-                  next_invoice_date: e.target.checked ? prev.due_date : null
-                }))}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-[var(--color-border)] peer-focus:ring-4 peer-focus:ring-primary/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-            </label>
-          </div>
-
-          {/* Recurring Options */}
-          {formData.is_recurring && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                  Učestalost
-                </label>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)] group-focus-within:text-primary transition-colors">
+                  <CreditCardIcon className="h-4 w-4" />
+                </div>
                 <select
-                  value={formData.frequency || "monthly"}
-                  onChange={(e) => setFormData(prev => ({ ...prev, frequency: e.target.value }))}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] font-bold text-sm px-5 py-3.5 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+                  value={formData.payment_type || "Cash"}
+                  onChange={(e) => setFormData(prev => ({ ...prev, payment_type: e.target.value }))}
+                  className="w-full h-[44px] min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-11 pr-10 py-2 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 cursor-pointer"
                 >
-                  {frequencies.map(f => (
-                    <option key={f.value} value={f.value}>{f.label}</option>
+                  {paymentTypes.map((pt) => (
+                    <option key={pt.value} value={pt.value}>{pt.label}</option>
                   ))}
                 </select>
               </div>
-              <Input
-                label="Sljedeći račun"
-                type="date"
-                value={formData.next_invoice_date || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, next_invoice_date: e.target.value }))}
-              />
+            </div>
+          </div>
+
+          {/* 3. Prikaži više / Sakrij dodatna polja */}
+          <button
+            type="button"
+            onClick={() => setShowMoreFormFields(!showMoreFormFields)}
+            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed transition-colors cursor-pointer
+              ${showMoreFormFields
+                ? "border-[var(--color-border)] bg-[var(--color-surface)]/50 text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)]"
+                : "border-primary/40 bg-primary/5 text-primary hover:border-primary/60 hover:bg-primary/10"
+              }`}
+          >
+            {showMoreFormFields ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+            <span className="text-[11px] font-bold">
+              {showMoreFormFields ? "Sakrij dodatna polja" : "Prikaži više (valuta, predložak, napomena...)"}
+            </span>
+          </button>
+
+          {showMoreFormFields && (
+            <div className="space-y-3 pt-4 mt-2 border-t-2 border-dashed border-[var(--color-border)] rounded-xl p-4 bg-[var(--color-surface)]/30">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">
+                  ⋯ Dodatna polja
+                </span>
+              </div>
+              {/* Valuta, Bankovni račun, Jezik, Predložak - ikone unutar */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-start">
+                <div className="space-y-1.5 group">
+                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Valuta</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                      <CreditCardIcon className="h-4 w-4" />
+                    </div>
+                    <select
+                      value={formData.currency_id ?? currencies.find(c => c.code === formData.currency)?.id ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const curr = currencies.find(c => c.id === parseInt(val));
+                        setFormData(prev => ({ ...prev, currency_id: curr?.id ?? null, currency: curr?.code ?? prev.currency }));
+                      }}
+                      className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
+                    >
+                      {currencies.map(c => (
+                        <option key={c.id} value={c.id}>{c.code}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1.5 group">
+                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Bankovni račun</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                      <CreditCardIcon className="h-4 w-4" />
+                    </div>
+                    <select
+                      value={formData.bank_account_id ?? ""}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bank_account_id: e.target.value ? parseInt(e.target.value) : null }))}
+                      className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
+                    >
+                      <option value="">—</option>
+                      {bankAccounts.map(b => (
+                        <option key={b.id} value={b.id}>{b.bank_name} ({b.account_number})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1.5 group">
+                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Jezik</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                      <GlobeIcon className="h-4 w-4" />
+                    </div>
+                    <select
+                      value={formData.language}
+                      onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
+                      className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
+                    >
+                      {languages.map(l => (
+                        <option key={l.value} value={l.value}>{l.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1.5 group">
+                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Predložak</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                      <FileTextIcon className="h-4 w-4" />
+                    </div>
+                    <select
+                      value={formData.invoice_template}
+                      onChange={(e) => setFormData(prev => ({ ...prev, invoice_template: e.target.value }))}
+                      className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
+                    >
+                      {templates.map(t => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Napomena */}
+              <div className="rounded-xl border border-dashed border-[var(--color-border)] overflow-hidden">
+                <div className="flex items-center gap-2 p-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
+                  <div className="h-7 w-7 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center shrink-0">
+                    <StickyNoteIcon className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)]">Napomena</span>
+                </div>
+                <textarea
+                  value={formData.notes || ""}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={2}
+                  className="w-full bg-[var(--color-surface)] border-none text-[var(--color-text-main)] font-bold text-sm px-4 py-3 outline-none focus:ring-0 placeholder:text-[var(--color-text-dim)] resize-none"
+                  placeholder="Dodatne napomene..."
+                />
+              </div>
+
+              {/* Ponavljajući račun */}
+              <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-teal-500/10 text-teal-500 rounded-lg flex items-center justify-center shrink-0">
+                    <RepeatIcon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-[var(--color-text-main)]">Ponavljajući račun</p>
+                    <p className="text-[9px] text-[var(--color-text-dim)]">Automatski generiši račune</p>
+                  </div>
+                </div>
+                <Toggle
+                  checked={formData.is_recurring}
+                  onChange={(v) => setFormData(prev => ({
+                    ...prev,
+                    is_recurring: v,
+                    frequency: v ? "monthly" : null,
+                    next_invoice_date: v ? prev.due_date : null
+                  }))}
+                  label=""
+                  className="!p-0 !border-0 !bg-transparent"
+                />
+              </div>
+
+              {formData.is_recurring && (
+                <div className="grid grid-cols-2 gap-3 items-start">
+                  <div className="space-y-1.5 group">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Učestalost</label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                        <RepeatIcon className="h-4 w-4" />
+                      </div>
+                      <select
+                        value={formData.frequency || "monthly"}
+                        onChange={(e) => setFormData(prev => ({ ...prev, frequency: e.target.value }))}
+                        className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
+                      >
+                        {frequencies.map(f => (
+                          <option key={f.value} value={f.value}>{f.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <Input
+                    label="Sljedeći račun"
+                    type="date"
+                    value={formData.next_invoice_date || ""}
+                    onChange={(e) => setFormData(prev => ({ ...prev, next_invoice_date: e.target.value }))}
+                    icon={Calendar1Icon}
+                    className="min-h-[44px] py-3 rounded-xl"
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Notes */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-              Napomena
-            </label>
-            <textarea
-              value={formData.notes || ""}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              rows={3}
-              className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-main)] font-bold text-sm px-5 py-3.5 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all resize-none"
-              placeholder="Dodatne napomene..."
-            />
-          </div>
-
-          {/* Items Section */}
+          {/* 4. Stavke */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 bg-primary/10 text-primary rounded-lg flex items-center justify-center shrink-0">
+                <BoxesIcon className="h-3.5 w-3.5" />
+              </div>
+              <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)]">
                 Stavke ({formData.items.length})
               </span>
-              <button
-                type="button"
-                onClick={addItem}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[10px] font-bold hover:bg-primary hover:text-white transition-all cursor-pointer"
-              >
-                <PlusIcon className="h-3 w-3" />
-                Dodaj stavku
-              </button>
             </div>
 
             {formData.items.map((item, idx) => (
@@ -751,16 +1410,28 @@ export default function InvoicesPage() {
                 item={item}
                 index={idx}
                 articles={articles}
-                currency={formData.currency}
+                currency={formData.currency ?? "BAM"}
                 onChange={handleItemChange}
                 onRemove={handleItemRemove}
                 disabled={formLoading}
               />
             ))}
+            <button
+              type="button"
+              onClick={addItem}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/40 bg-primary/5 text-primary hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer"
+            >
+              <PlusIcon className="h-4 w-4" />
+              <span className="text-[11px] font-bold">Dodaj stavku</span>
+            </button>
           </div>
 
-          {/* Totals Summary */}
-          <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl space-y-2">
+          {/* 5. Ukupno */}
+          <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+            <div className="h-9 w-9 bg-primary/10 text-primary rounded-lg flex items-center justify-center shrink-0">
+              <FileTextIcon className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-[var(--color-text-dim)]">Osnovica:</span>
               <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {formData.currency}</span>
@@ -770,9 +1441,10 @@ export default function InvoicesPage() {
               <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {formData.currency}</span>
             </div>
             <div className="h-[1px] bg-primary/20" />
-            <div className="flex justify-between">
-              <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno:</span>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno</span>
               <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {formData.currency}</span>
+            </div>
             </div>
           </div>
         </div>

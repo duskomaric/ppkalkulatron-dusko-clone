@@ -18,12 +18,33 @@ export interface CompanySettings {
     default_invoice_due_days: number | null;
     default_invoice_language: string | null;
     default_invoice_currency: string | null;
-    default_bank_account_id: number | null;
+    default_invoice_notes: string | null;
     invoice_numbering_reset_yearly: boolean;
     invoice_numbering_pad_zeros: number;
     invoice_numbering_starting_number: number;
     invoice_numbering_prefix: string | null;
-    invoice_footer_lines: string[] | null;
+
+    // OFS fiskalizacija
+    ofs_base_url: string | null;
+    ofs_api_key: string | null;
+    ofs_serial_number: string | null;
+    ofs_pac: string | null;
+    ofs_receipt_layout: string | null;
+    ofs_receipt_image_format: string | null;
+    ofs_render_receipt_image: boolean;
+    ofs_receipt_header_text_lines: string[] | null;
+    ofs_device_mode: string | null;
+    ofs_default_payment_type: string | null;
+
+    // Mail - ako nije podešeno, koristi se default iz .env
+    mail_from_address: string | null;
+    mail_from_name: string | null;
+    // SMTP - slanje iz vlastitog inboxa
+    mail_host: string | null;
+    mail_port: number | null;
+    mail_username: string | null;
+    mail_password: string | null;
+    mail_encryption: string | null; // tls | ssl | null
 }
 
 export interface BankAccountInput {
@@ -61,6 +82,16 @@ export interface AppConfigData {
     languages: SelectOption[];
     frequencies: SelectOption[];
     templates: SelectOption[];
+    payment_types: SelectOption[];
+    article_types: SelectOption[];
+    units: SelectOption[];
+    tax_rates: TaxRateOption[];
+}
+
+export interface TaxRateOption {
+    value: string;
+    label: string;
+    rate: number;
 }
 
 export interface AppConfigResponse {

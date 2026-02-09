@@ -4,12 +4,13 @@ import { TrashIcon, AlertTriangleIcon } from "~/components/ui/icons";
 interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
   type?: "danger" | "warning";
+  loading?: boolean;
 }
 
 export function ConfirmModal({
@@ -20,7 +21,8 @@ export function ConfirmModal({
   message,
   confirmLabel = "Obriši",
   cancelLabel = "Odustani",
-  type = "danger"
+  type = "danger",
+  loading = false
 }: ConfirmModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -72,21 +74,29 @@ export function ConfirmModal({
 
         <div className="flex flex-col gap-2 p-8 pt-0 relative z-10">
           <button
-            onClick={() => {
-              onConfirm();
-              onClose();
+            onClick={async () => {
+              await onConfirm();
             }}
-            className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition-all ${isDanger
+            disabled={loading}
+            className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isDanger
               ? 'bg-red-500 text-white shadow-red-500/25 hover:bg-red-600'
               : 'bg-amber-500 text-black shadow-amber-500/25 hover:bg-amber-600'
               }`}
           >
-            {confirmLabel}
+            {loading ? (
+              <>
+                <span className={`animate-spin rounded-full h-4 w-4 border-2 border-t-transparent ${isDanger ? 'border-white' : 'border-black'}`} />
+                Obrada...
+              </>
+            ) : (
+              confirmLabel
+            )}
           </button>
 
           <button
             onClick={onClose}
-            className="w-full py-4 bg-white/5 text-gray-400 border border-white/5 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:text-white hover:bg-white/10 transition-all active:scale-95"
+            disabled={loading}
+            className="w-full py-4 bg-white/5 text-gray-400 border border-white/5 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:text-white hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cancelLabel}
           </button>

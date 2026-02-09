@@ -12,4 +12,5 @@ export default [
   route("settings/general", "routes/settings/general.tsx"),
   route("settings/bank-accounts", "routes/settings/bank-accounts.tsx"),
   route("settings/currencies", "routes/settings/currencies.tsx"),
+  route("settings/fiscal", "routes/settings/fiscal.tsx"),
 ] satisfies RouteConfig;

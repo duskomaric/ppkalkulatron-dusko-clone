@@ -10,7 +10,8 @@ import {
   BoxesIcon,
   CreditCardIcon,
   CurrencyEuroIcon,
-  Building2Icon
+  Building2Icon,
+  FileTextIcon
 } from "~/components/ui/icons";
 import { Drawer } from "./Drawer";
 import type { Company } from "~/types/company";
@@ -293,52 +294,48 @@ export function AppLayout({
 
       <Drawer title="Podešavanja" isOpen={activeDrawer === 'settings'} onClose={() => setActiveDrawer(null)}>
         <div className="flex flex-col gap-3">
-          {/* Subscription / License Status */}
-          <div className={`relative overflow-hidden rounded-2xl p-5 transition-all ${
+          {/* Subscription / License Status - horizontal bar dizajn */}
+          <div className={`relative overflow-hidden rounded-xl transition-all flex items-center gap-3 px-4 py-3 ${
             hasSubNotification
-              ? 'bg-red-500/10 border border-red-500/20'
+              ? 'bg-gradient-to-r from-red-500/15 via-red-500/10 to-transparent border-l-4 border-red-500'
               : subInfo.isLifetime
-                ? 'bg-emerald-500/10 border border-emerald-500/20'
-                : 'bg-[var(--color-surface)] border border-[var(--color-border)]'
+                ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-transparent border-l-4 border-emerald-500'
+                : 'bg-[var(--color-surface)] border-l-4 border-[var(--color-border)]'
           }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  hasSubNotification
-                    ? 'bg-red-500/20 text-red-400'
-                    : subInfo.isLifetime
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-primary/10 text-primary'
-                }`}>
-                  <BoxesIcon className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[var(--color-text-main)]">Licenca</h3>
-                  <p className={`text-xs font-bold mt-0.5 ${
-                    hasSubNotification
-                      ? 'text-red-400'
-                      : subInfo.isLifetime
-                        ? 'text-emerald-400'
-                        : 'text-[var(--color-text-dim)]'
-                  }`}>
-                    {subInfo.isLifetime
-                      ? "Lifetime Plan"
-                      : hasSubNotification
-                        ? `Ističe za ${subInfo.daysLeft} dana`
-                        : `Važi do ${subInfo.label}`
-                    }
-                  </p>
-                </div>
-              </div>
-              {subInfo.isLifetime && (
-                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">
-                  ∞
-                </span>
-              )}
-              {hasSubNotification && (
-                <span className="h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
-              )}
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              hasSubNotification
+                ? 'bg-red-500/25 text-red-400'
+                : subInfo.isLifetime
+                  ? 'bg-emerald-500/25 text-emerald-400'
+                  : 'bg-primary/15 text-primary'
+            }`}>
+              <BoxesIcon className="h-4 w-4" />
             </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">Licenca</span>
+              <p className={`text-sm font-bold truncate ${
+                hasSubNotification
+                  ? 'text-red-400'
+                  : subInfo.isLifetime
+                    ? 'text-emerald-400'
+                    : 'text-[var(--color-text-main)]'
+              }`}>
+                {subInfo.isLifetime
+                  ? "Lifetime Plan"
+                  : hasSubNotification
+                    ? `Ističe za ${subInfo.daysLeft} dana`
+                    : `Važi do ${subInfo.label}`
+                }
+              </p>
+            </div>
+            {subInfo.isLifetime && (
+              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-md shrink-0">
+                ∞
+              </span>
+            )}
+            {hasSubNotification && (
+              <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse shrink-0" />
+            )}
           </div>
 
           {/* Settings Navigation */}
@@ -406,6 +403,23 @@ export function AppLayout({
             <div className="flex-1 text-left">
               <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Valute</h3>
               <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Konfiguracija valuta i formata</p>
+            </div>
+            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveDrawer(null);
+              navigate("/settings/fiscal");
+            }}
+            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
+          >
+            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              <FileTextIcon className="h-5 w-5" />
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Fiskalizacija</h3>
+              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">OFS ESIR – cloud ili lokalni uređaj</p>
             </div>
             <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
           </button>

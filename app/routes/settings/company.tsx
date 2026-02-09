@@ -108,7 +108,7 @@ export default function CompanyProfilePage() {
                 <p className="text-[var(--color-text-dim)]">Osnovni podaci o vašoj firmi koji se koriste na dokumentima.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 sm:p-8 space-y-6">
                     <FormInput
                         label="Naziv kompanije"

@@ -9,11 +9,15 @@ interface SearchSelectProps<T> {
     getLabel: (item: T) => string;
     getSearchText?: (item: T) => string;
     renderItem?: (item: T, isSelected: boolean) => React.ReactNode;
+    /** Prikaz odabrane vrijednosti u triggeru (umjesto getLabel) */
+    renderValue?: (item: T) => React.ReactNode;
     label?: string;
     placeholder?: string;
     required?: boolean;
     error?: string;
     disabled?: boolean;
+    /** Ikona unutar triggera (lijeva strana) */
+    icon?: React.ElementType;
 }
 
 export function SearchSelect<T>({
@@ -24,11 +28,13 @@ export function SearchSelect<T>({
     getLabel,
     getSearchText,
     renderItem,
+    renderValue,
     label,
     placeholder = "Odaberi...",
     required,
     error,
-    disabled
+    disabled,
+    icon: Icon
 }: SearchSelectProps<T>) {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -85,16 +91,21 @@ export function SearchSelect<T>({
                         }
                     }}
                     className={`
-                        w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl
-                        text-left px-5 py-3.5 flex items-center justify-between gap-2
+                        relative w-full h-[44px] min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl
+                        text-left ${Icon ? "pl-10 pr-4" : "px-4"} flex items-center justify-between gap-2
                         transition-all duration-300 cursor-pointer
-                        ${isOpen ? "border-primary/50 ring-4 ring-primary/10 bg-[var(--color-surface-hover)]" : ""}
+                        ${isOpen ? "border-primary/50 ring-2 ring-primary/10 bg-[var(--color-surface-hover)]" : ""}
                         ${error ? "border-red-500/50 ring-red-500/10" : ""}
                         ${disabled ? "opacity-50 cursor-not-allowed" : "hover:border-[var(--color-border-strong)]"}
                     `}
                 >
-                    <span className={`text-sm font-bold truncate ${value ? "text-[var(--color-text-main)]" : "text-[var(--color-text-dim)]"}`}>
-                        {value ? getLabel(value) : placeholder}
+                    {Icon && (
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)] pointer-events-none">
+                            <Icon className="h-4 w-4" />
+                        </div>
+                    )}
+                    <span className={`text-sm font-bold truncate flex-1 min-w-0 ${value ? "text-[var(--color-text-main)]" : "text-[var(--color-text-dim)]"}`}>
+                        {value ? (renderValue ? renderValue(value) : getLabel(value)) : placeholder}
                     </span>
                     <div className="flex items-center gap-1 shrink-0">
                         {value && !disabled && (

@@ -1,5 +1,5 @@
 import React from "react";
-import { TrashIcon } from "~/components/ui/icons";
+import { TrashIcon, BoxesIcon, CurrencyEuroIcon } from "~/components/ui/icons";
 import { SearchSelect } from "~/components/ui/SearchSelect";
 import { CurrencyInput } from "~/components/ui/CurrencyInput";
 import type { Article } from "~/types/article";
@@ -29,32 +29,39 @@ export function InvoiceItemRow({
         ? articles.find(a => a.id === item.article_id) || null
         : null;
 
-    // Get article price for current currency (convert to cents)
-    const getArticlePrice = (article: Article): number => {
+    // prices_meta = iznos SA porezom (inclusive) - ono što kupac plaća
+    const getArticlePriceCents = (article: Article): number => {
         if (!article.prices_meta) return 0;
         const price = article.prices_meta[currency];
-        // API returns float (e.g., 100.50), we need cents (10050)
         return price ? Math.round(price * 100) : 0;
     };
 
-    // Handle article selection
+    // Iz inclusive cijene izračunaj osnovicu i porez
+    const inclusiveToBaseAndTax = (inclusiveCents: number, rateBasisPoints: number) => {
+        const rate = rateBasisPoints / 10000;
+        const base = Math.round(inclusiveCents / (1 + rate));
+        const tax = inclusiveCents - base;
+        return { base, tax };
+    };
+
     const handleArticleChange = (article: Article | null) => {
         if (article) {
-            const unitPrice = getArticlePrice(article);
-            const subtotal = item.quantity * unitPrice;
-            const taxAmount = Math.round(subtotal * (item.tax_rate / 100));
-            const total = subtotal + taxAmount;
+            const unitPriceInclusive = getArticlePriceCents(article);
+            const rateBasisPoints = article.tax_rate ? Math.round(article.tax_rate.rate * 100) : 1100;
+            const totalInclusive = item.quantity * unitPriceInclusive;
+            const { base: subtotal, tax: taxAmount } = inclusiveToBaseAndTax(totalInclusive, rateBasisPoints);
 
             onChange(index, {
                 ...item,
                 article_id: article.id,
                 name: article.name,
                 description: article.description || null,
-                unit_price: unitPrice,
-                // Keep existing tax_rate (don't override from article)
+                unit_price: unitPriceInclusive,
+                tax_rate: rateBasisPoints,
+                tax_label: article.tax_rate?.label ?? "A",
                 subtotal,
                 tax_amount: taxAmount,
-                total
+                total: totalInclusive
             });
         } else {
             onChange(index, {
@@ -64,52 +71,38 @@ export function InvoiceItemRow({
                 description: null,
                 unit_price: 0,
                 subtotal: 0,
+                tax_rate: 1700,
+                tax_label: "A",
                 tax_amount: 0,
                 total: 0
             });
         }
     };
 
-    // Handle quantity change
     const handleQuantityChange = (qty: number) => {
-        const subtotal = qty * item.unit_price;
-        const taxAmount = Math.round(subtotal * (item.tax_rate / 100));
-        const total = subtotal + taxAmount;
+        const totalInclusive = qty * item.unit_price;
+        const { base: subtotal, tax: taxAmount } = inclusiveToBaseAndTax(totalInclusive, item.tax_rate);
 
         onChange(index, {
             ...item,
             quantity: qty,
             subtotal,
             tax_amount: taxAmount,
-            total
+            total: totalInclusive
         });
     };
 
-    // Handle unit price change
-    const handleUnitPriceChange = (price: number) => {
-        const subtotal = item.quantity * price;
-        const taxAmount = Math.round(subtotal * (item.tax_rate / 100));
-        const total = subtotal + taxAmount;
+    // Jed. cijena = cijena SA porezom (inclusive) - ono što kupac plaća
+    const handleUnitPriceChange = (unitPriceInclusiveCents: number) => {
+        const totalInclusive = item.quantity * unitPriceInclusiveCents;
+        const { base: subtotal, tax: taxAmount } = inclusiveToBaseAndTax(totalInclusive, item.tax_rate);
 
         onChange(index, {
             ...item,
-            unit_price: price,
+            unit_price: unitPriceInclusiveCents,
             subtotal,
             tax_amount: taxAmount,
-            total
-        });
-    };
-
-    // Handle tax rate change
-    const handleTaxRateChange = (rate: number) => {
-        const taxAmount = Math.round(item.subtotal * (rate / 100));
-        const total = item.subtotal + taxAmount;
-
-        onChange(index, {
-            ...item,
-            tax_rate: rate,
-            tax_amount: taxAmount,
-            total
+            total: totalInclusive
         });
     };
 
@@ -122,11 +115,11 @@ export function InvoiceItemRow({
     };
 
     return (
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 space-y-3">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-3 space-y-2">
             {/* Row Header with Remove */}
             <div className="flex items-center justify-between">
                 <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">
-                    Stavka #{index + 1}
+                    #{index + 1}
                 </span>
                 <button
                     type="button"
@@ -138,86 +131,99 @@ export function InvoiceItemRow({
                 </button>
             </div>
 
-            {/* Article Select */}
-            <SearchSelect
-                items={articles}
-                value={selectedArticle}
-                onChange={handleArticleChange}
-                getKey={(a) => a.id}
-                getLabel={(a) => a.name}
-                getSearchText={(a) => `${a.name} ${a.description || ""}`}
-                renderItem={(a, isSelected) => (
-                    <div className="flex flex-col gap-0.5">
-                        <span className={`text-sm font-bold ${isSelected ? "text-primary" : ""}`}>{a.name}</span>
-                        {a.description && (
-                            <span className="text-[10px] text-[var(--color-text-dim)] truncate">{a.description}</span>
+            {/* Article + quantity + unit price - compact */}
+            <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                <div className="flex-1 min-w-0">
+                    <SearchSelect
+                        items={articles}
+                        value={selectedArticle}
+                        onChange={handleArticleChange}
+                        getKey={(a) => a.id}
+                        getLabel={(a) => a.name}
+                        getSearchText={(a) => `${a.name} ${a.description || ""}`}
+                        icon={BoxesIcon}
+                        renderValue={(a) => (
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-bold truncate">{a.name}</span>
+                                    {a.tax_rate && (
+                                        <span className="inline-flex px-2 py-0.5 rounded-md bg-primary/15 text-primary text-[9px] font-black uppercase tracking-wider shrink-0">
+                                            PDV {a.tax_rate.label} ({a.tax_rate.rate}%)
+                                        </span>
+                                    )}
+                                </div>
+                                {a.description && (
+                                    <span className="text-[10px] text-[var(--color-text-dim)] truncate">{a.description}</span>
+                                )}
+                            </div>
                         )}
-                        <span className="text-[10px] font-bold text-primary">
-                            {formatPrice(getArticlePrice(a))} {currency}
-                        </span>
-                    </div>
-                )}
-                placeholder="Odaberi artikal..."
-                disabled={disabled}
-            />
-
-            {/* Количество и цена */}
-            <div className="grid grid-cols-2 gap-3">
-                {/* Quantity */}
-                <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                        Količina
-                    </label>
-                    <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={item.quantity}
-                        onChange={(e) => handleQuantityChange(Math.max(1, parseInt(e.target.value) || 1))}
+                        renderItem={(a, isSelected) => (
+                            <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`text-sm font-bold ${isSelected ? "text-primary" : ""}`}>{a.name}</span>
+                                    {a.tax_rate && (
+                                        <span className="inline-flex px-2 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-black uppercase tracking-wider shrink-0">
+                                            PDV {a.tax_rate.label} ({a.tax_rate.rate}%)
+                                        </span>
+                                    )}
+                                </div>
+                                {a.description && (
+                                    <span className="text-[10px] text-[var(--color-text-dim)] truncate">{a.description}</span>
+                                )}
+                                <div className="flex gap-2 text-[10px]">
+                                    <span className="font-bold text-primary">
+                                        {formatPrice(getArticlePriceCents(a))} {currency}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                        placeholder="Odaberi artikal..."
                         disabled={disabled}
-                        className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm px-4 py-2.5 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all"
                     />
                 </div>
 
-                {/* Unit Price - ATM style input */}
-                <CurrencyInput
-                    label={`Jed. cijena`}
-                    value={item.unit_price}
-                    onChange={handleUnitPriceChange}
-                    currency={currency}
-                    disabled={disabled}
-                />
+                <div className="flex flex-row gap-2 sm:flex-shrink-0 items-end">
+                    <div className="w-20 sm:w-24 flex flex-col gap-1 group">
+                        <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 shrink-0">
+                            Kol.
+                        </label>
+                        <div className="relative">
+                            <div className="absolute left-2 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                                <BoxesIcon className="h-3.5 w-3.5" />
+                            </div>
+                            <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={item.quantity}
+                                onChange={(e) => handleQuantityChange(Math.max(1, parseInt(e.target.value) || 1))}
+                                disabled={disabled}
+                                className="w-full h-[44px] min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-main)] font-bold text-sm pl-8 pr-2 py-2 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex-1 min-w-[90px] sm:min-w-[100px]">
+                        <CurrencyInput
+                            label="Cijena"
+                            icon={CurrencyEuroIcon}
+                            value={item.unit_price}
+                            onChange={handleUnitPriceChange}
+                            currency={currency}
+                            disabled={disabled}
+                        />
+                    </div>
+                </div>
             </div>
 
-            {/* Tax Rate */}
-            <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                    PDV (%)
-                </label>
-                <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={item.tax_rate}
-                    onChange={(e) => handleTaxRateChange(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
-                    disabled={disabled}
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm px-4 py-2.5 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all"
-                />
-            </div>
-
-            {/* Totals */}
-            <div className="pt-2 border-t border-[var(--color-border)] flex justify-between items-center">
-                <div className="flex gap-4 text-[10px] text-[var(--color-text-dim)]">
-                    <span>Osnovica: <strong className="text-[var(--color-text-main)]">{formatPrice(item.subtotal)}</strong></span>
+            {/* Totals - compact */}
+            <div className="pt-1.5 border-t border-[var(--color-border)] flex justify-between items-center gap-2">
+                <div className="flex gap-2 text-[9px] text-[var(--color-text-dim)] flex-wrap">
+                    <span>Osn: <strong className="text-[var(--color-text-main)]">{formatPrice(item.subtotal)}</strong></span>
                     <span>PDV: <strong className="text-[var(--color-text-main)]">{formatPrice(item.tax_amount)}</strong></span>
                 </div>
-                <div className="text-right">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">Ukupno</span>
-                    <p className="text-lg font-black text-primary tracking-tighter italic">
-                        {formatPrice(item.total)} {currency}
-                    </p>
-                </div>
+                <p className="text-base font-black text-primary tracking-tighter italic shrink-0">
+                    {formatPrice(item.total)} {currency}
+                </p>
             </div>
         </div>
     );

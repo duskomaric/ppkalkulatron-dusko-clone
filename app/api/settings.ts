@@ -16,6 +16,19 @@ export async function updateCompanySettings(companySlug: string, token: string, 
     });
 }
 
+// --- Fiscal (OFS ESIR) ---
+
+export async function testFiscalAttention(companySlug: string, token: string) {
+    return fetchApi<{ success: boolean; message: string }>(`/${companySlug}/fiscal/test-attention`, { token });
+}
+
+export async function testFiscalSettings(companySlug: string, token: string) {
+    return fetchApi<{ success: boolean; message: string; data?: { printer_name?: string; lpfr_url?: string } }>(
+        `/${companySlug}/fiscal/test-settings`,
+        { token }
+    );
+}
+
 // --- Bank Accounts ---
 
 export async function getBankAccounts(companySlug: string, token: string, page = 1) {
