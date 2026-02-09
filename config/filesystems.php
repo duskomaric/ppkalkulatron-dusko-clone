@@ -38,6 +38,13 @@ return [
             'report' => false,
         ],
 
+        'fiscal_receipts' => [
+            'driver' => 'local',
+            'root' => storage_path('app/fiscal-receipts'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

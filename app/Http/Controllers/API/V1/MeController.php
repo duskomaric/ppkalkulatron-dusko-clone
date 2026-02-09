@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\API\V1\UserResource;
 use App\Models\Company;
 use App\Models\CompanySetting;
+use App\Models\Enums\ArticleTypeEnum;
 use App\Models\Enums\DocumentFrequencyEnum;
 use App\Models\Enums\DocumentTemplateEnum;
+use App\Models\Enums\FiscalPaymentTypeEnum;
 use App\Models\Enums\LanguageEnum;
+use App\Models\Enums\TaxRateEnum;
+use App\Models\Enums\UnitEnum;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +47,13 @@ class MeController extends Controller
                     'value' => $tpl->value,
                     'label' => $tpl->getLabel(),
                 ])->values(),
+                'payment_types' => FiscalPaymentTypeEnum::options(),
+                'article_types' => array_map(fn (ArticleTypeEnum $e) => [
+                    'value' => $e->value,
+                    'label' => $e->getLabel(),
+                ], ArticleTypeEnum::cases()),
+                'units' => UnitEnum::options(),
+                'tax_rates' => TaxRateEnum::options(),
             ],
         ]);
     }

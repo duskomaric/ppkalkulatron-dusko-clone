@@ -23,7 +23,7 @@ class ArticleFactory extends Factory
                 'BAM' => 196.60,
             ],
             'unit' => fake()->randomElement(['KOM', 'SAT']),
-            'tax_category' => fake()->randomElement(['F', 'N', 'T', 'E', 'P']),
+            'tax_rate' => fake()->randomElement(['F', 'A', 'N', 'B']),
             'is_active' => true,
             'type' => ArticleTypeEnum::SERVICES,
         ];

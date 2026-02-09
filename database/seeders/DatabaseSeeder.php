@@ -50,6 +50,10 @@ class DatabaseSeeder extends Seeder
             ];
         };
 
+        $makeInvoiceItemData = function (string $name, ?int $articleId, int $quantity, int $unitPrice, int $taxRate, string $taxLabel = 'A') use ($makeItemData): array {
+            return array_merge($makeItemData($name, $articleId, $quantity, $unitPrice, $taxRate), ['tax_label' => $taxLabel]);
+        };
+
         $recalcTotals = function (iterable $items): array {
             $subtotal = 0;
             $taxTotal = 0;
@@ -229,7 +233,7 @@ class DatabaseSeeder extends Seeder
             ['bank_name' => '++i Bank 2', 'account_number' => 'PLUSA-0002', 'swift' => 'PLUSIB22YYY', 'is_default' => false],
         ]);
 
-        $seedDocumentsForCompany = function (Company $company, string $tenantTag) use ($makeItemData, $recalcTotals): void {
+        $seedDocumentsForCompany = function (Company $company, string $tenantTag) use ($makeItemData, $makeInvoiceItemData, $recalcTotals): void {
             $client = $company->clients()->orderBy('id')->first();
             $articles = $company->articles()->orderBy('id')->take(3)->get();
             $articleIds = $articles->pluck('id')->values();
@@ -249,7 +253,7 @@ class DatabaseSeeder extends Seeder
                 'quote_number' => "{$tenantTag}-QUO-0001",
                 'company_id' => $company->id,
                 'client_id' => $client->id,
-                'status' => DocumentStatusEnum::Draft,
+                'status' => DocumentStatusEnum::Created,
                 'language' => LanguageEnum::English,
                 'date' => now()->toDateString(),
                 'valid_until' => now()->addDays(14)->toDateString(),
@@ -276,7 +280,7 @@ class DatabaseSeeder extends Seeder
                 'contract_number' => "{$tenantTag}-CON-0001",
                 'company_id' => $company->id,
                 'client_id' => $client->id,
-                'status' => DocumentStatusEnum::Draft,
+                'status' => DocumentStatusEnum::Created,
                 'language' => LanguageEnum::English,
                 'date' => now()->toDateString(),
                 'due_date' => now()->addDays(30)->toDateString(),
@@ -306,7 +310,7 @@ class DatabaseSeeder extends Seeder
                 'proforma_number' => "{$tenantTag}-PRO-0001",
                 'company_id' => $company->id,
                 'client_id' => $client->id,
-                'status' => DocumentStatusEnum::Draft,
+                'status' => DocumentStatusEnum::Created,
                 'language' => LanguageEnum::English,
                 'date' => now()->toDateString(),
                 'due_date' => now()->addDays(7)->toDateString(),
@@ -326,8 +330,8 @@ class DatabaseSeeder extends Seeder
             }
 
             $invoiceItemsFromProforma = [
-                $makeItemData("{$tenantTag} Invoice(P) Item 1", $articleIds->get(0), 1, 30000, 1700),
-                $makeItemData("{$tenantTag} Invoice(P) Item 2", $articleIds->get(1), 2, 12000, 0),
+                $makeInvoiceItemData("{$tenantTag} Invoice(P) Item 1", $articleIds->get(0), 1, 30000, 1700, 'A'),
+                $makeInvoiceItemData("{$tenantTag} Invoice(P) Item 2", $articleIds->get(1), 2, 12000, 0, 'N'),
             ];
             [$invPSubtotal, $invPTaxTotal, $invPTotal] = $recalcTotals($invoiceItemsFromProforma);
 
@@ -335,7 +339,7 @@ class DatabaseSeeder extends Seeder
                 'invoice_number' => "{$tenantTag}-INV-P-0001",
                 'company_id' => $company->id,
                 'client_id' => $client->id,
-                'status' => DocumentStatusEnum::Draft,
+                'status' => DocumentStatusEnum::Created,
                 'language' => LanguageEnum::English,
                 'date' => now()->toDateString(),
                 'due_date' => now()->addDays(15)->toDateString(),
@@ -348,12 +352,6 @@ class DatabaseSeeder extends Seeder
                 'source_id' => $proforma->id,
                 'currency' => 'BAM',
                 'invoice_template' => DocumentTemplateEnum::Classic,
-                'is_fiscalized' => false,
-                'fiscal_invoice_number' => null,
-                'fiscal_counter' => null,
-                'fiscal_verification_url' => null,
-                'fiscalized_at' => null,
-                'fiscal_meta' => null,
                 'subtotal' => $invPSubtotal,
                 'tax_total' => $invPTaxTotal,
                 'discount_total' => 0,
@@ -365,7 +363,7 @@ class DatabaseSeeder extends Seeder
             }
 
             $invoiceItemsFromContract = [
-                $makeItemData("{$tenantTag} Invoice(C) Item 1", $articleIds->get(2), 1, 100000, 1700),
+                $makeInvoiceItemData("{$tenantTag} Invoice(C) Item 1", $articleIds->get(2), 1, 100000, 1700, 'A'),
             ];
             [$invCSubtotal, $invCTaxTotal, $invCTotal] = $recalcTotals($invoiceItemsFromContract);
 
@@ -373,7 +371,7 @@ class DatabaseSeeder extends Seeder
                 'invoice_number' => "{$tenantTag}-INV-C-0001",
                 'company_id' => $company->id,
                 'client_id' => $client->id,
-                'status' => DocumentStatusEnum::Draft,
+                'status' => DocumentStatusEnum::Created,
                 'language' => LanguageEnum::English,
                 'date' => now()->toDateString(),
                 'due_date' => now()->addDays(15)->toDateString(),
@@ -386,12 +384,6 @@ class DatabaseSeeder extends Seeder
                 'source_id' => $contract->id,
                 'currency' => 'BAM',
                 'invoice_template' => DocumentTemplateEnum::Classic,
-                'is_fiscalized' => false,
-                'fiscal_invoice_number' => null,
-                'fiscal_counter' => null,
-                'fiscal_verification_url' => null,
-                'fiscalized_at' => null,
-                'fiscal_meta' => null,
                 'subtotal' => $invCSubtotal,
                 'tax_total' => $invCTaxTotal,
                 'discount_total' => 0,

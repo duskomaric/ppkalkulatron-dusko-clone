@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('quote_number');
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('client_id')->constrained()->cascadeOnDelete();
-            $table->string('status')->default('draft');
+            $table->string('status')->default('created');
             $table->string('language')->default('en');
             $table->date('date');
             $table->date('valid_until')->nullable(); // Instead of due_date

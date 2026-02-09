@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('invoice_number');
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('client_id')->constrained()->cascadeOnDelete();
-            $table->string('status')->default('draft');
+            $table->foreignId('client_id')->nullable()->constrained()->nullOnDelete(); // null = račun bez klijenta
+            $table->string('status')->default('created');
             $table->string('language')->default('en');
             $table->date('date');
             $table->date('due_date')->nullable();
@@ -36,13 +36,17 @@ return new class extends Migration
             $table->string('currency')->default('BAM');
             $table->string('invoice_template')->default('classic');
 
+            // Fiscal payment type (Cash, Card, WireTransfer, Check, Voucher, MobileMoney, Other)
+            $table->string('payment_type', 32)->default('Cash');
+
             // Fiscal
             $table->boolean('is_fiscalized')->default(false);
             $table->string('fiscal_invoice_number')->nullable();
-            $table->integer('fiscal_counter')->nullable();
-            $table->string('fiscal_verification_url')->nullable();
+            $table->string('fiscal_counter', 64)->nullable(); // OFS vraća npr. "61876/67887ПП"
+            $table->text('fiscal_verification_url')->nullable(); // URL može biti dugačak
             $table->timestamp('fiscalized_at')->nullable();
             $table->json('fiscal_meta')->nullable();
+            $table->string('fiscal_receipt_image_path')->nullable(); // company-slug/mjesec/broj-fakture.png
 
             // Totals (pfening - integer)
             $table->integer('subtotal')->default(0);

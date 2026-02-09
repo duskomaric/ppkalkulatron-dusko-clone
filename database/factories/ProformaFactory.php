@@ -20,7 +20,7 @@ class ProformaFactory extends Factory
             'proforma_number' => fake()->unique()->numerify('PRO-####-###'),
             'company_id' => Company::factory(),
             'client_id' => Client::factory(),
-            'status' => DocumentStatusEnum::Draft,
+            'status' => DocumentStatusEnum::Created,
             'language' => LanguageEnum::English,
             'date' => fake()->date(),
             'due_date' => fake()->dateTimeBetween('now', '+30 days')->format('Y-m-d'),

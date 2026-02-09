@@ -20,7 +20,7 @@ class QuoteFactory extends Factory
             'quote_number' => fake()->unique()->numerify('QUO-####-###'),
             'company_id' => Company::factory(),
             'client_id' => Client::factory(),
-            'status' => DocumentStatusEnum::Draft,
+            'status' => DocumentStatusEnum::Created,
             'language' => LanguageEnum::English,
             'date' => fake()->date(),
             'valid_until' => fake()->dateTimeBetween('now', '+30 days')->format('Y-m-d'),

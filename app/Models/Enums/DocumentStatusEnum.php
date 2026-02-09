@@ -4,25 +4,25 @@ namespace App\Models\Enums;
 
 enum DocumentStatusEnum: string
 {
-    case Draft = 'draft';
-    case Sent = 'sent';
-    case Locked = 'locked';
+    case Created = 'created';
+    case Fiscalized = 'fiscalized';
+    case Refunded = 'refunded';
 
     public function getLabel(): ?string
     {
         return match ($this) {
-            self::Draft => 'Draft',
-            self::Sent => 'Sent',
-            self::Locked => 'Locked',
+            self::Created => 'Kreiran',
+            self::Fiscalized => 'Fiskalizovan',
+            self::Refunded => 'Storniran',
         };
     }
 
     public function getColor(): string|array|null
     {
         return match ($this) {
-            self::Draft => 'gray',
-            self::Sent => 'green',
-            self::Locked => 'red',
+            self::Created => 'gray',
+            self::Fiscalized => 'green',
+            self::Refunded => 'red',
         };
     }
 }

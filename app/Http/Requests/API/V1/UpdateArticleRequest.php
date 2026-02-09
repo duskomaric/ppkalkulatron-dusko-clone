@@ -27,7 +27,7 @@ class UpdateArticleRequest extends FormRequest
             'prices_meta' => 'sometimes|nullable|array',
             'prices_meta.*' => 'sometimes|numeric|min:0',
             'unit' => 'sometimes|nullable|string|max:10',
-            'tax_category' => 'sometimes|nullable|string|max:5',
+            'tax_rate' => 'sometimes|nullable|string|in:F,N,P,E,T,A,B,C',
             'is_active' => 'sometimes|boolean',
             'type' => 'sometimes|nullable|in:goods,services,products',
         ];

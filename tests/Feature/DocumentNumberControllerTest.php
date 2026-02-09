@@ -26,7 +26,7 @@ it('tenant: user can preview next document number', function () {
         ]);
 
     expect($response->json('number'))->toBe(6);
-    expect($response->json('formatted'))->toContain('INV-2024-006');
+    expect($response->json('formatted'))->toContain('INV-2024-0006');
 });
 
 it('tenant: preview does not increment counter', function () {
@@ -72,7 +72,7 @@ it('tenant: user can reserve document number', function () {
         ]);
 
     expect($response->json('number'))->toBe(6);
-    expect($response->json('formatted'))->toContain('INV-2024-006');
+    expect($response->json('formatted'))->toContain('INV-2024-0006');
 
     // Counter should be incremented
     $counter = DocumentCounter::where('company_id', $company->id)

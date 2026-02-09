@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Enums\ArticleTypeEnum;
+use App\Models\Enums\TaxRateEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +18,7 @@ class Article extends Model
         'description',
         'prices_meta',
         'unit',
-        'tax_category',
+        'tax_rate',
         'is_active',
         'type',
     ];
@@ -28,7 +29,7 @@ class Article extends Model
         'description' => 'string',
         'prices_meta' => 'array',
         'unit' => 'string',
-        'tax_category' => 'string',
+        'tax_rate' => 'string',
         'is_active' => 'boolean',
         'type' => ArticleTypeEnum::class,
     ];
@@ -36,5 +37,14 @@ class Article extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function taxRateEnum(): ?TaxRateEnum
+    {
+        if (!array_key_exists('tax_rate', $this->getAttributes())) {
+            return null;
+        }
+        $value = $this->getAttributes()['tax_rate'] ?? null;
+        return $value ? TaxRateEnum::tryFrom($value) : null;
     }
 }

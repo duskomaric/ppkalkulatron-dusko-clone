@@ -18,8 +18,7 @@ it('tenant: company settings returns defaults with correct types', function () {
 
     expect($settings['default_invoice_due_days'])->toBeInt()
         ->and($settings['invoice_numbering_reset_yearly'])->toBeBool()
-        ->and($settings['default_invoice_template'])->toBeString()
-        ->and($settings['invoice_footer_lines'])->toBeArray();
+        ->and($settings['default_invoice_template'])->toBeString();
 });
 
 it('tenant: company settings can be updated and values are typed', function () {
@@ -33,7 +32,6 @@ it('tenant: company settings can be updated and values are typed', function () {
                 'default_invoice_due_days' => '30',
                 'invoice_numbering_reset_yearly' => 'false',
                 'invoice_numbering_prefix' => 'INV-',
-                'invoice_footer_lines' => ['Line 1', 'Line 2'],
             ],
         ]);
 

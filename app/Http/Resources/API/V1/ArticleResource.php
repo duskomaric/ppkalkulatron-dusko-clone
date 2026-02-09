@@ -21,7 +21,10 @@ class ArticleResource extends JsonResource
             'description' => $this->description,
             'prices_meta' => $this->prices_meta,
             'unit' => $this->unit,
-            'tax_category' => $this->tax_category,
+            'tax_rate' => $this->taxRateEnum() ? [
+                'label' => $this->taxRateEnum()->value,
+                'rate' => $this->taxRateEnum()->rate(),
+            ] : null,
             'is_active' => $this->is_active,
             'type' => $this->type,
             'type_label' => $this->type?->getLabel(),

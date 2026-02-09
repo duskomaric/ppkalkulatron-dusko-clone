@@ -42,7 +42,7 @@ class GenerateRecurringInvoicesCommand extends Command
                         'invoice_number' => $numberData['formatted'],
                         'company_id' => $invoice->company_id,
                         'client_id' => $invoice->client_id,
-                        'status' => DocumentStatusEnum::Draft,
+                        'status' => DocumentStatusEnum::Created,
                         'language' => $invoice->language,
                         'date' => now(),
                         'due_date' => now()->addDays(30),

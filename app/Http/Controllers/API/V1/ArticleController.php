@@ -26,6 +26,7 @@ class ArticleController extends Controller
     public function store(StoreArticleRequest $request, Company $company): ArticleResource
     {
         $article = $company->articles()->create($request->validated());
+
         return new ArticleResource($article);
     }
 
@@ -41,6 +42,7 @@ class ArticleController extends Controller
     {
         // Route model binding ensures article belongs to company
         $article->update($request->validated());
+
         return new ArticleResource($article);
     }
 

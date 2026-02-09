@@ -20,9 +20,10 @@ class InvoiceItem extends Model
         'quantity',
 
         // monetary snapshot (pfening)
-        'unit_price',     // cijena bez poreza
+        'unit_price',     // cijena sa porezom (inclusive) - ono što kupac plaća po jedinici
         'subtotal',       // quantity * unit_price
-        'tax_rate',       // npr. 1700 = 17.00%
+        'tax_rate',       // basis points, npr. 1700 = 17%
+        'tax_label',      // OFS label: F, N, A, ...
         'tax_amount',     // iznos poreza
         'total',          // subtotal + tax_amount
     ];

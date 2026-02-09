@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\LanguageEnum;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateInvoiceRequest extends FormRequest
@@ -15,9 +16,9 @@ class UpdateInvoiceRequest extends FormRequest
     {
         return [
             'invoice_number' => 'sometimes|string|max:255',
-            'client_id' => 'sometimes|exists:clients,id',
-            'status' => 'sometimes|in:draft,sent,paid,cancelled,partial,overdue',
-            'language' => 'sometimes|in:en,sr-Latn,sr-Cyrl,fr,de,it,ru',
+            'client_id' => 'sometimes|nullable|exists:clients,id',
+            'status' => 'sometimes|in:open,draft,sent,paid,cancelled,partial,overdue,fiscalized,refunded',
+            'language' => 'nullable|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
             'date' => 'sometimes|date',
             'due_date' => 'sometimes|nullable|date|after_or_equal:date',
             'notes' => 'sometimes|nullable|string',
@@ -25,7 +26,10 @@ class UpdateInvoiceRequest extends FormRequest
             'frequency' => 'sometimes|nullable|in:weekly,monthly,quarterly,yearly',
             'next_invoice_date' => 'sometimes|nullable|date',
             'currency' => 'sometimes|string|max:3',
-            'invoice_template' => 'sometimes|in:classic,modern,minimal',
+            'currency_id' => 'sometimes|nullable|exists:currencies,id',
+            'bank_account_id' => 'sometimes|nullable|exists:bank_accounts,id',
+            'invoice_template' => 'sometimes|in:classic,modern,minimal,standard',
+            'payment_type' => 'sometimes|in:Cash,Card,Check,WireTransfer,Voucher,MobileMoney,Other',
             'subtotal' => 'sometimes|integer|min:0',
             'tax_total' => 'sometimes|integer|min:0',
             'discount_total' => 'sometimes|integer|min:0',
@@ -38,6 +42,7 @@ class UpdateInvoiceRequest extends FormRequest
             'items.*.unit_price' => 'sometimes|required|integer|min:0',
             'items.*.subtotal' => 'sometimes|required|integer|min:0',
             'items.*.tax_rate' => 'sometimes|required|integer|min:0|max:10000',
+            'items.*.tax_label' => 'sometimes|nullable|string|max:4',
             'items.*.tax_amount' => 'sometimes|required|integer|min:0',
             'items.*.total' => 'sometimes|required|integer|min:0',
         ];

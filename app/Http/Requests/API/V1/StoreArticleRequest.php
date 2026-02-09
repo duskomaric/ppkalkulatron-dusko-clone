@@ -27,7 +27,7 @@ class StoreArticleRequest extends FormRequest
             'prices_meta' => 'nullable|array',
             'prices_meta.*' => 'numeric|min:0',
             'unit' => 'nullable|string|max:10',
-            'tax_category' => 'nullable|string|max:5',
+            'tax_rate' => 'nullable|string|in:F,N,P,E,T,A,B,C',
             'is_active' => 'boolean',
             'type' => 'nullable|in:goods,services,products',
         ];

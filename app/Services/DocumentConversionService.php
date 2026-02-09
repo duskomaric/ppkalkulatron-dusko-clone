@@ -18,7 +18,7 @@ class DocumentConversionService
             'proforma_number' => '', // Will be set by DocumentNumberService
             'company_id' => $quote->company_id,
             'client_id' => $quote->client_id,
-            'status' => 'draft',
+            'status' => 'created',
             'language' => $quote->language,
             'date' => now(),
             'due_date' => $quote->valid_until,
@@ -33,7 +33,6 @@ class DocumentConversionService
             'total' => $quote->total,
         ]);
 
-        // Copy items with snapshot data
         foreach ($quote->items as $quoteItem) {
             $proforma->items()->create([
                 'article_id' => $quoteItem->article_id,
@@ -60,7 +59,7 @@ class DocumentConversionService
             'invoice_number' => '', // Will be set by DocumentNumberService
             'company_id' => $proforma->company_id,
             'client_id' => $proforma->client_id,
-            'status' => 'draft',
+            'status' => 'created',
             'language' => $proforma->language,
             'date' => now(),
             'due_date' => $proforma->due_date,
@@ -75,8 +74,8 @@ class DocumentConversionService
             'total' => $proforma->total,
         ]);
 
-        // Copy items with snapshot data
         foreach ($proforma->items as $proformaItem) {
+            $taxLabel = $proformaItem->article?->tax_rate ?? 'A';
             $invoice->items()->create([
                 'article_id' => $proformaItem->article_id,
                 'name' => $proformaItem->name,
@@ -85,6 +84,7 @@ class DocumentConversionService
                 'unit_price' => $proformaItem->unit_price,
                 'subtotal' => $proformaItem->subtotal,
                 'tax_rate' => $proformaItem->tax_rate,
+                'tax_label' => $taxLabel,
                 'tax_amount' => $proformaItem->tax_amount,
                 'total' => $proformaItem->total,
             ]);
@@ -102,7 +102,7 @@ class DocumentConversionService
             'invoice_number' => '', // Will be set by DocumentNumberService
             'company_id' => $contract->company_id,
             'client_id' => $contract->client_id,
-            'status' => 'draft',
+            'status' => 'created',
             'language' => $contract->language,
             'date' => now(),
             'due_date' => $contract->due_date,
@@ -117,8 +117,8 @@ class DocumentConversionService
             'total' => $contract->total,
         ]);
 
-        // Copy items with snapshot data
         foreach ($contract->items as $contractItem) {
+            $taxLabel = $contractItem->article?->tax_rate ?? 'A';
             $invoice->items()->create([
                 'article_id' => $contractItem->article_id,
                 'name' => $contractItem->name,
@@ -127,6 +127,7 @@ class DocumentConversionService
                 'unit_price' => $contractItem->unit_price,
                 'subtotal' => $contractItem->subtotal,
                 'tax_rate' => $contractItem->tax_rate,
+                'tax_label' => $taxLabel,
                 'tax_amount' => $contractItem->tax_amount,
                 'total' => $contractItem->total,
             ]);

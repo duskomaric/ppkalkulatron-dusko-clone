@@ -7,6 +7,7 @@ enum DocumentTemplateEnum: string
     case Classic = 'classic';
     case Modern = 'modern';
     case Minimal = 'minimal';
+    case Standard = 'standard';
 
     public function getLabel(): string
     {
@@ -14,6 +15,7 @@ enum DocumentTemplateEnum: string
             self::Classic => 'Classic',
             self::Modern => 'Modern',
             self::Minimal => 'Minimal',
+            self::Standard => 'Standard',
         };
     }
 
@@ -23,6 +25,7 @@ enum DocumentTemplateEnum: string
             self::Classic => 'pdf.invoice',
             self::Modern => 'pdf.invoice-modern',
             self::Minimal => 'pdf.invoice-minimal',
+            self::Standard => 'pdf.invoice-standard',
         };
     }
 }

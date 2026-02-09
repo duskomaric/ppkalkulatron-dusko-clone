@@ -14,7 +14,9 @@ use App\Http\Controllers\API\V1\ProformaController;
 use App\Http\Controllers\API\V1\ContractController;
 use App\Http\Controllers\API\V1\QuoteController;
 use App\Http\Controllers\API\V1\DocumentNumberController;
+use App\Http\Controllers\API\V1\FiscalController;
 use App\Http\Controllers\API\V1\MeController;
+use App\Models\Company;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -55,6 +57,56 @@ Route::prefix('v1')->group(function () {
 
                 // Documents
                 Route::apiResource('invoices', InvoiceController::class);
+                Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf']);
+                Route::post('invoices/{invoice}/send-email', [InvoiceController::class, 'sendEmail']);
+                Route::post('invoices/{invoice}/fiscalize', [FiscalController::class, 'fiscalize']);
+                Route::post('invoices/{invoice}/fiscalize-copy', [FiscalController::class, 'fiscalizeCopy']);
+                Route::post('invoices/{invoice}/fiscalize-refund', [FiscalController::class, 'fiscalizeRefund']);
+                Route::get('invoices/{invoice}/fiscal-receipt-image', [FiscalController::class, 'fiscalReceiptImage']);
+
+                // Test invoice templates
+
+                ///api/v1/{company:slug}/test-invoice/classic
+                ///api/v1/{company:slug}/test-invoice/modern
+                ///api/v1/{company:slug}/test-invoice/minimal
+                ///api/v1/{company:slug}/test-invoice/standard
+                Route::get('test-invoice/{template}', function (Company $company, string $template) {
+                    // Validate template
+                    $validTemplates = ['classic', 'modern', 'minimal', 'standard'];
+                    if (!in_array($template, $validTemplates)) {
+                        abort(404, 'Template not found');
+                    }
+
+                    // Find first fiscalized invoice
+                    $invoice = $company->invoices()
+                        ->with(['client', 'items', 'fiscalRecords', 'currencyRelation', 'bankAccount'])
+                        ->where('status', 'fiscalized')
+                        ->first();
+
+                    if (!$invoice) {
+                        abort(404, 'No fiscalized invoice found for testing');
+                    }
+
+                    // Temporarily override template
+                    $originalTemplate = $invoice->invoice_template;
+                    $invoice->invoice_template = \App\Models\Enums\DocumentTemplateEnum::from($template);
+
+                    // Get view name from template enum
+                    $viewName = $invoice->invoice_template->getViewName();
+
+                    // Return HTML view instead of PDF
+                    $response = view($viewName, ['invoice' => $invoice]);
+
+                    // Restore original template
+                    $invoice->invoice_template = $originalTemplate;
+
+                    return $response;
+                });
+
+                // Fiscal (OFS ESIR)
+                Route::get('fiscal/test-attention', [FiscalController::class, 'testAttention']);
+                Route::get('fiscal/test-settings', [FiscalController::class, 'testSettings']);
+                Route::get('fiscal/invoices/request/{requestId}', [FiscalController::class, 'getInvoiceByRequestId']);
                 Route::post('proformas/{proforma}/convert-to-invoice', [ProformaController::class, 'convertToInvoice']);
                 Route::post('proformas/{proforma}/create-invoice', [InvoiceController::class, 'createFromProforma']);
                 Route::apiResource('proformas', ProformaController::class);
