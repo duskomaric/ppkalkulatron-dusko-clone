@@ -1,12 +1,22 @@
 import { fetchApi } from "~/utils/api";
 import type { Client, ClientsResponse } from "~/types/client";
 
+export interface ClientFilters {
+    search?: string;
+    status?: string;
+}
+
 export async function getClients(
     companySlug: string,
     token: string,
-    page: number = 1
+    page: number = 1,
+    filters?: ClientFilters
 ): Promise<ClientsResponse> {
-    return fetchApi<ClientsResponse>(`/${companySlug}/clients?page=${page}`, { token });
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    if (filters?.search) params.set("search", filters.search);
+    if (filters?.status) params.set("status", filters.status);
+    return fetchApi<ClientsResponse>(`/${companySlug}/clients?${params.toString()}`, { token });
 }
 
 export async function createClient(

@@ -114,12 +114,17 @@ export function AppLayout({
 
   return (
     <div
-      className="min-h-screen flex flex-col pb-32 md:pb-8 overflow-hidden relative"
+      className="min-h-screen flex flex-col pb-32 lg:pb-8 overflow-hidden relative"
       style={{
         "--primary-base": currentRGB,
         "--color-primary": `rgb(${currentRGB})`,
         "--color-primary-hover": `color-mix(in srgb, rgb(${currentRGB}), white 20%)`,
-        "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`
+        "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`,
+        "--color-page-bg": `rgba(${currentRGB}, 0.05)`,
+        "--color-page-bg-strong": `rgba(${currentRGB}, 0.1)`,
+        "--color-page-bg-hover": `rgba(${currentRGB}, 0.15)`,
+        "--color-page-border": `rgba(${currentRGB}, 0.4)`,
+        "--color-page-border-subtle": `rgba(${currentRGB}, 0.3)`,
       } as CSSProperties}
     >
       {/* Background Effects */}
@@ -138,8 +143,8 @@ export function AppLayout({
               <CalculatorIcon className="h-5 w-5" />
             </Link>
 
-            {/* Desktop nav - hidden on mobile */}
-            <nav className="hidden md:flex items-center gap-2">
+            {/* Desktop nav - visible from 1024px */}
+            <nav className="hidden lg:flex items-center gap-2">
               {NAV_ITEMS.map((item) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
@@ -158,7 +163,7 @@ export function AppLayout({
                     }`}>
                       <Icon className="h-3.5 w-3.5" />
                     </span>
-                    <span className="leading-none">{item.label}</span>
+                    <span className="leading-none">{item.title}</span>
                     {isActive && (
                       <span className="absolute -bottom-1 left-3 right-3 h-[2px] bg-primary/60 rounded-full" />
                     )}
@@ -173,9 +178,6 @@ export function AppLayout({
                   onClick={() => setActiveDrawer("company")}
                   className="group cursor-pointer flex items-center gap-2 px-3 py-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 hover:bg-[var(--color-surface-hover)] transition-all max-w-[280px]"
                 >
-                  <span className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-[10px] shrink-0">
-                    {selectedCompany.name.substring(0, 2).toUpperCase()}
-                  </span>
                   <span className="min-w-0 flex flex-col items-start">
                     <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--color-text-dim)]">Kompanija</span>
                     <span className="text-xs font-black text-[var(--color-text-main)] truncate max-w-[170px] sm:max-w-[220px]">
@@ -228,8 +230,8 @@ export function AppLayout({
         {children}
       </main>
 
-      {/* Bottom Navigation - mobile only */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-5 flex justify-center pointer-events-auto">
+      {/* Bottom Navigation - visible below 1024px */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-5 flex justify-center pointer-events-auto">
         <nav className="bg-[var(--color-glass)] backdrop-blur-2xl border border-[var(--color-border-strong)] rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/20 px-5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-around gap-2 sm:gap-6 w-full max-w-md sm:max-w-lg">
           {NAV_ITEMS.map((item) => {
             const isActive = location.pathname === item.path;
@@ -247,7 +249,7 @@ export function AppLayout({
                   {isActive && <span className="absolute inset-0 rounded-2xl bg-primary/20 animate-pulse-slow pointer-events-none" />}
                 </div>
                 <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mt-1 hidden sm:block ${isActive ? 'text-primary' : 'text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]'}`}>
-                  {item.label}
+                  {item.title}
                 </span>
               </Link>
             );
@@ -258,7 +260,7 @@ export function AppLayout({
       {/* Back to Top */}
       <button
         onClick={scrollToTop}
-        className={`fixed right-6 bottom-32 md:bottom-8 z-[60] h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white shadow-glow-primary transition-all duration-300 transform ${showBackToTop ? "scale-100 opacity-100 translate-y-0" : "scale-0 opacity-0 translate-y-10"
+        className={`fixed right-6 bottom-32 lg:bottom-8 z-[60] h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white shadow-glow-primary transition-all duration-300 transform ${showBackToTop ? "scale-100 opacity-100 translate-y-0" : "scale-0 opacity-0 translate-y-10"
           } hover:scale-110 active:scale-95`}
         aria-label="Back to top"
       >

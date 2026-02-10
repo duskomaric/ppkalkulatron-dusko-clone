@@ -2,12 +2,28 @@ import { API_URL } from "~/config/constants";
 import { fetchApi } from "~/utils/api";
 import type { Invoice, InvoicesResponse, InvoiceInput } from "~/types/invoice";
 
+export interface InvoiceFilters {
+    search?: string;
+    status?: string;
+    payment_type?: string;
+    created_from?: string;
+    created_to?: string;
+}
+
 export async function getInvoices(
     companySlug: string,
     token: string,
-    page: number = 1
+    page: number = 1,
+    filters?: InvoiceFilters
 ): Promise<InvoicesResponse> {
-    return fetchApi<InvoicesResponse>(`/${companySlug}/invoices?page=${page}`, { token });
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    if (filters?.search) params.set("search", filters.search);
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.payment_type) params.set("payment_type", filters.payment_type);
+    if (filters?.created_from) params.set("created_from", filters.created_from);
+    if (filters?.created_to) params.set("created_to", filters.created_to);
+    return fetchApi<InvoicesResponse>(`/${companySlug}/invoices?${params.toString()}`, { token });
 }
 
 export async function getInvoice(
@@ -40,6 +56,28 @@ export async function updateInvoice(
         method: "PUT",
         token,
         body: JSON.stringify(invoiceData),
+    });
+}
+
+export async function deleteInvoice(
+    companySlug: string,
+    invoiceId: number,
+    token: string
+): Promise<{ message: string; success?: boolean }> {
+    return fetchApi<{ message: string; success?: boolean }>(`/${companySlug}/invoices/${invoiceId}`, {
+        method: "DELETE",
+        token,
+    });
+}
+
+export async function createRefundInvoice(
+    companySlug: string,
+    invoiceId: number,
+    token: string
+): Promise<{ data: Invoice }> {
+    return fetchApi<{ data: Invoice }>(`/${companySlug}/invoices/${invoiceId}/create-refund`, {
+        method: "POST",
+        token,
     });
 }
 

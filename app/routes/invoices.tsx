@@ -1,7 +1,7 @@
 import { useAuth } from "~/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
-import { getInvoices, getInvoice, createInvoice, updateInvoice, fiscalizeInvoice, fiscalizeCopy, fiscalizeRefund, downloadInvoicePdf, sendInvoiceEmail } from "~/api/invoices";
+import { getInvoices, getInvoice, createInvoice, updateInvoice, deleteInvoice, createRefundInvoice, fiscalizeInvoice, fiscalizeCopy, fiscalizeRefund, downloadInvoicePdf, sendInvoiceEmail } from "~/api/invoices";
 import { getClients } from "~/api/clients";
 import { getArticles } from "~/api/articles";
 import { getMe, getCurrencies } from "~/api/config";
@@ -24,10 +24,12 @@ import {
   StickyNoteIcon,
   CheckCircleIcon,
   AlertTriangleIcon,
+  TrashIcon,
   ExternalLinkIcon,
   ImageIcon,
   BoxesIcon,
-  MailIcon
+  MailIcon,
+  FileSlidersIcon,
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { CreateButton } from "~/components/ui/CreateButton";
@@ -52,6 +54,11 @@ import { SectionToggle } from "~/components/ui/SectionToggle";
 import { DetailsGrid } from "~/components/ui/DetailsGrid";
 import { ListHeader } from "~/components/ui/ListHeader";
 import { MetaItem } from "~/components/ui/MetaItem";
+import { FilterBar } from "~/components/ui/FilterBar";
+import { FilterPillSelect } from "~/components/ui/FilterPillSelect";
+import { FilterSearchInput } from "~/components/ui/FilterSearchInput";
+import { ActiveFiltersBar } from "~/components/ui/ActiveFiltersBar";
+import { FilterDateInput } from "~/components/ui/FilterDateInput";
 import type { PaginationMeta } from "~/types/api";
 import { useToast } from "~/hooks/useToast";
 
@@ -78,6 +85,14 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
 
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   // Reference data
   const [clients, setClients] = useState<Client[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -100,6 +115,10 @@ export default function InvoicesPage() {
   // Fiscal
   const [fiscalLoading, setFiscalLoading] = useState(false);
   const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [stornoModalOpen, setStornoModalOpen] = useState(false);
+  const [stornoLoading, setStornoLoading] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // PDF & Email
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -151,14 +170,133 @@ export default function InvoicesPage() {
     }).format(amount / 100);
   };
 
+  const applyRefundSign = (amount: number, invoice?: Invoice | null): number => {
+    if (!invoice) return amount;
+    const isRefundInvoice = invoice.status === "refund_created" || invoice.status === "refunded";
+    return isRefundInvoice ? -Math.abs(amount) : amount;
+  };
+
+  const formatSignedPrice = (amount: number, invoice?: Invoice | null): string => {
+    return formatPrice(applyRefundSign(amount, invoice));
+  };
+
+  const isRefundCreated = activeInvoice?.status === "refund_created";
+  const isRefunded = activeInvoice?.status === "refunded";
+  const isFiscalized = activeInvoice?.status === "fiscalized";
+  const isRefundInvoice = isRefundCreated || isRefunded;
+  const hasOriginalFiscal = activeInvoice?.fiscal_records?.some((r) => r.type === "original");
+  const hasRefundFiscal = activeInvoice?.fiscal_records?.some((r) => r.type === "refund");
+  const canCreateRefundInvoice = Boolean(
+    activeInvoice &&
+    hasOriginalFiscal &&
+    !activeInvoice.refund_invoice_id &&
+    !isRefundCreated &&
+    !isRefunded
+  );
+  const canEditInvoice = Boolean(activeInvoice && activeInvoice.status === "created");
+  const canDeleteInvoice = Boolean(activeInvoice && (activeInvoice.status === "created" || activeInvoice.status === "refund_created"));
+  const deleteAction = canCreateRefundInvoice
+    ? { label: "Storniraj", icon: AlertTriangleIcon, onDelete: () => setStornoModalOpen(true) }
+    : canDeleteInvoice
+      ? { label: "Obriši", icon: TrashIcon, onDelete: () => setDeleteModalOpen(true) }
+      : null;
+  const fiscalBadge = isRefundInvoice
+    ? {
+      label: isRefundCreated ? "Storno kreiran" : "Storniran",
+      color: isRefundCreated ? "amber" : "red",
+    }
+    : {
+      label: isFiscalized ? "Fiskalizovan" : "Nije fiskalizovan",
+      color: isFiscalized ? "green" : "gray",
+    };
+  const fiscalHelperText = isRefundInvoice
+    ? isRefundCreated
+      ? "Storno faktura je kreirana i čeka refundaciju kroz fiskalizaciju."
+      : "Refundacija je završena i evidentirana u fiskalnim zapisima."
+    : isFiscalized
+      ? "Račun je fiskalizovan u OFS sistemu. Po potrebi možete odštampati kopiju."
+      : "Račun nije fiskalizovan. Kliknite ispod da fiskalizujete i odštampate.";
+
+  const statusOptions = [
+    { value: "", label: "Status: Svi" },
+    { value: "created", label: "Status: Kreiran" },
+    { value: "fiscalized", label: "Status: Fiskalizovan" },
+    { value: "refund_created", label: "Status: Storno kreiran" },
+    { value: "refunded", label: "Status: Storniran" },
+  ];
+
+  const paymentOptions = [
+    { value: "", label: "Plaćanje: Svi" },
+    ...paymentTypes.map((pt) => ({
+      value: pt.value,
+      label: `Plaćanje: ${pt.label}`,
+    })),
+  ];
+
+  const activeFilters = [
+    ...(searchQuery.trim()
+      ? [{
+        id: "search",
+        label: "Pretraga",
+        value: searchQuery.trim(),
+        onClear: () => setSearchQuery(""),
+      }]
+      : []),
+    ...(statusFilter
+      ? [{
+        id: "status",
+        label: "Status",
+        value: statusOptions.find((s) => s.value === statusFilter)?.label.replace("Status: ", "") || statusFilter,
+        onClear: () => setStatusFilter(""),
+      }]
+      : []),
+    ...(paymentFilter
+      ? [{
+        id: "payment",
+        label: "Plaćanje",
+        value: paymentOptions.find((p) => p.value === paymentFilter)?.label.replace("Plaćanje: ", "") || paymentFilter,
+        onClear: () => setPaymentFilter(""),
+      }]
+      : []),
+    ...((createdFrom || createdTo)
+      ? [{
+        id: "created",
+        label: "Datum",
+        value: `${createdFrom || "—"} → ${createdTo || "—"}`,
+        onClear: () => {
+          setCreatedFrom("");
+          setCreatedTo("");
+        },
+      }]
+      : []),
+  ];
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("");
+    setPaymentFilter("");
+    setCreatedFrom("");
+    setCreatedTo("");
+    setCurrentPage(1);
+  };
+
   // Init company handled by useAuth
+
+  // Pretraga se šalje na API tek nakon 3+ znaka (ili kad je prazno)
+  const searchForApi = searchQuery.trim().length >= 3 ? searchQuery.trim() : "";
 
   // Fetch invoices
   const fetchInvoices = useCallback(async (page: number = 1) => {
     if (!selectedCompany || !token) return;
     setLoading(true);
     try {
-      const response = await getInvoices(selectedCompany.slug, token, page);
+      const response = await getInvoices(selectedCompany.slug, token, page, {
+        search: searchForApi || undefined,
+        status: statusFilter || undefined,
+        payment_type: paymentFilter || undefined,
+        created_from: createdFrom || undefined,
+        created_to: createdTo || undefined,
+      });
       setInvoices(response.data);
       setPagination(response.meta);
       setCurrentPage(page);
@@ -167,7 +305,7 @@ export default function InvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCompany, token]);
+  }, [selectedCompany, token, searchForApi, statusFilter, paymentFilter, createdFrom, createdTo]);
 
   // Fetch reference data
   const fetchReferenceData = useCallback(async () => {
@@ -192,8 +330,8 @@ export default function InvoicesPage() {
 
       // Set default currency from company settings or first/default
       const settings = meRes.data.company_settings;
-      const defaultCurrency = settings?.default_invoice_currency
-        ? currenciesRes.data.find(c => c.code === settings.default_invoice_currency) || currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0]
+      const defaultCurrency = settings?.default_document_currency
+        ? currenciesRes.data.find(c => c.code === settings.default_document_currency) || currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0]
         : currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0];
       if (defaultCurrency) {
         setFormData(prev => ({ ...prev, currency: defaultCurrency.code, currency_id: defaultCurrency.id }));
@@ -236,9 +374,9 @@ export default function InvoicesPage() {
   // Open create form - use company_settings defaults
   const openCreateForm = () => {
     const settings = companySettings;
-    const dueDays = settings?.default_invoice_due_days ?? 14;
-    const defaultCurrency = settings?.default_invoice_currency
-      ? currencies.find(c => c.code === settings.default_invoice_currency) || currencies.find(c => c.is_default) || currencies[0]
+    const dueDays = settings?.default_document_due_days ?? 14;
+    const defaultCurrency = settings?.default_document_currency
+      ? currencies.find(c => c.code === settings.default_document_currency) || currencies.find(c => c.is_default) || currencies[0]
       : currencies.find(c => c.is_default) || currencies[0];
     const defaultBank = bankAccounts.find(b => b.is_default) || bankAccounts[0];
     setFormMode("create");
@@ -250,13 +388,13 @@ export default function InvoicesPage() {
       currency: defaultCurrency?.code || "BAM",
       currency_id: defaultCurrency?.id ?? null,
       bank_account_id: defaultBank?.id ?? null,
-      language: settings?.default_invoice_language || "sr-Latn",
-      invoice_template: settings?.default_invoice_template || "classic",
-      payment_type: companySettings?.ofs_default_payment_type || "Cash",
+      language: (settings?.default_document_language || languages[0]?.value) ?? "",
+      invoice_template: (settings?.default_document_template || templates[0]?.value) ?? "classic",
+      payment_type: (companySettings?.ofs_default_payment_type || paymentTypes[0]?.value) ?? "",
       is_recurring: false,
       frequency: null,
       next_invoice_date: null,
-      notes: "",
+      notes: settings?.default_invoice_notes ?? settings?.default_document_notes ?? "",
       subtotal: 0,
       tax_total: 0,
       discount_total: 0,
@@ -295,7 +433,7 @@ export default function InvoicesPage() {
       bank_account_id: activeInvoice.bank_account_id ?? null,
       language: activeInvoice.language,
       invoice_template: activeInvoice.invoice_template,
-      payment_type: activeInvoice.payment_type || "Cash",
+      payment_type: (activeInvoice.payment_type || paymentTypes[0]?.value) ?? "",
       is_recurring: activeInvoice.is_recurring,
       frequency: activeInvoice.frequency,
       next_invoice_date: parseDateForInput(activeInvoice.next_invoice_date),
@@ -436,9 +574,31 @@ export default function InvoicesPage() {
     }
   };
 
+  // Create refund (storno) invoice
+  const handleCreateRefundInvoice = async () => {
+    if (!selectedCompany || !token || !activeInvoice) return;
+    setStornoLoading(true);
+    try {
+      const res = await createRefundInvoice(selectedCompany.slug, activeInvoice.id, token);
+      showToast("Storno faktura je kreirana", "success");
+      setStornoModalOpen(false);
+      setActiveInvoice(res.data);
+      setViewDrawerOpen(true);
+      fetchInvoices(currentPage);
+    } catch (err: any) {
+      showToast(err.message || "Greška pri kreiranju storno fakture", "error");
+    } finally {
+      setStornoLoading(false);
+    }
+  };
+
   // Refund / Storno fiscal invoice
   const handleFiscalizeRefund = async () => {
     if (!selectedCompany || !token || !activeInvoice) return;
+    if (activeInvoice.status !== "refund_created") {
+      showToast("Storno faktura mora biti kreirana prije refundacije", "error");
+      return;
+    }
     setFiscalLoading(true);
     try {
       const res = await fiscalizeRefund(selectedCompany.slug, activeInvoice.id, token);
@@ -455,6 +615,24 @@ export default function InvoicesPage() {
       showToast(err.message || "Greška pri storniranju", "error");
     } finally {
       setFiscalLoading(false);
+    }
+  };
+
+  // Delete invoice (created or refund_created)
+  const handleDeleteInvoice = async () => {
+    if (!selectedCompany || !token || !activeInvoice) return;
+    setDeleteLoading(true);
+    try {
+      const res = await deleteInvoice(selectedCompany.slug, activeInvoice.id, token);
+      showToast(res.message || "Račun je obrisan", "success");
+      setDeleteModalOpen(false);
+      setViewDrawerOpen(false);
+      setActiveInvoice(null);
+      fetchInvoices(currentPage);
+    } catch (err: any) {
+      showToast(err.message || "Greška pri brisanju računa", "error");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -537,6 +715,81 @@ export default function InvoicesPage() {
         onClose={hideToast}
       />
 
+      <div className="space-y-3 mb-4">
+        <FilterBar
+          actions={
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className={`h-9 px-4 rounded-full border text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-2 transition-colors ${
+                filtersOpen
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-[var(--color-border-strong)]"
+              }`}
+            >
+              <FileSlidersIcon className="h-3.5 w-3.5" />
+              Filteri
+            </button>
+          }
+          search={
+            <FilterSearchInput
+              value={searchQuery}
+              onChange={(val) => {
+                setSearchQuery(val);
+                if (val.trim().length >= 3 || val.trim().length === 0) setCurrentPage(1);
+              }}
+              placeholder="Pretraži račune (min. 3 znaka)..."
+            />
+          }
+        />
+        {filtersOpen && (
+          <div className="p-3 rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)]">
+            <div className="flex flex-wrap items-end gap-2">
+              <FilterPillSelect
+                value={statusFilter}
+                options={statusOptions}
+                onChange={(val) => {
+                  setStatusFilter(val);
+                  setCurrentPage(1);
+                }}
+              />
+              <FilterPillSelect
+                value={paymentFilter}
+                options={paymentOptions}
+                onChange={(val) => {
+                  setPaymentFilter(val);
+                  setCurrentPage(1);
+                }}
+              />
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)] ml-1">
+                  Datum kreiranja
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <FilterDateInput
+                    value={createdFrom}
+                    onChange={(val) => {
+                      setCreatedFrom(val);
+                      setCurrentPage(1);
+                    }}
+                    placeholder="Od"
+                  />
+                  <FilterDateInput
+                    value={createdTo}
+                    onChange={(val) => {
+                      setCreatedTo(val);
+                      setCurrentPage(1);
+                    }}
+                    placeholder="Do"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <ActiveFiltersBar filters={activeFilters} onReset={resetFilters} />
+      </div>
+
       {/* Mobile: cards (original layout) */}
       <div className="md:hidden space-y-3">
         {invoices.map((inv) => (
@@ -559,6 +812,14 @@ export default function InvoicesPage() {
                 {inv.client?.name || 'Nepoznat klijent'}
               </span>
             </div>
+            {inv.original_invoice_number && (
+              <div className="flex items-center gap-2">
+                <RepeatIcon className="w-3 h-3 text-red-500" />
+                <span className="text-[10px] font-bold text-[var(--color-text-dim)] tracking-tight truncate">
+                  Storno od: {inv.original_invoice_number}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <CreditCardIcon className="w-3 h-3 text-[var(--color-text-dim)]" />
               <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
@@ -581,7 +842,7 @@ export default function InvoicesPage() {
                 />
               </div>
               <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
-                {formatPrice(inv.total)} {inv.currency}
+                {formatSignedPrice(inv.total, inv)} {inv.currency}
               </p>
             </div>
           </EntityCard>
@@ -621,6 +882,12 @@ export default function InvoicesPage() {
                     <ContactRoundIcon className="w-3.5 h-3.5 text-[var(--color-text-dim)] shrink-0" />
                     <span className="truncate">{inv.client?.name || 'Nepoznat klijent'}</span>
                   </div>
+                  {inv.original_invoice_number && (
+                    <div className="flex items-center gap-1.5 mt-1 text-[10px] font-bold text-[var(--color-text-dim)] min-w-0">
+                      <RepeatIcon className="w-3 h-3 text-red-500 shrink-0" />
+                      <span className="truncate">Storno od: {inv.original_invoice_number}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <StatusBadge
@@ -640,7 +907,7 @@ export default function InvoicesPage() {
                 <span>{inv.payment_type_label || "—"}</span>
               </div>
               <p className="text-right text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
-                {formatPrice(inv.total)} {inv.currency}
+                {formatSignedPrice(inv.total, inv)} {inv.currency}
               </p>
             </div>
           </EntityCard>
@@ -678,7 +945,10 @@ export default function InvoicesPage() {
             />
           )
         }
-        onEdit={openEditForm}
+        onEdit={canEditInvoice ? openEditForm : undefined}
+        onDelete={deleteAction?.onDelete}
+        deleteLabel={deleteAction?.label}
+        deleteIcon={deleteAction?.icon}
       >
         {activeInvoice && (
           <div className="space-y-3">
@@ -703,6 +973,14 @@ export default function InvoicesPage() {
                   value={activeInvoice.date}
                   color="bg-green-500/10 text-green-500"
                 />
+                {activeInvoice.original_invoice_number && (
+                  <DetailsItem
+                    icon={RepeatIcon}
+                    label="Storno od"
+                    value={activeInvoice.original_invoice_number}
+                    color="bg-red-500/10 text-red-500"
+                  />
+                )}
                 <DetailsItem
                   icon={Clock1Icon}
                   label="Dospijeće"
@@ -767,7 +1045,8 @@ export default function InvoicesPage() {
 
               <div className="space-y-2">
                 {activeInvoice.items.map((item, idx) => {
-                  const unitPrice = item.quantity > 0 ? Math.round(item.total / item.quantity) : 0;
+                  const signedTotal = applyRefundSign(item.total, activeInvoice);
+                  const unitPrice = item.quantity > 0 ? Math.round(signedTotal / item.quantity) : 0;
                   return (
                     <div key={item.id || idx} className="p-3 bg-[var(--color-border)] rounded-xl border border-[var(--color-border-strong)]">
                       <div className="md:hidden">
@@ -779,7 +1058,7 @@ export default function InvoicesPage() {
                             )}
                           </div>
                           <p className="text-sm font-black text-primary">
-                            {formatPrice(item.total)} {activeInvoice.currency}
+                            {formatPrice(signedTotal)} {activeInvoice.currency}
                           </p>
                         </div>
                         <div className="flex gap-4 text-[10px] text-[var(--color-text-dim)]">
@@ -805,7 +1084,7 @@ export default function InvoicesPage() {
                           {item.tax_rate / 100}%
                         </div>
                         <div className="text-sm font-black text-primary text-right">
-                          {formatPrice(item.total)} {activeInvoice.currency}
+                          {formatPrice(signedTotal)} {activeInvoice.currency}
                         </div>
                       </div>
                     </div>
@@ -818,16 +1097,16 @@ export default function InvoicesPage() {
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--color-text-dim)]">Osnovica:</span>
-                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(activeInvoice.subtotal)} {activeInvoice.currency}</span>
+                <span className="font-bold text-[var(--color-text-main)]">{formatSignedPrice(activeInvoice.subtotal, activeInvoice)} {activeInvoice.currency}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--color-text-dim)]">PDV:</span>
-                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(activeInvoice.tax_total)} {activeInvoice.currency}</span>
+                <span className="font-bold text-[var(--color-text-main)]">{formatSignedPrice(activeInvoice.tax_total, activeInvoice)} {activeInvoice.currency}</span>
               </div>
               <div className="h-[1px] bg-amber-500/20" />
               <div className="flex justify-between">
                 <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno:</span>
-                <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(activeInvoice.total)} {activeInvoice.currency}</span>
+                <span className="text-xl font-black text-primary tracking-tighter italic">{formatSignedPrice(activeInvoice.total, activeInvoice)} {activeInvoice.currency}</span>
               </div>
             </div>
 
@@ -861,17 +1140,32 @@ export default function InvoicesPage() {
               <SectionHeader
                 icon={FileTextIcon}
                 title="Fiskalizacija (OFS ESIR)"
-                iconClassName={activeInvoice.status === "refunded"
+                iconClassName={isRefunded
                   ? "bg-red-500/10 text-red-500"
-                  : activeInvoice.status === "fiscalized"
+                  : isFiscalized
                     ? "bg-emerald-500/10 text-emerald-500"
-                    : "bg-amber-500/10 text-amber-500"}
+                    : isRefundCreated
+                      ? "bg-amber-500/10 text-amber-500"
+                      : "bg-amber-500/10 text-amber-500"}
                 className="mb-3"
               />
 
-              {(activeInvoice.status === "fiscalized" || activeInvoice.status === "refunded") ? (
-                <div className="space-y-3">
-                  {/* Accordion: svi fiskalni zapisi (original, kopija, refund) - sortirani po datumu */}
+              <div className="p-4 rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-[var(--color-text-main)] mt-1">
+                      {fiscalBadge.label}
+                    </p>
+                  </div>
+                  <StatusBadge
+                    label={fiscalBadge.label}
+                    color={fiscalBadge.color as BadgeColor}
+                  />
+                </div>
+
+                <div className="h-px bg-[var(--color-border)]" />
+
+                <div>
                   {activeInvoice.fiscal_records && activeInvoice.fiscal_records.length > 0 ? (
                     <div className="space-y-1.5">
                       {activeInvoice.fiscal_records.map((rec) => {
@@ -884,66 +1178,72 @@ export default function InvoicesPage() {
                             : "bg-red-500/10 border-red-500/30";
                         const textClass = isOriginal ? "text-emerald-600" : isCopy ? "text-blue-600" : "text-red-600";
                         const hoverClass = isOriginal ? "hover:bg-emerald-500/15" : isCopy ? "hover:bg-blue-500/15" : "hover:bg-red-500/15";
+                        const hasActions = Boolean(rec.verification_url || rec.fiscal_receipt_image_path);
 
                         return (
                           <div
                             key={rec.id}
                             className={`rounded-xl border-2 overflow-hidden transition-colors ${bgClass}`}
                           >
-                            {/* Kompaktna jedna linija */}
-                            <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 ${hoverClass}`}>
-                              <span className={`text-[9px] font-black uppercase tracking-widest shrink-0 ${textClass}`}>
-                                {rec.type_label}
-                              </span>
-                              <span className="text-xs font-bold text-[var(--color-text-main)] truncate max-w-[120px] sm:max-w-[160px]" title={rec.fiscal_invoice_number || undefined}>
-                                {rec.fiscal_invoice_number || "—"}
-                              </span>
-                              {rec.fiscalized_at && (
-                                <span className="text-[9px] text-[var(--color-text-dim)] shrink-0">
-                                  {rec.fiscalized_at}
+                            <div className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-4 py-3 ${hoverClass}`}>
+                              <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 min-w-0 flex-1">
+                                <span className={`text-[9px] font-black uppercase tracking-widest shrink-0 ${textClass}`}>
+                                  {rec.type_label}
                                 </span>
-                              )}
-                              {rec.fiscal_counter != null && (
-                                <span className="text-[9px] text-[var(--color-text-dim)] shrink-0">
-                                  Brojač: {String(rec.fiscal_counter)}
+                                <span className="text-xs font-bold text-[var(--color-text-main)] truncate min-w-0 flex-1" title={rec.fiscal_invoice_number || undefined}>
+                                  {rec.fiscal_invoice_number || "—"}
                                 </span>
-                              )}
-                              {rec.verification_url && (
-                                <a
-                                  href={rec.verification_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80 shrink-0"
-                                  title="Verifikacija na Poreskoj upravi"
-                                >
-                                  <ExternalLinkIcon className="h-3.5 w-3.5" />
-                                </a>
-                              )}
-                              {rec.fiscal_receipt_image_path && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setFiscalImageRecordId(rec.id);
-                                    setFiscalImageModalOpen(true);
-                                  }}
-                                  className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 ${
-                                    isOriginal
-                                      ? "text-emerald-500 hover:bg-emerald-500/20"
-                                      : isCopy
-                                        ? "text-blue-500 hover:bg-blue-500/20"
-                                        : "text-red-500 hover:bg-red-500/20"
-                                  }`}
-                                  title="Pregled slike računa"
-                                >
-                                  <ImageIcon className="h-3.5 w-3.5" />
-                                </button>
+                                {rec.fiscalized_at && (
+                                  <span className="text-[9px] text-[var(--color-text-dim)] shrink-0 whitespace-nowrap">
+                                    {rec.fiscalized_at}
+                                  </span>
+                                )}
+                                {rec.fiscal_counter != null && (
+                                  <span className="text-[9px] text-[var(--color-text-dim)] shrink-0 whitespace-nowrap">
+                                    Brojač: {String(rec.fiscal_counter)}
+                                  </span>
+                                )}
+                              </div>
+                              {hasActions && (
+                                <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                                  {rec.verification_url && (
+                                    <a
+                                      href={rec.verification_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
+                                      title="Verifikacija na Poreskoj upravi"
+                                    >
+                                      <ExternalLinkIcon className="h-3.5 w-3.5" />
+                                    </a>
+                                  )}
+                                  {rec.fiscal_receipt_image_path && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setFiscalImageRecordId(rec.id);
+                                        setFiscalImageModalOpen(true);
+                                      }}
+                                      className={`p-1 rounded-lg transition-all cursor-pointer ${
+                                        isOriginal
+                                          ? "text-emerald-500 hover:bg-emerald-500/20"
+                                          : isCopy
+                                            ? "text-blue-500 hover:bg-blue-500/20"
+                                            : "text-red-500 hover:bg-red-500/20"
+                                      }`}
+                                      title="Pregled slike računa"
+                                    >
+                                      <ImageIcon className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                  ) : (
+                  ) : activeInvoice.fiscal_invoice_number ? (
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
                       <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                       <span className="text-xs font-bold text-[var(--color-text-main)]">{activeInvoice.fiscal_invoice_number}</span>
@@ -976,68 +1276,67 @@ export default function InvoicesPage() {
                         </button>
                       )}
                     </div>
+                  ) : (
+                    <p className="text-[11px] text-[var(--color-text-dim)]">
+                      Nema fiskalnih zapisa za ovaj račun.
+                    </p>
                   )}
+                </div>
 
-                  <div className="flex gap-2 pt-2">
-                    {activeInvoice.fiscal_records?.some((r) => r.type === "original") && (
-                      <button
-                        type="button"
-                        onClick={handleFiscalizeCopy}
-                        disabled={fiscalLoading}
-                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-blue-500/30 bg-blue-500/10 text-blue-500 font-bold text-sm hover:bg-blue-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
-                      >
-                        {fiscalLoading ? (
-                          <>
-                            <span className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
-                            Obrada...
-                          </>
-                        ) : (
-                          <>
-                            <FileTextIcon className="h-4 w-4" />
-                            Štampaj kopiju
-                          </>
-                        )}
-                      </button>
-                    )}
-                    {activeInvoice.fiscal_records?.some((r) => r.type === "original") &&
-                      !activeInvoice.fiscal_records?.some((r) => r.type === "refund") && (
-                        <button
-                          type="button"
-                          onClick={() => setRefundModalOpen(true)}
-                          disabled={fiscalLoading}
-                          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-red-500/30 bg-red-500/10 text-red-500 font-bold text-sm hover:bg-red-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
-                        >
-                          {fiscalLoading ? (
-                            <>
-                              <span className="animate-spin rounded-full h-4 w-4 border-2 border-red-500 border-t-transparent" />
-                              Obrada...
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangleIcon className="h-4 w-4" />
-                              Refundacija
-                            </>
-                          )}
-                        </button>
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  {!isRefundInvoice && !isFiscalized && (
+                    <button
+                      type="button"
+                      onClick={handleFiscalize}
+                      disabled={fiscalLoading}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary/20 border-2 border-primary/30 text-primary font-bold text-sm hover:bg-primary/30 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
+                    >
+                      <CheckCircleIcon className="h-4 w-4" />
+                      {fiscalLoading ? "Fiskalizacija..." : "Fiskalizuj i štampaj"}
+                    </button>
+                  )}
+                  {!isRefundInvoice && hasOriginalFiscal && (
+                    <button
+                      type="button"
+                      onClick={handleFiscalizeCopy}
+                      disabled={fiscalLoading}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-blue-500/30 bg-blue-500/10 text-blue-500 font-bold text-sm hover:bg-blue-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
+                    >
+                      {fiscalLoading ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+                          Obrada...
+                        </>
+                      ) : (
+                        <>
+                          <FileTextIcon className="h-4 w-4" />
+                          Štampaj kopiju
+                        </>
                       )}
-                  </div>
+                    </button>
+                  )}
+                  {isRefundInvoice && isRefundCreated && (
+                    <button
+                      type="button"
+                      onClick={() => setRefundModalOpen(true)}
+                      disabled={fiscalLoading || hasRefundFiscal}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-red-500/30 bg-red-500/10 text-red-500 font-bold text-sm hover:bg-red-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
+                    >
+                      {fiscalLoading ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-2 border-red-500 border-t-transparent" />
+                          Obrada...
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangleIcon className="h-4 w-4" />
+                          Refundacija
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <div>
-                  <p className="text-xs text-[var(--color-text-dim)] mb-4">
-                    Račun nije fiskalizovan. Kliknite ispod da fiskalizujete i odštampate.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleFiscalize}
-                    disabled={fiscalLoading}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary/20 border-2 border-primary/30 text-primary font-bold text-sm hover:bg-primary/30 transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    <CheckCircleIcon className="h-4 w-4" />
-                    {fiscalLoading ? "Fiskalizacija..." : "Fiskalizuj i štampaj"}
-                  </button>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         )}
@@ -1058,6 +1357,32 @@ export default function InvoicesPage() {
         token={token ?? undefined}
         alt="Fiskalni račun"
         title="Pregled fiskalnog računa"
+      />
+
+      {/* Create refund invoice modal */}
+      <ConfirmModal
+        isOpen={stornoModalOpen}
+        onClose={() => !stornoLoading && setStornoModalOpen(false)}
+        onConfirm={handleCreateRefundInvoice}
+        title="Kreiraj storno fakturu"
+        message="Da li ste sigurni da želite kreirati storno fakturu? Nakon toga ćete moći izvršiti refundaciju kroz fiskalizaciju."
+        confirmLabel="Kreiraj storno"
+        cancelLabel="Odustani"
+        type="warning"
+        loading={stornoLoading}
+      />
+
+      {/* Delete invoice modal */}
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => !deleteLoading && setDeleteModalOpen(false)}
+        onConfirm={handleDeleteInvoice}
+        title="Obriši račun"
+        message="Da li ste sigurni da želite obrisati ovaj račun? Ova akcija se ne može poništiti."
+        confirmLabel="Obriši"
+        cancelLabel="Odustani"
+        type="danger"
+        loading={deleteLoading}
       />
 
       {/* Refund confirmation modal */}
@@ -1240,7 +1565,7 @@ export default function InvoicesPage() {
                     <CreditCardIcon className="h-4 w-4" />
                   </div>
                   <select
-                    value={formData.payment_type || "Cash"}
+                    value={formData.payment_type ?? ""}
                     onChange={(e) => setFormData(prev => ({ ...prev, payment_type: e.target.value }))}
                     className="w-full h-[44px] min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-11 pr-10 py-2 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 cursor-pointer"
                   >
@@ -1263,7 +1588,7 @@ export default function InvoicesPage() {
             />
 
             {showMoreFormFields && (
-              <div className="space-y-3 pt-3 mt-2 border-t-2 border-dashed border-amber-500/30">
+              <div className="space-y-3 pt-3 mt-2 border-t-2 border-dashed border-[var(--color-page-border-subtle)]">
                 {/* Valuta, Bankovni račun, Jezik, Predložak - ikone unutar */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-start">
                   <div className="space-y-1.5 group">

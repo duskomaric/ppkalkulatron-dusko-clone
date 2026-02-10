@@ -66,6 +66,10 @@ export interface Invoice {
   frequency_label: string | null;
   next_invoice_date: string | null;
   parent_id: number | null;
+  refund_invoice_id: number | null;
+  refund_invoice_number?: string | null;
+  original_invoice_id?: number | null;
+  original_invoice_number?: string | null;
 
   // Source
   source_type: string | null;
@@ -81,7 +85,7 @@ export interface Invoice {
   payment_type?: string;
   payment_type_label?: string;
 
-  // Fiscal (status: open | fiscalized | refunded)
+  // Fiscal (status: created | fiscalized | refund_created | refunded)
   fiscal_invoice_number: string | null;
   fiscal_counter: string | number | null;
   fiscal_verification_url: string | null;

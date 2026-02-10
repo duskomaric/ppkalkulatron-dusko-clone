@@ -19,7 +19,7 @@ interface CardRowProps {
 const variantClasses: Record<CardRowVariant, string> = {
   surface: "bg-[var(--color-surface)] border-[var(--color-border)]",
   muted: "bg-[var(--color-border)] border-[var(--color-border)]",
-  accent: "border-amber-500/30 bg-amber-500/10",
+  accent: "border-[var(--color-page-border-subtle)] bg-[var(--color-page-bg-strong)]",
 };
 
 const sizeClasses: Record<CardRowSize, string> = {

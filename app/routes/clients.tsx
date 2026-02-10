@@ -11,7 +11,8 @@ import {
   MapPinIcon,
   HashIcon,
   GlobeIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  FileSlidersIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { CreateButton } from "~/components/ui/CreateButton";
@@ -32,6 +33,10 @@ import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
 import { DetailsGrid } from "~/components/ui/DetailsGrid";
 import { ListHeader } from "~/components/ui/ListHeader";
+import { FilterBar } from "~/components/ui/FilterBar";
+import { FilterPillSelect } from "~/components/ui/FilterPillSelect";
+import { FilterSearchInput } from "~/components/ui/FilterSearchInput";
+import { ActiveFiltersBar } from "~/components/ui/ActiveFiltersBar";
 import type { PaginationMeta } from "~/types/api";
 import { useToast } from "~/hooks/useToast";
 
@@ -61,6 +66,11 @@ export default function ClientsPage() {
   // Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   // Drawer States
   const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
   const [formDrawerOpen, setFormDrawerOpen] = useState(false);
@@ -76,7 +86,10 @@ export default function ClientsPage() {
     if (!selectedCompany || !token) return;
     setLoading(true);
     try {
-      const response = await getClients(selectedCompany.slug, token, page);
+      const response = await getClients(selectedCompany.slug, token, page, {
+        search: searchQuery.trim() || undefined,
+        status: statusFilter || undefined,
+      });
       setClients(response.data);
       setPagination(response.meta);
       setCurrentPage(page);
@@ -85,7 +98,7 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCompany, token]);
+  }, [selectedCompany, token, searchQuery, statusFilter]);
 
   useEffect(() => {
     if (isAuthenticated && selectedCompany) {
@@ -158,6 +171,37 @@ export default function ClientsPage() {
     }));
   };
 
+  const statusOptions = [
+    { value: "", label: "Status: Svi" },
+    { value: "active", label: "Status: Aktivan" },
+    { value: "inactive", label: "Status: Neaktivan" },
+  ];
+
+  const activeFilters = [
+    ...(searchQuery.trim()
+      ? [{
+        id: "search",
+        label: "Pretraga",
+        value: searchQuery.trim(),
+        onClear: () => setSearchQuery(""),
+      }]
+      : []),
+    ...(statusFilter
+      ? [{
+        id: "status",
+        label: "Status",
+        value: statusFilter === "active" ? "Aktivan" : "Neaktivan",
+        onClear: () => setStatusFilter(""),
+      }]
+      : []),
+  ];
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("");
+    setCurrentPage(1);
+  };
+
   return (
     <AppLayout
       title="clients"
@@ -181,6 +225,50 @@ export default function ClientsPage() {
         title="Obriši klijenta"
         message={`Da li ste sigurni da želite trajno obrisati klijenta ${activeClient?.name}? Ova akcija se ne može poništiti.`}
       />
+
+      <div className="space-y-3 mb-4">
+        <FilterBar
+          actions={
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className={`h-9 px-4 rounded-full border text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-2 transition-colors ${
+                filtersOpen
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-[var(--color-border-strong)]"
+              }`}
+            >
+              <FileSlidersIcon className="h-3.5 w-3.5" />
+              Filteri
+            </button>
+          }
+          search={
+            <FilterSearchInput
+              value={searchQuery}
+              onChange={(val) => {
+                setSearchQuery(val);
+                setCurrentPage(1);
+              }}
+              placeholder="Pretraži klijente..."
+            />
+          }
+        />
+        {filtersOpen && (
+          <div className="p-3 rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)]">
+            <div className="flex flex-wrap gap-2">
+              <FilterPillSelect
+                value={statusFilter}
+                options={statusOptions}
+                onChange={(val) => {
+                  setStatusFilter(val);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          </div>
+        )}
+        <ActiveFiltersBar filters={activeFilters} onReset={resetFilters} />
+      </div>
 
       {/* Desktop: header */}
       <ListHeader

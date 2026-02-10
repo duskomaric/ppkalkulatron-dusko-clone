@@ -12,10 +12,12 @@ interface DetailDrawerProps {
     badges?: ReactNode;
     onEdit?: () => void;
     onDelete?: () => void;
+    deleteLabel?: string;
+    deleteIcon?: ElementType;
     children: ReactNode;
 }
 
-// Koristi se na: clients/articles/invoices (drawer za pregled detalja)
+// Koristi se na: clients/articles/invoices/quotes/proformas (drawer za pregled detalja)
 export function DetailDrawer({
     isOpen,
     onClose,
@@ -25,8 +27,12 @@ export function DetailDrawer({
     badges,
     onEdit,
     onDelete,
+    deleteLabel = "Obriši",
+    deleteIcon: DeleteIcon,
     children
 }: DetailDrawerProps) {
+    const DeleteActionIcon = DeleteIcon || TrashIcon;
+
     return (
         <Drawer
             title={title}
@@ -61,8 +67,8 @@ export function DetailDrawer({
                                 onClick={onDelete}
                                 className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[11px] uppercase tracking-[0.15em] hover:bg-red-500 hover:text-white transition-all group"
                             >
-                                <TrashIcon className="h-4 w-4 transition-transform group-hover:rotate-12" />
-                                Obriši
+                                <DeleteActionIcon className="h-4 w-4 transition-transform group-hover:rotate-12" />
+                                {deleteLabel}
                             </button>
                         )}
                         {onEdit && (

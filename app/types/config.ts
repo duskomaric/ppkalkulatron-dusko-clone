@@ -14,15 +14,24 @@ export interface Currency {
 }
 
 export interface CompanySettings {
-    default_invoice_template: string | null;
-    default_invoice_due_days: number | null;
-    default_invoice_language: string | null;
-    default_invoice_currency: string | null;
+    default_document_template: string | null;
+    default_document_due_days: number | null;
+    default_document_language: string | null;
+    default_document_currency: string | null;
+    default_document_notes: string | null;
     default_invoice_notes: string | null;
-    invoice_numbering_reset_yearly: boolean;
-    invoice_numbering_pad_zeros: number;
+    default_proforma_notes: string | null;
+    default_quote_notes: string | null;
+    document_numbering_reset_yearly: boolean;
+    document_numbering_pad_zeros: number;
+    document_numbering_starting_number: number;
     invoice_numbering_starting_number: number;
+    quote_numbering_starting_number: number;
+    proforma_numbering_starting_number: number;
+    document_numbering_prefix: string | null;
     invoice_numbering_prefix: string | null;
+    quote_numbering_prefix: string | null;
+    proforma_numbering_prefix: string | null;
 
     // OFS fiskalizacija
     ofs_base_url: string | null;

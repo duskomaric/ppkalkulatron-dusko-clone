@@ -10,7 +10,7 @@ interface ListHeaderProps {
   grid: string;
 }
 
-// Koristi se na: clients/articles/invoices (desktop header tabele)
+// Koristi se na: clients/articles/invoices/quotes/proformas (desktop header tabele)
 export function ListHeader({ columns, grid }: ListHeaderProps) {
   return (
     <div

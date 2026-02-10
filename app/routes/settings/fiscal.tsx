@@ -9,6 +9,7 @@ import {
     testFiscalSettings,
 } from "~/api/settings";
 import type { CompanySettings } from "~/types/config";
+import type { SelectOption } from "~/types/config";
 import { Toast } from "~/components/ui/Toast";
 import { Toggle } from "~/components/ui/Toggle";
 import { CheckCircleIcon, FileTextIcon, GlobeIcon } from "~/components/ui/icons";
@@ -25,6 +26,7 @@ export default function FiscalSettingsPage() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [formData, setFormData] = useState<CompanySettings | null>(null);
+    const [paymentTypes, setPaymentTypes] = useState<SelectOption[]>([]);
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState<"attention" | "settings" | null>(null);
 
@@ -38,6 +40,7 @@ export default function FiscalSettingsPage() {
             try {
                 const meRes = await getMe(token, selectedCompany.slug);
                 setFormData(meRes.data.company_settings);
+                setPaymentTypes(meRes.data.payment_types ?? []);
             } catch (error) {
                 console.error("Failed to load settings", error);
                 showToast("Greška pri učitavanju podešavanja", "error");
@@ -210,19 +213,11 @@ export default function FiscalSettingsPage() {
                             />
                             <FormSelect
                                 label="Podrazumijevani način plaćanja"
-                                value={formData.ofs_default_payment_type || "Cash"}
+                                value={formData.ofs_default_payment_type ?? (paymentTypes[0]?.value ?? "")}
                                 onChange={(val: string) =>
                                     setFormData({ ...formData, ofs_default_payment_type: val || null })
                                 }
-                                options={[
-                                    { value: "Cash", label: "Gotovina" },
-                                    { value: "Card", label: "Kartica" },
-                                    { value: "WireTransfer", label: "Bankovni transfer" },
-                                    { value: "Check", label: "Ček" },
-                                    { value: "Voucher", label: "Vaučer" },
-                                    { value: "MobileMoney", label: "Mobilni novac" },
-                                    { value: "Other", label: "Ostalo" },
-                                ]}
+                                options={paymentTypes}
                             />
                             <FormSelect
                                 label="Format slike"

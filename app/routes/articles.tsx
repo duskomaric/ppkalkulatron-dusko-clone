@@ -11,6 +11,7 @@ import {
     TagIcon,
     DollarIcon,
     CheckCircleIcon,
+    FileSlidersIcon,
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { CreateButton } from "~/components/ui/CreateButton";
@@ -31,6 +32,10 @@ import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
 import { DetailsGrid } from "~/components/ui/DetailsGrid";
 import { ListHeader } from "~/components/ui/ListHeader";
+import { FilterBar } from "~/components/ui/FilterBar";
+import { FilterPillSelect } from "~/components/ui/FilterPillSelect";
+import { FilterSearchInput } from "~/components/ui/FilterSearchInput";
+import { ActiveFiltersBar } from "~/components/ui/ActiveFiltersBar";
 import type { PaginationMeta } from "~/types/api";
 import { useToast } from "~/hooks/useToast";
 
@@ -50,6 +55,13 @@ export default function ArticlesPage() {
 
     // Modal State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+    // Filters
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
+    const [typeFilter, setTypeFilter] = useState("");
+    const [taxFilter, setTaxFilter] = useState("");
+    const [filtersOpen, setFiltersOpen] = useState(false);
 
     // Drawer States
     const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
@@ -82,7 +94,12 @@ export default function ArticlesPage() {
         setLoading(true);
         try {
             const [articlesRes, currenciesRes, meRes] = await Promise.all([
-                getArticles(selectedCompany.slug, token, page),
+                getArticles(selectedCompany.slug, token, page, {
+                    search: searchQuery.trim() || undefined,
+                    status: statusFilter || undefined,
+                    type: typeFilter || undefined,
+                    tax_rate: taxFilter || undefined,
+                }),
                 getCurrencies(selectedCompany.slug, token),
                 getMe(token, selectedCompany.slug),
             ]);
@@ -98,7 +115,7 @@ export default function ArticlesPage() {
         } finally {
             setLoading(false);
         }
-    }, [selectedCompany, token]);
+    }, [selectedCompany, token, searchQuery, statusFilter, typeFilter, taxFilter]);
 
     useEffect(() => {
         if (isAuthenticated && selectedCompany) {
@@ -220,6 +237,74 @@ export default function ArticlesPage() {
         }));
     };
 
+    const statusOptions = [
+        { value: "", label: "Status: Svi" },
+        { value: "active", label: "Status: Aktivan" },
+        { value: "inactive", label: "Status: Neaktivan" },
+    ];
+
+    const typeOptions = [
+        { value: "", label: "Tip: Svi" },
+        ...articleTypes.map((t) => ({
+            value: t.value,
+            label: `Tip: ${t.label}`,
+        })),
+    ];
+
+    const taxOptions = [
+        { value: "", label: "Porez: Svi" },
+        { value: "none", label: "Porez: Bez poreza" },
+        ...taxRates.map((t) => ({
+            value: t.value,
+            label: `Porez: ${t.label} (${t.rate}%)`,
+        })),
+    ];
+
+    const activeFilters = [
+        ...(searchQuery.trim()
+            ? [{
+                id: "search",
+                label: "Pretraga",
+                value: searchQuery.trim(),
+                onClear: () => setSearchQuery(""),
+            }]
+            : []),
+        ...(statusFilter
+            ? [{
+                id: "status",
+                label: "Status",
+                value: statusFilter === "active" ? "Aktivan" : "Neaktivan",
+                onClear: () => setStatusFilter(""),
+            }]
+            : []),
+        ...(typeFilter
+            ? [{
+                id: "type",
+                label: "Tip",
+                value: articleTypes.find((t) => t.value === typeFilter)?.label || typeFilter,
+                onClear: () => setTypeFilter(""),
+            }]
+            : []),
+        ...(taxFilter
+            ? [{
+                id: "tax",
+                label: "Porez",
+                value: taxFilter === "none"
+                    ? "Bez poreza"
+                    : (taxRates.find((t) => t.value === taxFilter)?.label || taxFilter),
+                onClear: () => setTaxFilter(""),
+            }]
+            : []),
+    ];
+
+    const resetFilters = () => {
+        setSearchQuery("");
+        setStatusFilter("");
+        setTypeFilter("");
+        setTaxFilter("");
+        setCurrentPage(1);
+    };
+
 
     return (
         <AppLayout
@@ -244,6 +329,66 @@ export default function ArticlesPage() {
                 title="Obriši artikal"
                 message={`Da li ste sigurni da želite trajno obrisati artikal ${activeArticle?.name}? Ova akcija se ne može poništiti.`}
             />
+
+            <div className="space-y-3 mb-4">
+                <FilterBar
+                    actions={
+                        <button
+                            type="button"
+                            onClick={() => setFiltersOpen((prev) => !prev)}
+                            className={`h-9 px-4 rounded-full border text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-2 transition-colors ${
+                                filtersOpen
+                                    ? "border-primary/40 bg-primary/10 text-primary"
+                                    : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-[var(--color-border-strong)]"
+                            }`}
+                        >
+                            <FileSlidersIcon className="h-3.5 w-3.5" />
+                            Filteri
+                        </button>
+                    }
+                    search={
+                        <FilterSearchInput
+                            value={searchQuery}
+                            onChange={(val) => {
+                                setSearchQuery(val);
+                                setCurrentPage(1);
+                            }}
+                            placeholder="Pretraži artikle..."
+                        />
+                    }
+                />
+                {filtersOpen && (
+                    <div className="p-3 rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)]">
+                        <div className="flex flex-wrap gap-2">
+                            <FilterPillSelect
+                                value={statusFilter}
+                                options={statusOptions}
+                                onChange={(val) => {
+                                    setStatusFilter(val);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                            <FilterPillSelect
+                                value={typeFilter}
+                                options={typeOptions}
+                                onChange={(val) => {
+                                    setTypeFilter(val);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                            <FilterPillSelect
+                                value={taxFilter}
+                                options={taxOptions}
+                                onChange={(val) => {
+                                    setTaxFilter(val);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
+                <ActiveFiltersBar filters={activeFilters} onReset={resetFilters} />
+            </div>
 
             {/* Desktop: header */}
             <ListHeader
@@ -284,8 +429,8 @@ export default function ArticlesPage() {
                                             </div>
                                         </div>
                                         <StatusBadge
-                                            label={article.type_label}
-                                            color={article.type === 'products' ? 'blue' : 'amber'}
+                                            label={article.is_active ? "Aktivan" : "Neaktivan"}
+                                            color={article.is_active ? "green" : "gray"}
                                         />
                                     </div>
                                     <div className="h-[1px] w-full bg-[var(--color-border)]" />
@@ -339,8 +484,8 @@ export default function ArticlesPage() {
                                         </div>
                                     </div>
                                     <StatusBadge
-                                        label={article.type_label}
-                                        color={article.type === 'products' ? 'blue' : 'amber'}
+                                        label={article.is_active ? "Aktivan" : "Neaktivan"}
+                                        color={article.is_active ? "green" : "gray"}
                                     />
                                     <div className="text-xs font-bold text-[var(--color-text-muted)]">
                                         {article.unit || "—"}
@@ -436,7 +581,7 @@ export default function ArticlesPage() {
                             <DetailsGrid columns={2}>
                                 <DetailsItem icon={TagIcon} label="Jedinica mjere" value={activeArticle.unit} />
                                 <DetailsItem icon={HashIcon} label="Porezna stopa" value={activeArticle.tax_rate ? `${activeArticle.tax_rate.label} (${activeArticle.tax_rate.rate}%)` : "—"} />
-                                <DetailsItem icon={CheckCircleIcon} label="Status" value={activeArticle.is_active} />
+                                <DetailsItem icon={CheckCircleIcon} label="Status" value={activeArticle.is_active ? "Aktivan" : "Neaktivan"} />
                             </DetailsGrid>
                         </SectionBlock>
                     </div>

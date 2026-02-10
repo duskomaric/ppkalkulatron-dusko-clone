@@ -14,7 +14,7 @@ interface InvoiceItemRowProps {
     disabled?: boolean;
 }
 
-// Koristi se na: app/routes/invoices.tsx (kreiranje/uredjivanje racuna -> sekcija Stavke)
+// Koristi se na: app/routes/invoices.tsx, app/routes/quotes.tsx, app/routes/proformas.tsx (kreiranje/uredjivanje -> sekcija Stavke)
 export function InvoiceItemRow({
     item,
     index,
@@ -218,7 +218,7 @@ export function InvoiceItemRow({
             {/* Totals - compact */}
             <div className="pt-1.5 border-t border-[var(--color-border)] flex justify-between items-center gap-2">
                 <div className="flex gap-2 text-[9px] text-[var(--color-text-dim)] flex-wrap">
-                    <span>Osn: <strong className="text-[var(--color-text-main)]">{formatPrice(item.subtotal)}</strong></span>
+                    <span>Osnovica: <strong className="text-[var(--color-text-main)]">{formatPrice(item.subtotal)}</strong></span>
                     <span>PDV: <strong className="text-[var(--color-text-main)]">{formatPrice(item.tax_amount)}</strong></span>
                 </div>
                 <p className="text-base font-black text-primary tracking-tighter italic shrink-0">

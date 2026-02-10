@@ -103,26 +103,26 @@ export default function GeneralSettingsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormSelect
                                 label="Dizajn Fakture"
-                                value={formData.default_invoice_template || ""}
-                                onChange={(val: string) => setFormData({ ...formData, default_invoice_template: val })}
+                                value={formData.default_document_template || ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_document_template: val })}
                                 options={configData.templates}
                             />
                             <FormInput
                                 label="Rok plaćanja (dana)"
                                 type="number"
-                                value={formData.default_invoice_due_days || ""}
-                                onChange={(val: string) => setFormData({ ...formData, default_invoice_due_days: parseInt(val) || null })}
+                                value={formData.default_document_due_days || ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_document_due_days: parseInt(val) || null })}
                             />
                             <FormSelect
                                 label="Jezik"
-                                value={formData.default_invoice_language || ""}
-                                onChange={(val: string) => setFormData({ ...formData, default_invoice_language: val })}
+                                value={formData.default_document_language || ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_document_language: val })}
                                 options={configData.languages}
                             />
                             <FormSelect
                                 label="Podrazumijevana Valuta"
-                                value={formData.default_invoice_currency || ""}
-                                onChange={(val: string) => setFormData({ ...formData, default_invoice_currency: val })}
+                                value={formData.default_document_currency || ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_document_currency: val })}
                                 options={currencies.map(c => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
                             />
                         </div>
@@ -131,30 +131,58 @@ export default function GeneralSettingsPage() {
                     {/* Numbering */}
                     <SectionBlock variant="card">
                         <SectionHeader icon={HashIcon} title="Numeracija" />
+                        <p className="text-[11px] text-[var(--color-text-dim)] mb-3 pl-1">
+                            Format: PREFIX-broj/godina (npr. INV-1/2025). Ako prefiks nije unesen: broj/godina (npr. 1/2025).
+                        </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2">
                                 <Toggle
-                                    checked={formData.invoice_numbering_reset_yearly}
-                                    onChange={(v) => setFormData({ ...formData, invoice_numbering_reset_yearly: v })}
+                                    checked={formData.document_numbering_reset_yearly}
+                                    onChange={(v) => setFormData({ ...formData, document_numbering_reset_yearly: v })}
                                     label="Resetuj brojač godišnje"
                                 />
                             </div>
                             <FormInput
-                                label="Početni broj"
+                                label="Broj nula (padding)"
                                 type="number"
-                                value={formData.invoice_numbering_starting_number}
+                                value={formData.document_numbering_pad_zeros}
+                                onChange={(val: string) => setFormData({ ...formData, document_numbering_pad_zeros: parseInt(val) || 0 })}
+                            />
+                            <FormInput
+                                label="Prefiks računa"
+                                value={formData.invoice_numbering_prefix ?? formData.document_numbering_prefix ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, invoice_numbering_prefix: val })}
+                                placeholder="npr. INV"
+                            />
+                            <FormInput
+                                label="Prefiks predračuna"
+                                value={formData.proforma_numbering_prefix ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, proforma_numbering_prefix: val })}
+                                placeholder="npr. PRO"
+                            />
+                            <FormInput
+                                label="Prefiks ponude"
+                                value={formData.quote_numbering_prefix ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, quote_numbering_prefix: val })}
+                                placeholder="npr. PON"
+                            />
+                            <FormInput
+                                label="Početni broj računa"
+                                type="number"
+                                value={formData.invoice_numbering_starting_number ?? formData.document_numbering_starting_number ?? 1}
                                 onChange={(val: string) => setFormData({ ...formData, invoice_numbering_starting_number: parseInt(val) || 1 })}
                             />
                             <FormInput
-                                label="Prefiks"
-                                value={formData.invoice_numbering_prefix || ""}
-                                onChange={(val: string) => setFormData({ ...formData, invoice_numbering_prefix: val })}
+                                label="Početni broj predračuna"
+                                type="number"
+                                value={formData.proforma_numbering_starting_number ?? 1}
+                                onChange={(val: string) => setFormData({ ...formData, proforma_numbering_starting_number: parseInt(val) || 1 })}
                             />
                             <FormInput
-                                label="Broj nula (padding)"
+                                label="Početni broj ponude"
                                 type="number"
-                                value={formData.invoice_numbering_pad_zeros}
-                                onChange={(val: string) => setFormData({ ...formData, invoice_numbering_pad_zeros: parseInt(val) || 0 })}
+                                value={formData.quote_numbering_starting_number ?? 1}
+                                onChange={(val: string) => setFormData({ ...formData, quote_numbering_starting_number: parseInt(val) || 1 })}
                             />
                         </div>
                     </SectionBlock>
@@ -162,16 +190,32 @@ export default function GeneralSettingsPage() {
                     {/* Notes */}
                     <SectionBlock variant="card">
                         <SectionHeader icon={StickyNoteIcon} title="Napomene" />
-                        <FormTextarea
-                            label="Podrazumijevane napomene"
-                            value={formData.default_invoice_notes || ""}
-                            onChange={(val: string) => setFormData({ ...formData, default_invoice_notes: val })}
-                            rows={2}
-                            placeholder="Tekst koji će se prikazati kao podrazumijevane napomene na novim fakturama..."
-                        />
-                        <p className="text-[10px] text-[var(--color-text-dim)] font-medium mt-2 pl-1">
-                            Prenose se na nove fakture kada korisnik ne unese napomenu.
+                        <p className="text-[10px] text-[var(--color-text-dim)] font-medium mb-3 pl-1">
+                            Prikazuju se na novim dokumentima kada korisnik ne unese napomenu.
                         </p>
+                        <div className="space-y-4">
+                            <FormTextarea
+                                label="Podrazumijevane napomene (račun)"
+                                value={formData.default_invoice_notes ?? formData.default_document_notes ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_invoice_notes: val })}
+                                rows={2}
+                                placeholder="Napomene na novim računima..."
+                            />
+                            <FormTextarea
+                                label="Podrazumijevane napomene (predračun)"
+                                value={formData.default_proforma_notes ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_proforma_notes: val })}
+                                rows={2}
+                                placeholder="Napomene na novim predračunima..."
+                            />
+                            <FormTextarea
+                                label="Podrazumijevane napomene (ponuda)"
+                                value={formData.default_quote_notes ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_quote_notes: val })}
+                                rows={2}
+                                placeholder="Napomene na novim ponudama..."
+                            />
+                        </div>
                     </SectionBlock>
 
                     {/* Mail */}
