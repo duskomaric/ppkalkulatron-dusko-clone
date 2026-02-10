@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function Building2Icon({ className = "h-6 w-6" }: { className?: string }) {
     return (
         <svg

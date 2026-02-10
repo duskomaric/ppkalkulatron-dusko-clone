@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useNavigate, Link, useLocation } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import {
@@ -14,19 +15,21 @@ import {
   FileTextIcon
 } from "~/components/ui/icons";
 import { Drawer } from "./Drawer";
+import { DrawerNavItem } from "~/components/ui/DrawerNavItem";
 import type { Company } from "~/types/company";
 import { getThemeByPath } from "~/utils/theme";
 import { NAV_ITEMS } from "~/config/navigation";
 import { getPageTitle, APP_CONFIG } from "~/config/app";
 
 export interface AppLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
   title: string;
   selectedCompany: Company | null;
   onCompanyChange: (company: Company) => void;
-  actions?: React.ReactNode;
+  actions?: ReactNode;
 }
 
+// Koristi se na: app/routes/* (glavni layout: header + navigacija + draweri kompanija/korisnik/podesavanja)
 export function AppLayout({
   children,
   title,
@@ -39,12 +42,14 @@ export function AppLayout({
   const location = useLocation();
   const [activeDrawer, setActiveDrawer] = useState<"company" | "user" | "settings" | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const companyCount = user?.companies?.length ?? 0;
+  const canSwitchCompany = companyCount > 1;
 
   // Get dynamic color based on path from central utility
   const currentRGB = getThemeByPath(location.pathname);
 
   // Refresh user data (companies + subscription) once when settings drawer opens
-  const settingsRefreshedRef = React.useRef(false);
+  const settingsRefreshedRef = useRef(false);
   useEffect(() => {
     if (activeDrawer === "settings" && !settingsRefreshedRef.current) {
       settingsRefreshedRef.current = true;
@@ -115,7 +120,7 @@ export function AppLayout({
         "--color-primary": `rgb(${currentRGB})`,
         "--color-primary-hover": `color-mix(in srgb, rgb(${currentRGB}), white 20%)`,
         "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`
-      } as React.CSSProperties}
+      } as CSSProperties}
     >
       {/* Background Effects */}
       <div className="glow-ball glow-ball-primary top-[-100px] left-[-100px]"></div>
@@ -134,33 +139,61 @@ export function AppLayout({
             </Link>
 
             {/* Desktop nav - hidden on mobile */}
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-2">
               {NAV_ITEMS.map((item) => {
                 const isActive = location.pathname === item.path;
+                const Icon = item.icon;
                 return (
                   <Link
                     key={item.id}
                     to={item.path}
-                    className={`px-3 py-2 rounded-xl text-sm font-bold transition-all ${isActive ? "bg-primary/20 text-primary" : "text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]"}`}
+                    className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest ${
+                      isActive
+                        ? "bg-primary/20 text-primary shadow-glow-primary ring-1 ring-primary/30"
+                        : "text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]"
+                    }`}
                   >
-                    {item.label}
+                    <span className={`h-6 w-6 rounded-lg flex items-center justify-center transition-colors ${
+                      isActive ? "bg-primary/20 text-primary" : "bg-[var(--color-border)] text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]"
+                    }`}>
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="leading-none">{item.label}</span>
+                    {isActive && (
+                      <span className="absolute -bottom-1 left-3 right-3 h-[2px] bg-primary/60 rounded-full" />
+                    )}
                   </Link>
                 );
               })}
             </nav>
 
             {selectedCompany && (
-              <button
-                onClick={() => setActiveDrawer("company")}
-                className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-surface-hover)] rounded-xl transition-all border border-transparent"
-              >
-                <span className="text-xs font-bold text-[var(--color-text-main)] truncate max-w-[120px] sm:max-w-none">
-                  {selectedCompany.name}
-                </span>
-                <svg className="h-3.5 w-3.5 text-[var(--color-text-dim)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 9l-7 7-7-7" strokeWidth="2.5" />
-                </svg>
-              </button>
+              canSwitchCompany ? (
+                <button
+                  onClick={() => setActiveDrawer("company")}
+                  className="group cursor-pointer flex items-center gap-2 px-3 py-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 hover:bg-[var(--color-surface-hover)] transition-all max-w-[280px]"
+                >
+                  <span className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-[10px] shrink-0">
+                    {selectedCompany.name.substring(0, 2).toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex flex-col items-start">
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--color-text-dim)]">Kompanija</span>
+                    <span className="text-xs font-black text-[var(--color-text-main)] truncate max-w-[170px] sm:max-w-[220px]">
+                      {selectedCompany.name}
+                    </span>
+                  </span>
+                  <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-dim)] group-hover:text-primary transition-colors shrink-0" />
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/40 max-w-[280px]">
+                  <span className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-[10px] shrink-0">
+                    {selectedCompany.name.substring(0, 2).toUpperCase()}
+                  </span>
+                  <span className="text-xs font-black text-[var(--color-text-main)] truncate max-w-[200px]">
+                    {selectedCompany.name}
+                  </span>
+                </div>
+              )
             )}
           </div>
 
@@ -339,90 +372,56 @@ export function AppLayout({
           </div>
 
           {/* Settings Navigation */}
-          <button
+          <DrawerNavItem
             onClick={() => {
               setActiveDrawer(null);
               navigate("/settings/company");
             }}
-            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer shadow-glow-primary/5"
-          >
-            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-              <Building2Icon className="h-5 w-5" />
-            </div>
-            <div className="flex-1 text-left">
-              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Profil kompanije</h3>
-              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Podaci o firmi, adresa i JIB/PIB</p>
-            </div>
-            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
-          </button>
+            icon={Building2Icon}
+            title="Profil kompanije"
+            description="Podaci o firmi, adresa i JIB/PIB"
+            className="shadow-glow-primary/5"
+          />
 
-          <button
+          <DrawerNavItem
             onClick={() => {
               setActiveDrawer(null);
               navigate("/settings/general");
             }}
-            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
-          >
-            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-              <CogIcon className="h-5 w-5" />
-            </div>
-            <div className="flex-1 text-left">
-              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Generalno</h3>
-              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Postavke kompanije i faktura</p>
-            </div>
-            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
-          </button>
+            icon={CogIcon}
+            title="Generalno"
+            description="Postavke kompanije i faktura"
+          />
 
-          <button
+          <DrawerNavItem
             onClick={() => {
               setActiveDrawer(null);
               navigate("/settings/bank-accounts");
             }}
-            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
-          >
-            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-              <CreditCardIcon className="h-5 w-5" />
-            </div>
-            <div className="flex-1 text-left">
-              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Bankovni Računi</h3>
-              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Upravljanje računima za isplatu</p>
-            </div>
-            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
-          </button>
+            icon={CreditCardIcon}
+            title="Bankovni Računi"
+            description="Upravljanje računima za isplatu"
+          />
 
-          <button
+          <DrawerNavItem
             onClick={() => {
               setActiveDrawer(null);
               navigate("/settings/currencies");
             }}
-            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
-          >
-            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-              <CurrencyEuroIcon className="h-5 w-5" />
-            </div>
-            <div className="flex-1 text-left">
-              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Valute</h3>
-              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">Konfiguracija valuta i formata</p>
-            </div>
-            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
-          </button>
+            icon={CurrencyEuroIcon}
+            title="Valute"
+            description="Konfiguracija valuta i formata"
+          />
 
-          <button
+          <DrawerNavItem
             onClick={() => {
               setActiveDrawer(null);
               navigate("/settings/fiscal");
             }}
-            className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 transition-all hover:border-primary/30 flex items-center gap-4 overflow-hidden cursor-pointer"
-          >
-            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-              <FileTextIcon className="h-5 w-5" />
-            </div>
-            <div className="flex-1 text-left">
-              <h3 className="text-sm font-bold text-[var(--color-text-main)] group-hover:text-primary transition-colors">Fiskalizacija</h3>
-              <p className="text-[10px] text-[var(--color-text-dim)] leading-tight">OFS ESIR – cloud ili lokalni uređaj</p>
-            </div>
-            <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-primary transition-colors" />
-          </button>
+            icon={FileTextIcon}
+            title="Fiskalizacija"
+            description="OFS ESIR – cloud ili lokalni uređaj"
+          />
         </div>
       </Drawer>
     </div>

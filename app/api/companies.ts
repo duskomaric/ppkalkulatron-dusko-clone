@@ -8,10 +8,3 @@ export async function updateCompany(companyIdOrSlug: number | string, token: str
     body: JSON.stringify(companyData),
   });
 }
-
-export async function getCompany(companyIdOrSlug: number | string, token: string): Promise<{ data: Company }> {
-  return fetchApi<{ data: Company }>(`/companies/${companyIdOrSlug}`, {
-    method: "GET",
-    token,
-  });
-}

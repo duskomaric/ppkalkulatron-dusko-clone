@@ -1,4 +1,3 @@
-import React from "react";
 import { TrashIcon, BoxesIcon, CurrencyEuroIcon } from "~/components/ui/icons";
 import { SearchSelect } from "~/components/ui/SearchSelect";
 import { CurrencyInput } from "~/components/ui/CurrencyInput";
@@ -15,6 +14,7 @@ interface InvoiceItemRowProps {
     disabled?: boolean;
 }
 
+// Koristi se na: app/routes/invoices.tsx (kreiranje/uredjivanje racuna -> sekcija Stavke)
 export function InvoiceItemRow({
     item,
     index,

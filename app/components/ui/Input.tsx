@@ -1,21 +1,22 @@
-import React from "react";
+import { forwardRef } from "react";
+import type { ElementType, InputHTMLAttributes } from "react";
+import { FieldLabel } from "./FieldLabel";
+import { FieldError } from "./FieldError";
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string;
-    icon?: React.ElementType;
+    icon?: ElementType;
     error?: string;
     required?: boolean;
 }
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+// Koristi se na: login (forma prijave) i clients/articles/invoices (forme u drawerima)
+export const Input = forwardRef<HTMLInputElement, InputProps>(
     ({ label, icon: Icon, error, required, className = "", ...props }, ref) => {
         return (
             <div className="space-y-1.5 w-full group">
                 {label && (
-                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                        {label}
-                        {required && <span className="text-primary ml-0.5">*</span>}
-                    </label>
+                    <FieldLabel required={required}>{label}</FieldLabel>
                 )}
                 <div className="relative flex items-center">
                     {Icon && (
@@ -39,11 +40,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                         {...props}
                     />
                 </div>
-                {error && (
-                    <p className="text-[10px] font-bold text-red-500 ml-1 uppercase tracking-tight">
-                        {error}
-                    </p>
-                )}
+                {error && <FieldError>{error}</FieldError>}
             </div>
         );
     }
@@ -54,13 +51,14 @@ Input.displayName = "Input";
 /**
  * Settings-style Input (often used in forms within pages)
  */
+// Koristi se na: profile i settings/* (tekstualna polja u formama)
 export function FormInput({ label, value, onChange, type = "text", required = false, placeholder, maxLength, icon: Icon }: any) {
     return (
         <div className="space-y-1.5 w-full group">
             {label && (
-                <label className="text-[11px] font-black uppercase tracking-wider text-[var(--color-text-dim)] pl-1 block">
-                    {label} {required && <span className="text-primary">*</span>}
-                </label>
+                <FieldLabel required={required} variant="settings">
+                    {label}
+                </FieldLabel>
             )}
             <div className="relative flex items-center">
                 {Icon && (
@@ -85,13 +83,14 @@ export function FormInput({ label, value, onChange, type = "text", required = fa
 /**
  * Settings-style Select
  */
+// Koristi se na: settings/general i settings/fiscal (select polja)
 export function FormSelect({ label, value, onChange, options, required = false }: any) {
     return (
         <div className="space-y-1.5 w-full">
             {label && (
-                <label className="text-[11px] font-black uppercase tracking-wider text-[var(--color-text-dim)] pl-1 block">
-                    {label} {required && <span className="text-primary">*</span>}
-                </label>
+                <FieldLabel required={required} variant="settings">
+                    {label}
+                </FieldLabel>
             )}
             <div className="relative">
                 <select
@@ -116,13 +115,14 @@ export function FormSelect({ label, value, onChange, options, required = false }
 /**
  * Settings-style Textarea
  */
+// Koristi se na: settings/general i settings/fiscal (duga polja/napomene)
 export function FormTextarea({ label, value, onChange, rows = 3, placeholder, required = false }: any) {
     return (
         <div className="space-y-1.5 w-full">
             {label && (
-                <label className="text-[11px] font-black uppercase tracking-wider text-[var(--color-text-dim)] pl-1 block">
-                    {label} {required && <span className="text-primary">*</span>}
-                </label>
+                <FieldLabel required={required} variant="settings">
+                    {label}
+                </FieldLabel>
             )}
             <textarea
                 value={value}

@@ -1,5 +1,6 @@
-import React, { type ReactNode, type FormEvent, type SyntheticEvent } from "react";
+import type { ReactNode, SyntheticEvent } from "react";
 import { Drawer } from "../layout/Drawer";
+import { DrawerSecondaryButton } from "./DrawerSecondaryButton";
 
 interface FormDrawerProps {
     isOpen: boolean;
@@ -11,6 +12,7 @@ interface FormDrawerProps {
     children: ReactNode;
 }
 
+// Koristi se na: clients/articles/invoices (kreiranje/uredjivanje), profile (uredi nalog)
 export function FormDrawer({
     isOpen,
     onClose,
@@ -41,13 +43,7 @@ export function FormDrawer({
                             <span>{submitLabel}</span>
                         )}
                     </button>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="w-full py-3.5 bg-[var(--color-border)] text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl font-black text-[10px] uppercase tracking-widest hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-all"
-                    >
-                        Odustani
-                    </button>
+                    <DrawerSecondaryButton label="Odustani" onClick={onClose} />
                 </div>
             </form>
         </Drawer>

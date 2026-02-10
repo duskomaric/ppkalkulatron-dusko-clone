@@ -1,5 +1,6 @@
 import { useAuth } from "~/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
+import type { FormEvent } from "react";
 import { getInvoices, getInvoice, createInvoice, updateInvoice, fiscalizeInvoice, fiscalizeCopy, fiscalizeRefund, downloadInvoicePdf, sendInvoiceEmail } from "~/api/invoices";
 import { getClients } from "~/api/clients";
 import { getArticles } from "~/api/articles";
@@ -8,7 +9,6 @@ import { getBankAccounts } from "~/api/settings";
 import type { Invoice, InvoiceInput, InvoiceItemInput } from "~/types/invoice";
 import type { Client } from "~/types/client";
 import type { Article } from "~/types/article";
-import type { Company } from "~/types/company";
 import type { SelectOption, Currency } from "~/types/config";
 import {
   HashIcon,
@@ -24,8 +24,6 @@ import {
   StickyNoteIcon,
   CheckCircleIcon,
   AlertTriangleIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
   ExternalLinkIcon,
   ImageIcon,
   BoxesIcon,
@@ -33,7 +31,7 @@ import {
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { CreateButton } from "~/components/ui/CreateButton";
-import { Toast, type ToastType } from "~/components/ui/Toast";
+import { Toast } from "~/components/ui/Toast";
 import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge, type BadgeColor } from "~/components/ui/StatusBadge";
 import { EntityCard } from "~/components/ui/EntityCard";
@@ -48,7 +46,14 @@ import { SearchSelect } from "~/components/ui/SearchSelect";
 import { Input } from "~/components/ui/Input";
 import { InvoiceItemRow } from "~/components/invoice/InvoiceItemRow";
 import { Toggle } from "~/components/ui/Toggle";
+import { SectionBlock } from "~/components/ui/SectionBlock";
+import { SectionHeader } from "~/components/ui/SectionHeader";
+import { SectionToggle } from "~/components/ui/SectionToggle";
+import { DetailsGrid } from "~/components/ui/DetailsGrid";
+import { ListHeader } from "~/components/ui/ListHeader";
+import { MetaItem } from "~/components/ui/MetaItem";
 import type { PaginationMeta } from "~/types/api";
+import { useToast } from "~/hooks/useToast";
 
 // Empty invoice item template (tax_rate in basis points: 1700 = 17%)
 const emptyInvoiceItem: InvoiceItemInput = {
@@ -65,7 +70,7 @@ const emptyInvoiceItem: InvoiceItemInput = {
 };
 
 export default function InvoicesPage() {
-  const { user, selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
+  const { selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
@@ -84,12 +89,7 @@ export default function InvoicesPage() {
   const [paymentTypes, setPaymentTypes] = useState<SelectOption[]>([]);
   const [companySettings, setCompanySettings] = useState<import("~/types/config").CompanySettings | null>(null);
 
-  // Toast
-  const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
-    message: "",
-    type: "success",
-    isVisible: false,
-  });
+  const { toast, showToast, hideToast } = useToast();
 
   // Drawer states
   const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
@@ -142,10 +142,6 @@ export default function InvoicesPage() {
 
   // Selected client for form
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-
-  const showToast = (message: string, type: ToastType) => {
-    setToast({ message, type, isVisible: true });
-  };
 
   // Format price
   const formatPrice = (amount: number): string => {
@@ -415,7 +411,7 @@ export default function InvoicesPage() {
     setEmailModalOpen(true);
   };
 
-  const handleSendEmail = async (e: React.FormEvent) => {
+  const handleSendEmail = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedCompany || !token || !activeInvoice) return;
     if (!emailForm.to) {
@@ -483,7 +479,7 @@ export default function InvoicesPage() {
   };
 
   // Form submit
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedCompany || !token) return;
     if (formMode === "create" && !selectedClient) {
@@ -538,7 +534,7 @@ export default function InvoicesPage() {
         message={toast.message}
         type={toast.type}
         isVisible={toast.isVisible}
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+        onClose={hideToast}
       />
 
       {/* Mobile: cards (original layout) */}
@@ -572,20 +568,17 @@ export default function InvoicesPage() {
             <div className="h-[1px] w-full bg-[var(--color-border)]" />
             <div className="flex justify-between items-end">
               <div className="flex gap-4">
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                    <Calendar1Icon className="w-2.5 h-2.5" />
-                    <span className="text-[9px] font-black uppercase">Datum</span>
-                  </div>
-                  <p className="text-xs font-bold text-[var(--color-text-muted)]">{inv.date}</p>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                    <Clock1Icon className="w-2.5 h-2.5" />
-                    <span className="text-[9px] font-black uppercase">Dospijeće</span>
-                  </div>
-                  <p className="text-xs font-bold text-red-500">{inv.due_date}</p>
-                </div>
+                <MetaItem
+                  icon={Calendar1Icon}
+                  label="Datum"
+                  value={inv.date}
+                />
+                <MetaItem
+                  icon={Clock1Icon}
+                  label="Dospijeće"
+                  value={inv.due_date}
+                  valueClassName="text-red-500"
+                />
               </div>
               <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
                 {formatPrice(inv.total)} {inv.currency}
@@ -595,53 +588,58 @@ export default function InvoicesPage() {
         ))}
       </div>
 
-      {/* Desktop: card list (1 kolona, bez ikone na total) */}
+      {/* Desktop: header */}
+      <ListHeader
+        grid="grid-cols-[minmax(0,1.6fr)_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr]"
+        columns={[
+          { label: "Račun / Klijent" },
+          { label: "Status" },
+          { label: "Datum" },
+          { label: "Dospijeće" },
+          { label: "Plaćanje" },
+          { label: "Ukupno", align: "right" },
+        ]}
+      />
+
+      {/* Desktop: structured list */}
       <div className="hidden md:block space-y-3">
         {invoices.map((inv) => (
           <EntityCard key={inv.id} onClick={() => handleRowClick(inv)}>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <HashIcon className="w-3 h-3 text-primary" />
-                <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-none group-hover:text-primary transition-colors">
-                  {inv.invoice_number}
-                </span>
+            <div className="grid grid-cols-[minmax(0,1.6fr)_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-3 items-center">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <FileTextIcon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <HashIcon className="w-3 h-3 text-primary" />
+                    <span className="text-sm font-black text-[var(--color-text-main)] tracking-tighter italic leading-none truncate">
+                      {inv.invoice_number}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-xs font-bold text-[var(--color-text-muted)] min-w-0">
+                    <ContactRoundIcon className="w-3.5 h-3.5 text-[var(--color-text-dim)] shrink-0" />
+                    <span className="truncate">{inv.client?.name || 'Nepoznat klijent'}</span>
+                  </div>
+                </div>
               </div>
               <StatusBadge
                 label={inv.status_label}
                 color={(inv.status_color as BadgeColor) || "gray"}
               />
-            </div>
-            <div className="flex items-center gap-2">
-              <ContactRoundIcon className="w-3.5 h-3.5 text-[var(--color-text-dim)]" />
-              <span className="text-xs font-bold text-[var(--color-text-muted)] tracking-tight truncate">
-                {inv.client?.name || 'Nepoznat klijent'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CreditCardIcon className="w-3 h-3 text-[var(--color-text-dim)]" />
-              <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
-                {inv.payment_type_label || "—"}
-              </span>
-            </div>
-            <div className="h-[1px] w-full bg-[var(--color-border)]" />
-            <div className="flex justify-between items-end">
-              <div className="flex gap-4">
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                    <Calendar1Icon className="w-2.5 h-2.5" />
-                    <span className="text-[9px] font-black uppercase">Datum</span>
-                  </div>
-                  <p className="text-xs font-bold text-[var(--color-text-muted)]">{inv.date}</p>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                    <Clock1Icon className="w-2.5 h-2.5" />
-                    <span className="text-[9px] font-black uppercase">Dospijeće</span>
-                  </div>
-                  <p className="text-xs font-bold text-red-500">{inv.due_date}</p>
-                </div>
+              <div className="flex items-center gap-1 text-xs font-bold text-[var(--color-text-muted)]">
+                <Calendar1Icon className="w-3 h-3 text-[var(--color-text-dim)]" />
+                <span>{inv.date}</span>
               </div>
-              <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
+              <div className="flex items-center gap-1 text-xs font-bold text-red-500">
+                <Clock1Icon className="w-3 h-3" />
+                <span>{inv.due_date}</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs font-bold text-[var(--color-text-muted)]">
+                <CreditCardIcon className="w-3 h-3 text-[var(--color-text-dim)]" />
+                <span>{inv.payment_type_label || "—"}</span>
+              </div>
+              <p className="text-right text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
                 {formatPrice(inv.total)} {inv.currency}
               </p>
             </div>
@@ -683,68 +681,70 @@ export default function InvoicesPage() {
         onEdit={openEditForm}
       >
         {activeInvoice && (
-          <div className="space-y-4">
-            {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-2">
-              <DetailsItem
-                icon={ContactRoundIcon}
-                label="Klijent"
-                value={activeInvoice.client?.name}
-                color="bg-blue-500/10 text-blue-500"
-              />
-              <DetailsItem
-                icon={GlobeIcon}
-                label="Jezik"
-                value={activeInvoice.language_label}
-                color="bg-purple-500/10 text-purple-500"
-              />
-              <DetailsItem
-                icon={Calendar1Icon}
-                label="Datum"
-                value={activeInvoice.date}
-                color="bg-green-500/10 text-green-500"
-              />
-              <DetailsItem
-                icon={Clock1Icon}
-                label="Dospijeće"
-                value={activeInvoice.due_date}
-                color="bg-red-500/10 text-red-500"
-              />
-              <DetailsItem
-                icon={CreditCardIcon}
-                label="Valuta"
-                value={activeInvoice.currency}
-                color="bg-amber-500/10 text-amber-500"
-              />
-              <DetailsItem
-                icon={CreditCardIcon}
-                label="Bankovni račun"
-                value={activeInvoice.bank_account ? `${activeInvoice.bank_account.bank_name} (${activeInvoice.bank_account.account_number})` : "—"}
-                color="bg-slate-500/10 text-slate-500"
-              />
-              <DetailsItem
-                icon={FileTextIcon}
-                label="Predložak"
-                value={activeInvoice.invoice_template_label || "—"}
-                color="bg-indigo-500/10 text-indigo-500"
-              />
-              <DetailsItem
-                icon={CreditCardIcon}
-                label="Način plaćanja"
-                value={activeInvoice.payment_type_label || "—"}
-                color="bg-teal-500/10 text-teal-500"
-              />
-              <DetailsItem
-                icon={RepeatIcon}
-                label="Ponavljanje"
-                value={activeInvoice.is_recurring ? activeInvoice.frequency_label : "Ne"}
-                color="bg-teal-500/10 text-teal-500"
-              />
-            </div>
+          <div className="space-y-3">
+            <SectionBlock variant="plain">
+              <SectionHeader icon={FileTextIcon} title="Osnovni podaci" />
+              <DetailsGrid columns={2}>
+                <DetailsItem
+                  icon={ContactRoundIcon}
+                  label="Klijent"
+                  value={activeInvoice.client?.name}
+                  color="bg-blue-500/10 text-blue-500"
+                />
+                <DetailsItem
+                  icon={GlobeIcon}
+                  label="Jezik"
+                  value={activeInvoice.language_label}
+                  color="bg-purple-500/10 text-purple-500"
+                />
+                <DetailsItem
+                  icon={Calendar1Icon}
+                  label="Datum"
+                  value={activeInvoice.date}
+                  color="bg-green-500/10 text-green-500"
+                />
+                <DetailsItem
+                  icon={Clock1Icon}
+                  label="Dospijeće"
+                  value={activeInvoice.due_date}
+                  color="bg-red-500/10 text-red-500"
+                />
+                <DetailsItem
+                  icon={CreditCardIcon}
+                  label="Valuta"
+                  value={activeInvoice.currency}
+                  color="bg-amber-500/10 text-amber-500"
+                />
+                <DetailsItem
+                  icon={CreditCardIcon}
+                  label="Bankovni račun"
+                  value={activeInvoice.bank_account ? `${activeInvoice.bank_account.bank_name} (${activeInvoice.bank_account.account_number})` : "—"}
+                  color="bg-slate-500/10 text-slate-500"
+                />
+                <DetailsItem
+                  icon={FileTextIcon}
+                  label="Predložak"
+                  value={activeInvoice.invoice_template_label || "—"}
+                  color="bg-indigo-500/10 text-indigo-500"
+                />
+                <DetailsItem
+                  icon={CreditCardIcon}
+                  label="Način plaćanja"
+                  value={activeInvoice.payment_type_label || "—"}
+                  color="bg-teal-500/10 text-teal-500"
+                />
+                <DetailsItem
+                  icon={RepeatIcon}
+                  label="Ponavljanje"
+                  value={activeInvoice.is_recurring ? activeInvoice.frequency_label : "Ne"}
+                  color="bg-teal-500/10 text-teal-500"
+                />
+              </DetailsGrid>
+            </SectionBlock>
 
             {/* Notes */}
             {activeInvoice.notes && (
-              <div className="p-3 bg-[var(--color-border)] rounded-xl">
+              <div className="p-3 bg-[var(--color-border)] rounded-2xl border border-[var(--color-border-strong)]">
                 <div className="flex items-center gap-2 mb-1">
                   <StickyNoteIcon className="h-3 w-3 text-[var(--color-text-dim)]" />
                   <span className="text-[8px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">Napomena</span>
@@ -754,34 +754,68 @@ export default function InvoicesPage() {
             )}
 
             {/* Items */}
-            <div className="space-y-2">
-              <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">
-                Stavke ({activeInvoice.items.length})
-              </span>
-              {activeInvoice.items.map((item, idx) => (
-                <div key={item.id || idx} className="p-3 bg-[var(--color-border)] rounded-xl">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="text-sm font-bold text-[var(--color-text-main)]">{item.name}</p>
-                      {item.description && (
-                        <p className="text-[10px] text-[var(--color-text-dim)]">{item.description}</p>
-                      )}
+            <SectionBlock variant="plain">
+              <SectionHeader icon={BoxesIcon} title={`Stavke (${activeInvoice.items.length})`} />
+
+              <div className="hidden md:grid grid-cols-[minmax(0,1fr)_70px_110px_80px_120px] gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-dim)] px-2">
+                <span>Stavka</span>
+                <span className="text-right">Kol.</span>
+                <span className="text-right">Cijena</span>
+                <span className="text-right">PDV</span>
+                <span className="text-right">Ukupno</span>
+              </div>
+
+              <div className="space-y-2">
+                {activeInvoice.items.map((item, idx) => {
+                  const unitPrice = item.quantity > 0 ? Math.round(item.total / item.quantity) : 0;
+                  return (
+                    <div key={item.id || idx} className="p-3 bg-[var(--color-border)] rounded-xl border border-[var(--color-border-strong)]">
+                      <div className="md:hidden">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="text-sm font-bold text-[var(--color-text-main)]">{item.name}</p>
+                            {item.description && (
+                              <p className="text-[10px] text-[var(--color-text-dim)]">{item.description}</p>
+                            )}
+                          </div>
+                          <p className="text-sm font-black text-primary">
+                            {formatPrice(item.total)} {activeInvoice.currency}
+                          </p>
+                        </div>
+                        <div className="flex gap-4 text-[10px] text-[var(--color-text-dim)]">
+                          <span>Kol: <strong className="text-[var(--color-text-muted)]">{item.quantity}</strong></span>
+                          <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(unitPrice)} {activeInvoice.currency}</strong></span>
+                          <span>PDV: <strong className="text-[var(--color-text-muted)]">{item.tax_rate / 100}%</strong></span>
+                        </div>
+                      </div>
+                      <div className="hidden md:grid grid-cols-[minmax(0,1fr)_70px_110px_80px_120px] gap-2 items-center">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-[var(--color-text-main)]">{item.name}</p>
+                          {item.description && (
+                            <p className="text-[10px] text-[var(--color-text-dim)]">{item.description}</p>
+                          )}
+                        </div>
+                        <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">
+                          {item.quantity}
+                        </div>
+                        <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">
+                          {formatPrice(unitPrice)} {activeInvoice.currency}
+                        </div>
+                        <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">
+                          {item.tax_rate / 100}%
+                        </div>
+                        <div className="text-sm font-black text-primary text-right">
+                          {formatPrice(item.total)} {activeInvoice.currency}
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm font-black text-primary">
-                      {formatPrice(item.total)} {activeInvoice.currency}
-                    </p>
-                  </div>
-                  <div className="flex gap-4 text-[10px] text-[var(--color-text-dim)]">
-                    <span>Kol: <strong className="text-[var(--color-text-muted)]">{item.quantity}</strong></span>
-                    <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(item.quantity > 0 ? Math.round(item.total / item.quantity) : 0)} {activeInvoice.currency}</strong></span>
-                    <span>PDV: <strong className="text-[var(--color-text-muted)]">{item.tax_rate / 100}%</strong></span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            </SectionBlock>
 
             {/* Totals */}
-            <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl space-y-2">
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--color-text-dim)]">Osnovica:</span>
                 <span className="font-bold text-[var(--color-text-main)]">{formatPrice(activeInvoice.subtotal)} {activeInvoice.currency}</span>
@@ -790,7 +824,7 @@ export default function InvoicesPage() {
                 <span className="text-[var(--color-text-dim)]">PDV:</span>
                 <span className="font-bold text-[var(--color-text-main)]">{formatPrice(activeInvoice.tax_total)} {activeInvoice.currency}</span>
               </div>
-              <div className="h-[1px] bg-primary/20" />
+              <div className="h-[1px] bg-amber-500/20" />
               <div className="flex justify-between">
                 <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno:</span>
                 <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(activeInvoice.total)} {activeInvoice.currency}</span>
@@ -823,193 +857,187 @@ export default function InvoicesPage() {
             </div>
 
             {/* Fiskalizacija - vizuelno odvojena sekcija */}
-            <div className="mt-8 pt-6 border-t-2 border-dashed border-[var(--color-border)]">
-              <div className={`rounded-2xl p-5 border-2 ${
-                activeInvoice.status === "refunded"
-                  ? "bg-red-500/5 border-red-500/20"
+            <div className="mt-6 pt-4 border-t-2 border-dashed border-[var(--color-border)]">
+              <SectionHeader
+                icon={FileTextIcon}
+                title="Fiskalizacija (OFS ESIR)"
+                iconClassName={activeInvoice.status === "refunded"
+                  ? "bg-red-500/10 text-red-500"
                   : activeInvoice.status === "fiscalized"
-                    ? "bg-emerald-500/5 border-emerald-500/20"
-                    : "bg-amber-500/5 border-amber-500/20"
-              }`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <FileTextIcon className={`h-5 w-5 ${
-                    activeInvoice.status === "refunded" ? "text-red-500" : activeInvoice.status === "fiscalized" ? "text-emerald-500" : "text-amber-500"
-                  }`} />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">
-                    Fiskalizacija (OFS ESIR)
-                  </span>
-                </div>
+                    ? "bg-emerald-500/10 text-emerald-500"
+                    : "bg-amber-500/10 text-amber-500"}
+                className="mb-3"
+              />
 
-                {(activeInvoice.status === "fiscalized" || activeInvoice.status === "refunded") ? (
-                  <div className="space-y-3">
-                    {/* Accordion: svi fiskalni zapisi (original, kopija, refund) - sortirani po datumu */}
-                    {activeInvoice.fiscal_records && activeInvoice.fiscal_records.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {activeInvoice.fiscal_records.map((rec) => {
-                          const isOriginal = rec.type === "original";
-                          const isCopy = rec.type === "copy";
-                          const bgClass = isOriginal
-                            ? "bg-emerald-500/10 border-emerald-500/30"
-                            : isCopy
-                              ? "bg-blue-500/10 border-blue-500/30"
-                              : "bg-red-500/10 border-red-500/30";
-                          const textClass = isOriginal ? "text-emerald-600" : isCopy ? "text-blue-600" : "text-red-600";
-                          const hoverClass = isOriginal ? "hover:bg-emerald-500/15" : isCopy ? "hover:bg-blue-500/15" : "hover:bg-red-500/15";
+              {(activeInvoice.status === "fiscalized" || activeInvoice.status === "refunded") ? (
+                <div className="space-y-3">
+                  {/* Accordion: svi fiskalni zapisi (original, kopija, refund) - sortirani po datumu */}
+                  {activeInvoice.fiscal_records && activeInvoice.fiscal_records.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {activeInvoice.fiscal_records.map((rec) => {
+                        const isOriginal = rec.type === "original";
+                        const isCopy = rec.type === "copy";
+                        const bgClass = isOriginal
+                          ? "bg-emerald-500/10 border-emerald-500/30"
+                          : isCopy
+                            ? "bg-blue-500/10 border-blue-500/30"
+                            : "bg-red-500/10 border-red-500/30";
+                        const textClass = isOriginal ? "text-emerald-600" : isCopy ? "text-blue-600" : "text-red-600";
+                        const hoverClass = isOriginal ? "hover:bg-emerald-500/15" : isCopy ? "hover:bg-blue-500/15" : "hover:bg-red-500/15";
 
-                          return (
-                            <div
-                              key={rec.id}
-                              className={`rounded-xl border-2 overflow-hidden transition-colors ${bgClass}`}
-                            >
-                              {/* Kompaktna jedna linija */}
-                              <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 ${hoverClass}`}>
-                                <span className={`text-[9px] font-black uppercase tracking-widest shrink-0 ${textClass}`}>
-                                  {rec.type_label}
+                        return (
+                          <div
+                            key={rec.id}
+                            className={`rounded-xl border-2 overflow-hidden transition-colors ${bgClass}`}
+                          >
+                            {/* Kompaktna jedna linija */}
+                            <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 ${hoverClass}`}>
+                              <span className={`text-[9px] font-black uppercase tracking-widest shrink-0 ${textClass}`}>
+                                {rec.type_label}
+                              </span>
+                              <span className="text-xs font-bold text-[var(--color-text-main)] truncate max-w-[120px] sm:max-w-[160px]" title={rec.fiscal_invoice_number || undefined}>
+                                {rec.fiscal_invoice_number || "—"}
+                              </span>
+                              {rec.fiscalized_at && (
+                                <span className="text-[9px] text-[var(--color-text-dim)] shrink-0">
+                                  {rec.fiscalized_at}
                                 </span>
-                                <span className="text-xs font-bold text-[var(--color-text-main)] truncate max-w-[120px] sm:max-w-[160px]" title={rec.fiscal_invoice_number || undefined}>
-                                  {rec.fiscal_invoice_number || "—"}
+                              )}
+                              {rec.fiscal_counter != null && (
+                                <span className="text-[9px] text-[var(--color-text-dim)] shrink-0">
+                                  Brojač: {String(rec.fiscal_counter)}
                                 </span>
-                                {rec.fiscalized_at && (
-                                  <span className="text-[9px] text-[var(--color-text-dim)] shrink-0">
-                                    {rec.fiscalized_at}
-                                  </span>
-                                )}
-                                {rec.fiscal_counter != null && (
-                                  <span className="text-[9px] text-[var(--color-text-dim)] shrink-0">
-                                    Brojač: {String(rec.fiscal_counter)}
-                                  </span>
-                                )}
-                                {rec.verification_url && (
-                                  <a
-                                    href={rec.verification_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-primary hover:text-primary/80 shrink-0"
-                                    title="Verifikacija na Poreskoj upravi"
-                                  >
-                                    <ExternalLinkIcon className="h-3.5 w-3.5" />
-                                  </a>
-                                )}
-                                {rec.fiscal_receipt_image_path && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setFiscalImageRecordId(rec.id);
-                                      setFiscalImageModalOpen(true);
-                                    }}
-                                    className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 ${
-                                      isOriginal
-                                        ? "text-emerald-500 hover:bg-emerald-500/20"
-                                        : isCopy
-                                          ? "text-blue-500 hover:bg-blue-500/20"
-                                          : "text-red-500 hover:bg-red-500/20"
-                                    }`}
-                                    title="Pregled slike računa"
-                                  >
-                                    <ImageIcon className="h-3.5 w-3.5" />
-                                  </button>
-                                )}
-                              </div>
+                              )}
+                              {rec.verification_url && (
+                                <a
+                                  href={rec.verification_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-primary hover:text-primary/80 shrink-0"
+                                  title="Verifikacija na Poreskoj upravi"
+                                >
+                                  <ExternalLinkIcon className="h-3.5 w-3.5" />
+                                </a>
+                              )}
+                              {rec.fiscal_receipt_image_path && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFiscalImageRecordId(rec.id);
+                                    setFiscalImageModalOpen(true);
+                                  }}
+                                  className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 ${
+                                    isOriginal
+                                      ? "text-emerald-500 hover:bg-emerald-500/20"
+                                      : isCopy
+                                        ? "text-blue-500 hover:bg-blue-500/20"
+                                        : "text-red-500 hover:bg-red-500/20"
+                                  }`}
+                                  title="Pregled slike računa"
+                                >
+                                  <ImageIcon className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
-                        <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                        <span className="text-xs font-bold text-[var(--color-text-main)]">{activeInvoice.fiscal_invoice_number}</span>
-                        {activeInvoice.fiscal_counter != null && (
-                          <span className="text-[9px] text-[var(--color-text-dim)]">Brojač: {String(activeInvoice.fiscal_counter)}</span>
-                        )}
-                        {activeInvoice.fiscal_verification_url && (
-                          <a
-                            href={activeInvoice.fiscal_verification_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex text-primary hover:text-primary/80 shrink-0"
-                            title="Verifikacija na Poreskoj upravi"
-                          >
-                            <ExternalLinkIcon className="h-3.5 w-3.5" />
-                          </a>
-                        )}
-                        {activeInvoice.fiscal_receipt_image_path && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const origRec = activeInvoice.fiscal_records?.find((r) => r.type === "original");
-                              setFiscalImageRecordId(origRec?.id ?? null);
-                              setFiscalImageModalOpen(true);
-                            }}
-                            className="p-1 rounded-lg text-emerald-500 hover:bg-emerald-500/20 transition-all cursor-pointer shrink-0"
-                            title="Pregled slike računa"
-                          >
-                            <ImageIcon className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex gap-2 pt-2">
-                      {activeInvoice.fiscal_records?.some((r) => r.type === "original") && (
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                      <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      <span className="text-xs font-bold text-[var(--color-text-main)]">{activeInvoice.fiscal_invoice_number}</span>
+                      {activeInvoice.fiscal_counter != null && (
+                        <span className="text-[9px] text-[var(--color-text-dim)]">Brojač: {String(activeInvoice.fiscal_counter)}</span>
+                      )}
+                      {activeInvoice.fiscal_verification_url && (
+                        <a
+                          href={activeInvoice.fiscal_verification_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex text-primary hover:text-primary/80 shrink-0"
+                          title="Verifikacija na Poreskoj upravi"
+                        >
+                          <ExternalLinkIcon className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                      {activeInvoice.fiscal_receipt_image_path && (
                         <button
                           type="button"
-                          onClick={handleFiscalizeCopy}
+                          onClick={() => {
+                            const origRec = activeInvoice.fiscal_records?.find((r) => r.type === "original");
+                            setFiscalImageRecordId(origRec?.id ?? null);
+                            setFiscalImageModalOpen(true);
+                          }}
+                          className="p-1 rounded-lg text-emerald-500 hover:bg-emerald-500/20 transition-all cursor-pointer shrink-0"
+                          title="Pregled slike računa"
+                        >
+                          <ImageIcon className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    {activeInvoice.fiscal_records?.some((r) => r.type === "original") && (
+                      <button
+                        type="button"
+                        onClick={handleFiscalizeCopy}
+                        disabled={fiscalLoading}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-blue-500/30 bg-blue-500/10 text-blue-500 font-bold text-sm hover:bg-blue-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
+                      >
+                        {fiscalLoading ? (
+                          <>
+                            <span className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+                            Obrada...
+                          </>
+                        ) : (
+                          <>
+                            <FileTextIcon className="h-4 w-4" />
+                            Štampaj kopiju
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {activeInvoice.fiscal_records?.some((r) => r.type === "original") &&
+                      !activeInvoice.fiscal_records?.some((r) => r.type === "refund") && (
+                        <button
+                          type="button"
+                          onClick={() => setRefundModalOpen(true)}
                           disabled={fiscalLoading}
-                          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-blue-500/30 bg-blue-500/10 text-blue-500 font-bold text-sm hover:bg-blue-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
+                          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-red-500/30 bg-red-500/10 text-red-500 font-bold text-sm hover:bg-red-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
                         >
                           {fiscalLoading ? (
                             <>
-                              <span className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+                              <span className="animate-spin rounded-full h-4 w-4 border-2 border-red-500 border-t-transparent" />
                               Obrada...
                             </>
                           ) : (
                             <>
-                              <FileTextIcon className="h-4 w-4" />
-                              Štampaj kopiju
+                              <AlertTriangleIcon className="h-4 w-4" />
+                              Refundacija
                             </>
                           )}
                         </button>
                       )}
-                      {activeInvoice.fiscal_records?.some((r) => r.type === "original") &&
-                        !activeInvoice.fiscal_records?.some((r) => r.type === "refund") && (
-                          <button
-                            type="button"
-                            onClick={() => setRefundModalOpen(true)}
-                            disabled={fiscalLoading}
-                            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-red-500/30 bg-red-500/10 text-red-500 font-bold text-sm hover:bg-red-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
-                          >
-                            {fiscalLoading ? (
-                              <>
-                                <span className="animate-spin rounded-full h-4 w-4 border-2 border-red-500 border-t-transparent" />
-                                Obrada...
-                              </>
-                            ) : (
-                              <>
-                                <AlertTriangleIcon className="h-4 w-4" />
-                                Refundacija
-                              </>
-                            )}
-                          </button>
-                        )}
-                    </div>
                   </div>
-                ) : (
-                  <div>
-                    <p className="text-xs text-[var(--color-text-dim)] mb-4">
-                      Račun nije fiskalizovan. Kliknite ispod da fiskalizujete i odštampate.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleFiscalize}
-                      disabled={fiscalLoading}
-                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary/20 border-2 border-primary/30 text-primary font-bold text-sm hover:bg-primary/30 transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                      <CheckCircleIcon className="h-4 w-4" />
-                      {fiscalLoading ? "Fiskalizacija..." : "Fiskalizuj i štampaj"}
-                    </button>
-                  </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-xs text-[var(--color-text-dim)] mb-4">
+                    Račun nije fiskalizovan. Kliknite ispod da fiskalizujete i odštampate.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleFiscalize}
+                    disabled={fiscalLoading}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary/20 border-2 border-primary/30 text-primary font-bold text-sm hover:bg-primary/30 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    <CheckCircleIcon className="h-4 w-4" />
+                    {fiscalLoading ? "Fiskalizacija..." : "Fiskalizuj i štampaj"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1154,255 +1182,242 @@ export default function InvoicesPage() {
         loading={formLoading}
         submitLabel={formMode === "create" ? "Kreiraj račun" : "Sačuvaj izmjene"}
       >
-        <div className="space-y-4">
-          {/* 1. Klijent - uvijek vidljiv, ikona unutar */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-              Klijent <span className="text-primary">*</span>
-            </label>
-            <SearchSelect
-              items={clients}
-              value={selectedClient}
-              onChange={handleClientChange}
-              getKey={(c) => c.id}
-              getLabel={(c) => c.name}
-              getSearchText={(c) => `${c.name} ${c.email || ""} ${c.phone || ""}`}
-              renderItem={(c, isSelected) => (
-                <div className="flex flex-col gap-0.5">
-                  <span className={`text-sm font-bold ${isSelected ? "text-primary" : ""}`}>{c.name}</span>
-                  {c.email && <span className="text-[10px] text-[var(--color-text-dim)]">{c.email}</span>}
-                </div>
-              )}
-              icon={ContactRoundIcon}
-              placeholder="Odaberi klijenta..."
-              required
-            />
-          </div>
+        <div className="space-y-3">
+          {/* Osnovni podaci */}
+          <SectionBlock variant="card">
+            <SectionHeader icon={ContactRoundIcon} title="Osnovni podaci" />
 
-          {/* 2. Datum, Dospijeće, Način plaćanja - ikone unutar inputa */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-start">
-            <Input
-              label="Datum"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-              icon={Calendar1Icon}
-              required
-              className="h-[44px] min-h-[44px] py-2 rounded-xl"
-            />
-            <Input
-              label="Dospijeće"
-              type="date"
-              value={formData.due_date}
-              onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
-              icon={Clock1Icon}
-              required
-              className="h-[44px] min-h-[44px] py-2 rounded-xl"
-            />
-            <div className="space-y-1.5 group">
+            {/* 1. Klijent - uvijek vidljiv, ikona unutar */}
+            <div className="space-y-1.5">
               <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                Način plaćanja
+                Klijent <span className="text-primary">*</span>
               </label>
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)] group-focus-within:text-primary transition-colors">
-                  <CreditCardIcon className="h-4 w-4" />
+              <SearchSelect
+                items={clients}
+                value={selectedClient}
+                onChange={handleClientChange}
+                getKey={(c) => c.id}
+                getLabel={(c) => c.name}
+                getSearchText={(c) => `${c.name} ${c.email || ""} ${c.phone || ""}`}
+                renderItem={(c, isSelected) => (
+                  <div className="flex flex-col gap-0.5">
+                    <span className={`text-sm font-bold ${isSelected ? "text-primary" : ""}`}>{c.name}</span>
+                    {c.email && <span className="text-[10px] text-[var(--color-text-dim)]">{c.email}</span>}
+                  </div>
+                )}
+                icon={ContactRoundIcon}
+                placeholder="Odaberi klijenta..."
+                required
+              />
+            </div>
+
+            {/* 2. Datum, Dospijeće, Način plaćanja - ikone unutar inputa */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-start">
+              <Input
+                label="Datum"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                icon={Calendar1Icon}
+                required
+                className="h-[44px] min-h-[44px] py-2 rounded-xl"
+              />
+              <Input
+                label="Dospijeće"
+                type="date"
+                value={formData.due_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                icon={Clock1Icon}
+                required
+                className="h-[44px] min-h-[44px] py-2 rounded-xl"
+              />
+              <div className="space-y-1.5 group">
+                <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
+                  Način plaćanja
+                </label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)] group-focus-within:text-primary transition-colors">
+                    <CreditCardIcon className="h-4 w-4" />
+                  </div>
+                  <select
+                    value={formData.payment_type || "Cash"}
+                    onChange={(e) => setFormData(prev => ({ ...prev, payment_type: e.target.value }))}
+                    className="w-full h-[44px] min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-11 pr-10 py-2 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 cursor-pointer"
+                  >
+                    {paymentTypes.map((pt) => (
+                      <option key={pt.value} value={pt.value}>{pt.label}</option>
+                    ))}
+                  </select>
                 </div>
-                <select
-                  value={formData.payment_type || "Cash"}
-                  onChange={(e) => setFormData(prev => ({ ...prev, payment_type: e.target.value }))}
-                  className="w-full h-[44px] min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-11 pr-10 py-2 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 cursor-pointer"
-                >
-                  {paymentTypes.map((pt) => (
-                    <option key={pt.value} value={pt.value}>{pt.label}</option>
-                  ))}
-                </select>
               </div>
             </div>
-          </div>
+          </SectionBlock>
 
           {/* 3. Prikaži više / Sakrij dodatna polja */}
-          <button
-            type="button"
-            onClick={() => setShowMoreFormFields(!showMoreFormFields)}
-            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed transition-colors cursor-pointer
-              ${showMoreFormFields
-                ? "border-[var(--color-border)] bg-[var(--color-surface)]/50 text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)]"
-                : "border-primary/40 bg-primary/5 text-primary hover:border-primary/60 hover:bg-primary/10"
-              }`}
-          >
-            {showMoreFormFields ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
-            <span className="text-[11px] font-bold">
-              {showMoreFormFields ? "Sakrij dodatna polja" : "Prikaži više (valuta, predložak, napomena...)"}
-            </span>
-          </button>
+          <SectionBlock variant="accent">
+            <SectionToggle
+              open={showMoreFormFields}
+              onClick={() => setShowMoreFormFields(!showMoreFormFields)}
+              title="Dodatna polja"
+              subtitle="Valuta, predložak, napomena..."
+            />
 
-          {showMoreFormFields && (
-            <div className="space-y-3 pt-4 mt-2 border-t-2 border-dashed border-[var(--color-border)] rounded-xl p-4 bg-[var(--color-surface)]/30">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">
-                  ⋯ Dodatna polja
-                </span>
-              </div>
-              {/* Valuta, Bankovni račun, Jezik, Predložak - ikone unutar */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-start">
-                <div className="space-y-1.5 group">
-                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Valuta</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
-                      <CreditCardIcon className="h-4 w-4" />
-                    </div>
-                    <select
-                      value={formData.currency_id ?? currencies.find(c => c.code === formData.currency)?.id ?? ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const curr = currencies.find(c => c.id === parseInt(val));
-                        setFormData(prev => ({ ...prev, currency_id: curr?.id ?? null, currency: curr?.code ?? prev.currency }));
-                      }}
-                      className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
-                    >
-                      {currencies.map(c => (
-                        <option key={c.id} value={c.id}>{c.code}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-1.5 group">
-                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Bankovni račun</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
-                      <CreditCardIcon className="h-4 w-4" />
-                    </div>
-                    <select
-                      value={formData.bank_account_id ?? ""}
-                      onChange={(e) => setFormData(prev => ({ ...prev, bank_account_id: e.target.value ? parseInt(e.target.value) : null }))}
-                      className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
-                    >
-                      <option value="">—</option>
-                      {bankAccounts.map(b => (
-                        <option key={b.id} value={b.id}>{b.bank_name} ({b.account_number})</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-1.5 group">
-                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Jezik</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
-                      <GlobeIcon className="h-4 w-4" />
-                    </div>
-                    <select
-                      value={formData.language}
-                      onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
-                      className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
-                    >
-                      {languages.map(l => (
-                        <option key={l.value} value={l.value}>{l.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-1.5 group">
-                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Predložak</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
-                      <FileTextIcon className="h-4 w-4" />
-                    </div>
-                    <select
-                      value={formData.invoice_template}
-                      onChange={(e) => setFormData(prev => ({ ...prev, invoice_template: e.target.value }))}
-                      className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
-                    >
-                      {templates.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Napomena */}
-              <div className="rounded-xl border border-dashed border-[var(--color-border)] overflow-hidden">
-                <div className="flex items-center gap-2 p-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
-                  <div className="h-7 w-7 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center shrink-0">
-                    <StickyNoteIcon className="h-3.5 w-3.5" />
-                  </div>
-                  <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)]">Napomena</span>
-                </div>
-                <textarea
-                  value={formData.notes || ""}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={2}
-                  className="w-full bg-[var(--color-surface)] border-none text-[var(--color-text-main)] font-bold text-sm px-4 py-3 outline-none focus:ring-0 placeholder:text-[var(--color-text-dim)] resize-none"
-                  placeholder="Dodatne napomene..."
-                />
-              </div>
-
-              {/* Ponavljajući račun */}
-              <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 bg-teal-500/10 text-teal-500 rounded-lg flex items-center justify-center shrink-0">
-                    <RepeatIcon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-[var(--color-text-main)]">Ponavljajući račun</p>
-                    <p className="text-[9px] text-[var(--color-text-dim)]">Automatski generiši račune</p>
-                  </div>
-                </div>
-                <Toggle
-                  checked={formData.is_recurring}
-                  onChange={(v) => setFormData(prev => ({
-                    ...prev,
-                    is_recurring: v,
-                    frequency: v ? "monthly" : null,
-                    next_invoice_date: v ? prev.due_date : null
-                  }))}
-                  label=""
-                  className="!p-0 !border-0 !bg-transparent"
-                />
-              </div>
-
-              {formData.is_recurring && (
-                <div className="grid grid-cols-2 gap-3 items-start">
+            {showMoreFormFields && (
+              <div className="space-y-3 pt-3 mt-2 border-t-2 border-dashed border-amber-500/30">
+                {/* Valuta, Bankovni račun, Jezik, Predložak - ikone unutar */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-start">
                   <div className="space-y-1.5 group">
-                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Učestalost</label>
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Valuta</label>
                     <div className="relative">
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
-                        <RepeatIcon className="h-4 w-4" />
+                        <CreditCardIcon className="h-4 w-4" />
                       </div>
                       <select
-                        value={formData.frequency || "monthly"}
-                        onChange={(e) => setFormData(prev => ({ ...prev, frequency: e.target.value }))}
+                        value={formData.currency_id ?? currencies.find(c => c.code === formData.currency)?.id ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const curr = currencies.find(c => c.id === parseInt(val));
+                          setFormData(prev => ({ ...prev, currency_id: curr?.id ?? null, currency: curr?.code ?? prev.currency }));
+                        }}
                         className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
                       >
-                        {frequencies.map(f => (
-                          <option key={f.value} value={f.value}>{f.label}</option>
+                        {currencies.map(c => (
+                          <option key={c.id} value={c.id}>{c.code}</option>
                         ))}
                       </select>
                     </div>
                   </div>
-                  <Input
-                    label="Sljedeći račun"
-                    type="date"
-                    value={formData.next_invoice_date || ""}
-                    onChange={(e) => setFormData(prev => ({ ...prev, next_invoice_date: e.target.value }))}
-                    icon={Calendar1Icon}
-                    className="min-h-[44px] py-3 rounded-xl"
+                  <div className="space-y-1.5 group">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Bankovni račun</label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                        <CreditCardIcon className="h-4 w-4" />
+                      </div>
+                      <select
+                        value={formData.bank_account_id ?? ""}
+                        onChange={(e) => setFormData(prev => ({ ...prev, bank_account_id: e.target.value ? parseInt(e.target.value) : null }))}
+                        className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
+                      >
+                        <option value="">—</option>
+                        {bankAccounts.map(b => (
+                          <option key={b.id} value={b.id}>{b.bank_name} ({b.account_number})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 group">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Jezik</label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                        <GlobeIcon className="h-4 w-4" />
+                      </div>
+                      <select
+                        value={formData.language}
+                        onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
+                        className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
+                      >
+                        {languages.map(l => (
+                          <option key={l.value} value={l.value}>{l.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 group">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Predložak</label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                        <FileTextIcon className="h-4 w-4" />
+                      </div>
+                      <select
+                        value={formData.invoice_template}
+                        onChange={(e) => setFormData(prev => ({ ...prev, invoice_template: e.target.value }))}
+                        className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
+                      >
+                        {templates.map(t => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Napomena */}
+                <div className="rounded-xl border border-dashed border-[var(--color-border)] overflow-hidden">
+                  <div className="flex items-center gap-2 p-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]/50">
+                    <div className="h-7 w-7 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center shrink-0">
+                      <StickyNoteIcon className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)]">Napomena</span>
+                  </div>
+                  <textarea
+                    value={formData.notes || ""}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={2}
+                    className="w-full bg-[var(--color-surface)] border-none text-[var(--color-text-main)] font-bold text-sm px-4 py-3 outline-none focus:ring-0 placeholder:text-[var(--color-text-dim)] resize-none"
+                    placeholder="Dodatne napomene..."
                   />
                 </div>
-              )}
-            </div>
-          )}
+
+                {/* Ponavljajući račun */}
+                <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 bg-teal-500/10 text-teal-500 rounded-lg flex items-center justify-center shrink-0">
+                      <RepeatIcon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-[var(--color-text-main)]">Ponavljajući račun</p>
+                      <p className="text-[9px] text-[var(--color-text-dim)]">Automatski generiši račune</p>
+                    </div>
+                  </div>
+                  <Toggle
+                    checked={formData.is_recurring}
+                    onChange={(v) => setFormData(prev => ({
+                      ...prev,
+                      is_recurring: v,
+                      frequency: v ? "monthly" : null,
+                      next_invoice_date: v ? prev.due_date : null
+                    }))}
+                    label=""
+                    className="!p-0 !border-0 !bg-transparent"
+                  />
+                </div>
+
+                {formData.is_recurring && (
+                  <div className="grid grid-cols-2 gap-3 items-start">
+                    <div className="space-y-1.5 group">
+                      <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Učestalost</label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                          <RepeatIcon className="h-4 w-4" />
+                        </div>
+                        <select
+                          value={formData.frequency || "monthly"}
+                          onChange={(e) => setFormData(prev => ({ ...prev, frequency: e.target.value }))}
+                          className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
+                        >
+                          {frequencies.map(f => (
+                            <option key={f.value} value={f.value}>{f.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <Input
+                      label="Sljedeći račun"
+                      type="date"
+                      value={formData.next_invoice_date || ""}
+                      onChange={(e) => setFormData(prev => ({ ...prev, next_invoice_date: e.target.value }))}
+                      icon={Calendar1Icon}
+                      className="min-h-[44px] py-3 rounded-xl"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </SectionBlock>
 
           {/* 4. Stavke */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 bg-primary/10 text-primary rounded-lg flex items-center justify-center shrink-0">
-                <BoxesIcon className="h-3.5 w-3.5" />
-              </div>
-              <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)]">
-                Stavke ({formData.items.length})
-              </span>
-            </div>
+          <SectionBlock variant="card">
+            <SectionHeader icon={BoxesIcon} title={`Stavke (${formData.items.length})`} />
 
             {formData.items.map((item, idx) => (
               <InvoiceItemRow
@@ -1424,27 +1439,27 @@ export default function InvoicesPage() {
               <PlusIcon className="h-4 w-4" />
               <span className="text-[11px] font-bold">Dodaj stavku</span>
             </button>
-          </div>
+          </SectionBlock>
 
           {/* 5. Ukupno */}
-          <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+          <div className="flex items-start gap-3 p-3 bg-primary/5 border border-primary/20 rounded-2xl">
             <div className="h-9 w-9 bg-primary/10 text-primary rounded-lg flex items-center justify-center shrink-0">
               <FileTextIcon className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-[var(--color-text-dim)]">Osnovica:</span>
-              <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {formData.currency}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-[var(--color-text-dim)]">PDV:</span>
-              <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {formData.currency}</span>
-            </div>
-            <div className="h-[1px] bg-primary/20" />
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno</span>
-              <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {formData.currency}</span>
-            </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[var(--color-text-dim)]">Osnovica:</span>
+                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {formData.currency}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[var(--color-text-dim)]">PDV:</span>
+                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {formData.currency}</span>
+              </div>
+              <div className="h-[1px] bg-primary/20" />
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno</span>
+                <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {formData.currency}</span>
+              </div>
             </div>
           </div>
         </div>

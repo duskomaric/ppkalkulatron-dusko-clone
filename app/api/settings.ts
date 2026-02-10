@@ -1,12 +1,8 @@
 import { fetchApi } from "~/utils/api";
-import type { CompanySettings, BankAccount, Currency, BankAccountInput, CurrencyInput } from "~/types/config";
+import type { CompanySettings, BankAccount, Currency } from "~/types/config";
 export { getCurrencies } from "./config";
 
 // --- Company Settings ---
-
-export async function getCompanySettings(companySlug: string, token: string) {
-    return fetchApi<{ data: { settings: CompanySettings } }>(`/${companySlug}/settings`, { token });
-}
 
 export async function updateCompanySettings(companySlug: string, token: string, settings: Partial<CompanySettings>) {
     return fetchApi<{ data: { settings: CompanySettings } }>(`/${companySlug}/settings`, {

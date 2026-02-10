@@ -13,7 +13,7 @@ export interface PaginationMeta {
   }[];
 }
 
-export interface PaginationLinks {
+interface PaginationLinks {
   first: string | null;
   last: string | null;
   prev: string | null;

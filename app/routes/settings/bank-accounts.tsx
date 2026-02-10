@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { useAuth } from "~/hooks/useAuth";
 import {
@@ -8,16 +9,21 @@ import {
     deleteBankAccount
 } from "~/api/settings";
 import type { BankAccount } from "~/types/config";
-import { Toast, type ToastType } from "~/components/ui/Toast";
+import { Toast } from "~/components/ui/Toast";
 import { Toggle } from "~/components/ui/Toggle";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
-import { PencilIcon, TrashIcon, ArrowLeftIcon } from "~/components/ui/icons";
+import { PencilIcon, TrashIcon } from "~/components/ui/icons";
 import { CreateButton } from "~/components/ui/CreateButton";
 import { useNavigate } from "react-router";
 import { FormInput } from "~/components/ui/Input";
+import { PageHeader } from "~/components/ui/PageHeader";
+import { ModalForm } from "~/components/ui/ModalForm";
+import { CardGrid } from "~/components/ui/CardGrid";
+import { LoadingState } from "~/components/ui/LoadingState";
+import { useToast } from "~/hooks/useToast";
 
 export default function BankAccountsPage() {
-    const { user, selectedCompany, updateSelectedCompany, token } = useAuth();
+    const { selectedCompany, updateSelectedCompany, token } = useAuth();
     const navigate = useNavigate();
     const [accounts, setAccounts] = useState<BankAccount[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,16 +33,7 @@ export default function BankAccountsPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
-    // Toast state
-    const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
-        message: "",
-        type: "success",
-        isVisible: false,
-    });
-
-    const showToast = (message: string, type: ToastType) => {
-        setToast({ message, type, isVisible: true });
-    };
+    const { toast, showToast, hideToast } = useToast();
 
     // Init company handled by useAuth
 
@@ -56,7 +53,7 @@ export default function BankAccountsPage() {
 
     useEffect(() => { loadAccounts(); }, [selectedCompany, token]);
 
-    const handleSave = async (e: React.FormEvent) => {
+    const handleSave = async (e: FormEvent) => {
         e.preventDefault();
         if (!editingItem || !selectedCompany || !token) return;
 
@@ -100,37 +97,37 @@ export default function BankAccountsPage() {
                 message={toast.message}
                 type={toast.type}
                 isVisible={toast.isVisible}
-                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+                onClose={hideToast}
             />
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                <div>
-                    <button 
-                        onClick={() => navigate(-1)} 
-                        className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-dim)] hover:text-primary transition-colors mb-2 cursor-pointer"
-                    >
-                        <ArrowLeftIcon className="h-4 w-4" />
-                        Nazad
-                    </button>
-                    <h1 className="text-2xl font-black text-[var(--color-text-main)]">Bankovni Računi</h1>
-                    <p className="text-[var(--color-text-dim)]">Upravljajte listom kompanijskih bankovnih računa.</p>
-                </div>
-                <CreateButton
-                    label="Novi račun"
-                    onClick={() => setEditingItem({
-                        bank_name: "", account_number: "", currency: "EUR", is_default: false
-                    })}
-                />
-            </div>
+            <PageHeader
+                title="Bankovni Računi"
+                description="Upravljajte listom kompanijskih bankovnih računa."
+                onBack={() => navigate(-1)}
+                actions={
+                    <CreateButton
+                        label="Novi račun"
+                        onClick={() => setEditingItem({
+                            bank_name: "", account_number: "", currency: "EUR", is_default: false
+                        })}
+                    />
+                }
+            />
 
             {loading && (
-                <div className="flex justify-center p-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <LoadingState />
             )}
 
             {!loading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <CardGrid
+                    gridClassName="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
+                    isEmpty={accounts.length === 0}
+                    empty={
+                        <div className="col-span-1 md:col-span-2 text-center py-12 text-[var(--color-text-muted)] italic">
+                            Nema dodatih računa.
+                        </div>
+                    }
+                >
                     {accounts.map(acc => (
                         <div key={acc.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl relative group shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start mb-2">
@@ -163,64 +160,42 @@ export default function BankAccountsPage() {
                             </div>
                         </div>
                     ))}
-                    {accounts.length === 0 && (
-                        <div className="col-span-1 md:col-span-2 text-center py-12 text-[var(--color-text-muted)] italic">
-                            Nema dodatih računa.
-                        </div>
-                    )}
-                </div>
+                </CardGrid>
             )}
 
             {editingItem && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <form onSubmit={handleSave} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 w-full max-w-md md:max-w-lg shadow-2xl">
-                        <h3 className="text-xl font-black mb-6 border-b border-[var(--color-border)] pb-4">
-                            {editingItem.id ? "Izmjeni Račun" : "Novi Račun"}
-                        </h3>
-                        <div className="space-y-4">
-                            <FormInput
-                                label="Naziv Banke"
-                                value={editingItem.bank_name || ""}
-                                onChange={(val: string) => setEditingItem({ ...editingItem, bank_name: val })}
-                                required
-                            />
-                            <FormInput
-                                label="Broj Računa"
-                                value={editingItem.account_number || ""}
-                                onChange={(val: string) => setEditingItem({ ...editingItem, account_number: val })}
-                                required
-                            />
-                            <FormInput
-                                label="SWIFT (opciono)"
-                                value={editingItem.swift || ""}
-                                onChange={(val: string) => setEditingItem({ ...editingItem, swift: val })}
-                            />
-                            <div className="pt-2">
-                                <Toggle
-                                    id="is_default_acc"
-                                    checked={editingItem.is_default || false}
-                                    onChange={(v) => setEditingItem({ ...editingItem, is_default: v })}
-                                    label="Postavi kao podrazumijevani"
-                                />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-[var(--color-border)]">
-                            <button
-                                type="button"
-                                onClick={() => setEditingItem(null)}
-                                className="px-5 py-2.5 text-sm font-bold text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] transition-colors"
-                            >
-                                Odustani
-                            </button>
-                            <button
-                                type="submit"
-                                className="bg-primary hover:bg-primary-hover text-white font-bold py-2.5 px-6 rounded-xl shadow-glow-primary transition-all text-sm"
-                            >
-                                Sačuvaj
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                <ModalForm
+                    title={editingItem.id ? "Izmjeni Račun" : "Novi Račun"}
+                    onSubmit={handleSave}
+                    onClose={() => setEditingItem(null)}
+                    sizeClassName="max-w-md md:max-w-lg"
+                >
+                    <FormInput
+                        label="Naziv Banke"
+                        value={editingItem.bank_name || ""}
+                        onChange={(val: string) => setEditingItem({ ...editingItem, bank_name: val })}
+                        required
+                    />
+                    <FormInput
+                        label="Broj Računa"
+                        value={editingItem.account_number || ""}
+                        onChange={(val: string) => setEditingItem({ ...editingItem, account_number: val })}
+                        required
+                    />
+                    <FormInput
+                        label="SWIFT (opciono)"
+                        value={editingItem.swift || ""}
+                        onChange={(val: string) => setEditingItem({ ...editingItem, swift: val })}
+                    />
+                    <div className="pt-2">
+                        <Toggle
+                            id="is_default_acc"
+                            checked={editingItem.is_default || false}
+                            onChange={(v) => setEditingItem({ ...editingItem, is_default: v })}
+                            label="Postavi kao podrazumijevani"
+                        />
+                    </div>
+                </ModalForm>
             )}
 
             <ConfirmModal

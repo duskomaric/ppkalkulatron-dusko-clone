@@ -1,14 +1,16 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
+import type { ReactNode } from "react";
 import { XIcon } from "~/components/ui/icons";
 
 interface DrawerProps {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const Drawer: React.FC<DrawerProps> = ({ title, children, isOpen, onClose }) => {
+// Koristi se na: AppLayout (company/user/settings), DetailDrawer (pregled), FormDrawer (kreiranje/uredjivanje)
+export function Drawer({ title, children, isOpen, onClose }: DrawerProps) {
   // Prevent body scroll when drawer is open
   useEffect(() => {
     if (isOpen) {
@@ -69,4 +71,4 @@ export const Drawer: React.FC<DrawerProps> = ({ title, children, isOpen, onClose
       </div>
     </div>
   );
-};
+}

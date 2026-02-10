@@ -1,5 +1,5 @@
 import { fetchApi } from "~/utils/api";
-import type { Article, ArticlesResponse } from "~/types/article";
+import type { Article, ArticlesResponse, ArticleInput } from "~/types/article";
 
 export async function getArticles(
     companySlug: string,
@@ -9,18 +9,10 @@ export async function getArticles(
     return fetchApi<ArticlesResponse>(`/${companySlug}/articles?page=${page}`, { token });
 }
 
-export async function getArticle(
-    companySlug: string,
-    articleId: number,
-    token: string
-): Promise<{ data: Article }> {
-    return fetchApi<{ data: Article }>(`/${companySlug}/articles/${articleId}`, { token });
-}
-
 export async function createArticle(
     companySlug: string,
     token: string,
-    articleData: Partial<Article>
+    articleData: ArticleInput
 ): Promise<{ data: Article }> {
     return fetchApi<{ data: Article }>(`/${companySlug}/articles`, {
         method: "POST",
@@ -33,7 +25,7 @@ export async function updateArticle(
     companySlug: string,
     articleId: number,
     token: string,
-    articleData: Partial<Article>
+    articleData: ArticleInput
 ): Promise<{ data: Article }> {
     return fetchApi<{ data: Article }>(`/${companySlug}/articles/${articleId}`, {
         method: "PUT",

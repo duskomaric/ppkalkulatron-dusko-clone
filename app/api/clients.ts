@@ -9,14 +9,6 @@ export async function getClients(
     return fetchApi<ClientsResponse>(`/${companySlug}/clients?page=${page}`, { token });
 }
 
-export async function getClient(
-    companySlug: string,
-    clientId: number,
-    token: string
-): Promise<{ data: Client }> {
-    return fetchApi<{ data: Client }>(`/${companySlug}/clients/${clientId}`, { token });
-}
-
 export async function createClient(
     companySlug: string,
     token: string,

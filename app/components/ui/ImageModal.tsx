@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { XIcon } from "~/components/ui/icons";
 import { API_URL } from "~/config/constants";
+import { ModalShell } from "./ModalShell";
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface ImageModalProps {
   title?: string;
 }
 
+// Koristi se na: app/routes/invoices.tsx (pregled fiskalnog racuna -> slika)
 export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }: ImageModalProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,18 +22,14 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
       setError(false);
-    } else {
-      document.body.style.overflow = "unset";
     }
     return () => {
-      document.body.style.overflow = "unset";
       if (imageSrc && imageSrc.startsWith("blob:")) {
         URL.revokeObjectURL(imageSrc);
       }
     };
-  }, [isOpen]);
+  }, [isOpen, imageSrc]);
 
   // Fetch slike sa API-ja (zahtijeva auth)
   useEffect(() => {
@@ -65,16 +63,13 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
     setImageSrc(src);
   }, [isOpen, src, token]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className="relative z-10 max-w-[95vw] max-h-[95vh] flex flex-col items-center">
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      backdropClassName="bg-black/80 backdrop-blur-sm"
+      contentClassName="max-w-[95vw] max-h-[95vh] flex flex-col items-center"
+    >
         {title && (
           <h3 className="text-white font-bold text-sm mb-2 text-center">{title}</h3>
         )}
@@ -102,7 +97,6 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
         >
           <XIcon className="h-5 w-5" />
         </button>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

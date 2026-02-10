@@ -37,7 +37,6 @@ export * from './RepeatIcon';
 export * from './SearchIcon';
 export * from './CreditCardIcon';
 export * from './ArrowLeftIcon';
-export * from './HomeIcon';
 export * from './CurrencyEuroIcon';
 export * from './ExternalLinkIcon';
 export * from './ImageIcon';

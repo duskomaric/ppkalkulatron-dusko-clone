@@ -1,6 +1,6 @@
-import React from 'react';
+import type { SVGProps } from "react";
 
-export function GlobeIcon(props: React.SVGProps<SVGSVGElement>) {
+export function GlobeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg 
       xmlns="http://www.w3.org/2000/svg" 

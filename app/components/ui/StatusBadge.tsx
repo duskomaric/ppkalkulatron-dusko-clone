@@ -1,5 +1,3 @@
-import React from "react";
-
 export type BadgeColor = "green" | "gray" | "red" | "amber" | "blue";
 
 interface StatusBadgeProps {
@@ -8,6 +6,7 @@ interface StatusBadgeProps {
     className?: string;
 }
 
+// Koristi se na: clients/articles/invoices (status u listi i drawer headeru)
 export function StatusBadge({ label, color, className = "" }: StatusBadgeProps) {
     const colorClasses = {
         green: "bg-[var(--color-success)]/10 text-[var(--color-success)] border-[var(--color-success)]/20",

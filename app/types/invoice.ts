@@ -1,6 +1,6 @@
 import type { PaginatedResponse } from "./api";
 
-export interface InvoiceItem {
+interface InvoiceItem {
   id: number;
   invoice_id: number;
   article_id: number | null;
@@ -32,9 +32,9 @@ export interface InvoiceItemInput {
   total: number;
 }
 
-export type StatusColor = 'green' | 'gray' | 'red' | 'amber' | 'blue';
+type StatusColor = 'green' | 'gray' | 'red' | 'amber' | 'blue';
 
-export interface FiscalRecord {
+interface FiscalRecord {
   id: number;
   type: 'original' | 'copy' | 'refund';
   type_label: string;
@@ -126,4 +126,3 @@ export interface InvoiceInput {
 }
 
 export type InvoicesResponse = PaginatedResponse<Invoice>;
-

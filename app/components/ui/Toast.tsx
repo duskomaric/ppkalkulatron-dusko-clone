@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { XIcon, CheckCircleIcon, CogIcon, InfoIcon } from "~/components/ui/icons";
 
 export type ToastType = "success" | "error" | "info" | "warning";
@@ -11,6 +11,7 @@ interface ToastProps {
   duration?: number;
 }
 
+// Koristi se na: vecina ruta (notifikacije nakon akcija)
 export function Toast({ message, type, isVisible, onClose, duration = 5000 }: ToastProps) {
   useEffect(() => {
     if (isVisible && duration > 0) {

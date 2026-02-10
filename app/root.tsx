@@ -6,8 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
-import { useEffect } from "react";
-
+import type { ReactNode } from "react";
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -26,7 +25,7 @@ export const links: Route.LinksFunction = () => [
 
 import { ThemeProvider } from "./components/ui/ThemeProvider";
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>

@@ -1,5 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import type { ElementType, ReactNode, MouseEvent as ReactMouseEvent } from "react";
 import { ChevronDownIcon, SearchIcon, XIcon } from "~/components/ui/icons";
+import { FieldLabel } from "./FieldLabel";
+import { FieldError } from "./FieldError";
 
 interface SearchSelectProps<T> {
     items: T[];
@@ -8,18 +11,19 @@ interface SearchSelectProps<T> {
     getKey: (item: T) => string | number;
     getLabel: (item: T) => string;
     getSearchText?: (item: T) => string;
-    renderItem?: (item: T, isSelected: boolean) => React.ReactNode;
+    renderItem?: (item: T, isSelected: boolean) => ReactNode;
     /** Prikaz odabrane vrijednosti u triggeru (umjesto getLabel) */
-    renderValue?: (item: T) => React.ReactNode;
+    renderValue?: (item: T) => ReactNode;
     label?: string;
     placeholder?: string;
     required?: boolean;
     error?: string;
     disabled?: boolean;
     /** Ikona unutar triggera (lijeva strana) */
-    icon?: React.ElementType;
+    icon?: ElementType;
 }
 
+// Koristi se na: app/routes/invoices.tsx (kreiranje/uredjivanje -> izbor klijenta i artikla)
 export function SearchSelect<T>({
     items,
     value,
@@ -65,7 +69,7 @@ export function SearchSelect<T>({
         setSearch("");
     };
 
-    const handleClear = (e: React.MouseEvent) => {
+    const handleClear = (e: ReactMouseEvent) => {
         e.stopPropagation();
         onChange(null);
         setSearch("");
@@ -74,10 +78,7 @@ export function SearchSelect<T>({
     return (
         <div className="space-y-1.5 w-full" ref={containerRef}>
             {label && (
-                <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                    {label}
-                    {required && <span className="text-primary ml-0.5">*</span>}
-                </label>
+                <FieldLabel required={required}>{label}</FieldLabel>
             )}
 
             <div className="relative">
@@ -173,11 +174,7 @@ export function SearchSelect<T>({
                 )}
             </div>
 
-            {error && (
-                <p className="text-[10px] font-bold text-red-500 ml-1 uppercase tracking-tight">
-                    {error}
-                </p>
-            )}
+            {error && <FieldError>{error}</FieldError>}
         </div>
     );
 }

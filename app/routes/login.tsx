@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import type { CSSProperties, SyntheticEvent } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { login } from "~/api/auth";
 import { useAuth } from "~/hooks/useAuth";
 import { CalculatorIcon, ChevronRightIcon, MailIcon, LockIcon } from "~/components/ui/icons";
 import { getThemeByPath } from "~/utils/theme";
-import { Toast, type ToastType } from "~/components/ui/Toast";
+import { Toast } from "~/components/ui/Toast";
 import { Input } from "~/components/ui/Input";
 import { getPageTitle, APP_CONFIG } from "~/config/app";
+import { useToast } from "~/hooks/useToast";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -14,12 +16,7 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isShaking, setIsShaking] = useState(false);
 
-    // Toast state
-    const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
-        message: "",
-        type: "error",
-        isVisible: false,
-    });
+    const { toast, showToast, hideToast } = useToast({ initialType: "error" });
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -40,11 +37,7 @@ export default function LoginPage() {
         }
     }, [isAuthenticated, loading, navigate]);
 
-    const showToast = (message: string, type: ToastType) => {
-        setToast({ message, type, isVisible: true });
-    };
-
-    const handleSubmit = async (e: React.SyntheticEvent) => {
+    const handleSubmit = async (e: SyntheticEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
@@ -69,13 +62,13 @@ export default function LoginPage() {
                 "--color-primary": `rgb(${currentRGB})`,
                 "--color-primary-hover": `color-mix(in srgb, rgb(${currentRGB}), white 20%)`,
                 "--shadow-glow-primary": `0 0 20px 2px rgba(${currentRGB}, 0.4)`
-            } as React.CSSProperties}
+            } as CSSProperties}
         >
             <Toast
                 message={toast.message}
                 type={toast.type}
                 isVisible={toast.isVisible}
-                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+                onClose={hideToast}
             />
 
             {/* Background Effects */}

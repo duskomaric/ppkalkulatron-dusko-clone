@@ -1,17 +1,23 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { useAuth } from "~/hooks/useAuth";
 import { getMe } from "~/api/config";
 import { updateCompanySettings, getCurrencies } from "~/api/settings";
 import type { CompanySettings, AppConfigData, Currency } from "~/types/config";
-import { Toast, type ToastType } from "~/components/ui/Toast";
+import { Toast } from "~/components/ui/Toast";
 import { Toggle } from "~/components/ui/Toggle";
-import { CheckCircleIcon, ArrowLeftIcon, MailIcon } from "~/components/ui/icons";
+import { CheckCircleIcon, MailIcon, FileTextIcon, HashIcon, StickyNoteIcon } from "~/components/ui/icons";
 import { useNavigate } from "react-router";
 import { FormInput, FormSelect, FormTextarea } from "~/components/ui/Input";
+import { SectionBlock } from "~/components/ui/SectionBlock";
+import { SectionHeader } from "~/components/ui/SectionHeader";
+import { PageHeader } from "~/components/ui/PageHeader";
+import { LoadingState } from "~/components/ui/LoadingState";
+import { useToast } from "~/hooks/useToast";
 
 export default function GeneralSettingsPage() {
-    const { user, selectedCompany, updateSelectedCompany, token } = useAuth();
+    const { selectedCompany, updateSelectedCompany, token } = useAuth();
     const navigate = useNavigate();
     const [configData, setConfigData] = useState<AppConfigData | null>(null);
     const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -19,16 +25,7 @@ export default function GeneralSettingsPage() {
     const [formData, setFormData] = useState<CompanySettings | null>(null);
     const [saving, setSaving] = useState(false);
 
-    // Toast state
-    const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
-        message: "",
-        type: "success",
-        isVisible: false,
-    });
-
-    const showToast = (message: string, type: ToastType) => {
-        setToast({ message, type, isVisible: true });
-    };
+    const { toast, showToast, hideToast } = useToast();
 
     // Init company handled by useAuth
 
@@ -57,7 +54,7 @@ export default function GeneralSettingsPage() {
         loadData();
     }, [token, selectedCompany]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!selectedCompany || !token || !formData) return;
 
@@ -85,34 +82,24 @@ export default function GeneralSettingsPage() {
                 message={toast.message}
                 type={toast.type}
                 isVisible={toast.isVisible}
-                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+                onClose={hideToast}
             />
 
-            <div className="mb-6">
-                <button 
-                    onClick={() => navigate(-1)} 
-                    className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-dim)] hover:text-primary transition-colors mb-4 cursor-pointer"
-                >
-                    <ArrowLeftIcon className="h-4 w-4" />
-                    Nazad
-                </button>
-                <h1 className="text-2xl font-black text-[var(--color-text-main)]">Generalna Podešavanja</h1>
-                <p className="text-[var(--color-text-dim)]">Konfigurišite osnovna podešavanja za vašu kompaniju.</p>
-            </div>
+            <PageHeader
+                title="Generalna Podešavanja"
+                description="Konfigurišite osnovna podešavanja za vašu kompaniju."
+                onBack={() => navigate(-1)}
+            />
 
             {loading && (
-                <div className="flex justify-center p-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <LoadingState />
             )}
 
             {!loading && configData && formData && (
                 <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Invoice Configuration */}
-                    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6">
-                        <h3 className="text-lg font-black text-[var(--color-text-main)] border-b border-[var(--color-border)] pb-2 mb-6">
-                            Faktura Defaults
-                        </h3>
+                    <SectionBlock variant="card">
+                        <SectionHeader icon={FileTextIcon} title="Faktura Defaults" />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormSelect
                                 label="Dizajn Fakture"
@@ -139,13 +126,11 @@ export default function GeneralSettingsPage() {
                                 options={currencies.map(c => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
                             />
                         </div>
-                    </div>
+                    </SectionBlock>
 
                     {/* Numbering */}
-                    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6">
-                        <h3 className="text-lg font-black text-[var(--color-text-main)] border-b border-[var(--color-border)] pb-2 mb-6">
-                            Numeracija
-                        </h3>
+                    <SectionBlock variant="card">
+                        <SectionHeader icon={HashIcon} title="Numeracija" />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2">
                                 <Toggle
@@ -172,13 +157,11 @@ export default function GeneralSettingsPage() {
                                 onChange={(val: string) => setFormData({ ...formData, invoice_numbering_pad_zeros: parseInt(val) || 0 })}
                             />
                         </div>
-                    </div>
+                    </SectionBlock>
 
                     {/* Notes */}
-                    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6">
-                        <h3 className="text-lg font-black text-[var(--color-text-main)] border-b border-[var(--color-border)] pb-2 mb-6">
-                            Napomene
-                        </h3>
+                    <SectionBlock variant="card">
+                        <SectionHeader icon={StickyNoteIcon} title="Napomene" />
                         <FormTextarea
                             label="Podrazumijevane napomene"
                             value={formData.default_invoice_notes || ""}
@@ -189,14 +172,11 @@ export default function GeneralSettingsPage() {
                         <p className="text-[10px] text-[var(--color-text-dim)] font-medium mt-2 pl-1">
                             Prenose se na nove fakture kada korisnik ne unese napomenu.
                         </p>
-                    </div>
+                    </SectionBlock>
 
                     {/* Mail */}
-                    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6">
-                        <h3 className="text-lg font-black text-[var(--color-text-main)] border-b border-[var(--color-border)] pb-2 mb-6 flex items-center gap-2">
-                            <MailIcon className="h-5 w-5 text-primary" />
-                            Slanje maila
-                        </h3>
+                    <SectionBlock variant="card">
+                        <SectionHeader icon={MailIcon} title="Slanje maila" />
                         <p className="text-sm text-[var(--color-text-dim)] mb-4">
                             Podešavanja za slanje faktura i fiskalnih računa. Možete koristiti vlastiti SMTP server (Gmail, Outlook, itd.) da šaljete kao iz svog inboxa. Ako SMTP nije podešen, koristi se sistemska konfiguracija.
                         </p>
@@ -262,7 +242,7 @@ export default function GeneralSettingsPage() {
                                 />
                             </div>
                         </div>
-                    </div>
+                    </SectionBlock>
 
                     <div className="flex justify-end pt-4">
                         <button

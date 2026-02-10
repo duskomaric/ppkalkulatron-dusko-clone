@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { useAuth } from "~/hooks/useAuth";
 import {
@@ -8,16 +9,21 @@ import {
 } from "~/api/settings";
 import { getCurrencies } from "~/api/config";
 import type { Currency } from "~/types/config";
-import { Toast, type ToastType } from "~/components/ui/Toast";
+import { Toast } from "~/components/ui/Toast";
 import { Toggle } from "~/components/ui/Toggle";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
-import { PencilIcon, TrashIcon, ArrowLeftIcon } from "~/components/ui/icons";
+import { PencilIcon, TrashIcon } from "~/components/ui/icons";
 import { CreateButton } from "~/components/ui/CreateButton";
 import { useNavigate } from "react-router";
 import { FormInput } from "~/components/ui/Input";
+import { PageHeader } from "~/components/ui/PageHeader";
+import { ModalForm } from "~/components/ui/ModalForm";
+import { CardGrid } from "~/components/ui/CardGrid";
+import { LoadingState } from "~/components/ui/LoadingState";
+import { useToast } from "~/hooks/useToast";
 
 export default function CurrenciesPage() {
-    const { user, selectedCompany, updateSelectedCompany, token } = useAuth();
+    const { selectedCompany, updateSelectedCompany, token } = useAuth();
     const navigate = useNavigate();
     const [currencies, setCurrencies] = useState<Currency[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,16 +33,7 @@ export default function CurrenciesPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
-    // Toast state
-    const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
-        message: "",
-        type: "success",
-        isVisible: false,
-    });
-
-    const showToast = (message: string, type: ToastType) => {
-        setToast({ message, type, isVisible: true });
-    };
+    const { toast, showToast, hideToast } = useToast();
 
     // Init company handled by useAuth
 
@@ -56,7 +53,7 @@ export default function CurrenciesPage() {
 
     useEffect(() => { loadData(); }, [selectedCompany, token]);
 
-    const handleSave = async (e: React.FormEvent) => {
+    const handleSave = async (e: FormEvent) => {
         e.preventDefault();
         if (!editingItem || !selectedCompany || !token) return;
 
@@ -100,37 +97,37 @@ export default function CurrenciesPage() {
                 message={toast.message}
                 type={toast.type}
                 isVisible={toast.isVisible}
-                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+                onClose={hideToast}
             />
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                <div>
-                    <button 
-                        onClick={() => navigate(-1)} 
-                        className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-dim)] hover:text-primary transition-colors mb-2 cursor-pointer"
-                    >
-                        <ArrowLeftIcon className="h-4 w-4" />
-                        Nazad
-                    </button>
-                    <h1 className="text-2xl font-black text-[var(--color-text-main)]">Valute</h1>
-                    <p className="text-[var(--color-text-dim)]">Upravljajte listom valuta koje vaša kompanija koristi.</p>
-                </div>
-                <CreateButton
-                    label="Nova valuta"
-                    onClick={() => setEditingItem({
-                        code: "", name: "", symbol: "", is_default: false
-                    })}
-                />
-            </div>
+            <PageHeader
+                title="Valute"
+                description="Upravljajte listom valuta koje vaša kompanija koristi."
+                onBack={() => navigate(-1)}
+                actions={
+                    <CreateButton
+                        label="Nova valuta"
+                        onClick={() => setEditingItem({
+                            code: "", name: "", symbol: "", is_default: false
+                        })}
+                    />
+                }
+            />
 
             {loading && (
-                <div className="flex justify-center p-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <LoadingState />
             )}
 
             {!loading && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <CardGrid
+                    gridClassName="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
+                    isEmpty={currencies.length === 0}
+                    empty={
+                        <div className="col-span-1 md:col-span-3 text-center py-12 text-[var(--color-text-muted)] italic">
+                            Nema dodatih valuta.
+                        </div>
+                    }
+                >
                     {currencies.map(curr => (
                         <div key={curr.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl relative group shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-center mb-3">
@@ -162,66 +159,44 @@ export default function CurrenciesPage() {
                             </div>
                         </div>
                     ))}
-                    {currencies.length === 0 && (
-                        <div className="col-span-1 md:col-span-3 text-center py-12 text-[var(--color-text-muted)] italic">
-                            Nema dodatih valuta.
-                        </div>
-                    )}
-                </div>
+                </CardGrid>
             )}
 
             {editingItem && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <form onSubmit={handleSave} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 w-full max-w-sm md:max-w-md shadow-2xl">
-                        <h3 className="text-xl font-black mb-6 border-b border-[var(--color-border)] pb-4">
-                            {editingItem.id ? "Izmjeni Valutu" : "Nova Valuta"}
-                        </h3>
-                        <div className="space-y-4">
-                            <FormInput
-                                label="Kod (npr. EUR)"
-                                value={editingItem.code || ""}
-                                onChange={(val: string) => setEditingItem({ ...editingItem, code: val.toUpperCase() })}
-                                required
-                                maxLength={3}
-                            />
-                            <FormInput
-                                label="Simbol (npr. €)"
-                                value={editingItem.symbol || ""}
-                                onChange={(val: string) => setEditingItem({ ...editingItem, symbol: val })}
-                                required
-                            />
-                            <FormInput
-                                label="Naziv"
-                                value={editingItem.name || ""}
-                                onChange={(val: string) => setEditingItem({ ...editingItem, name: val })}
-                                required
-                            />
-                            <div className="pt-2">
-                                <Toggle
-                                    id="is_default_curr"
-                                    checked={editingItem.is_default || false}
-                                    onChange={(v) => setEditingItem({ ...editingItem, is_default: v })}
-                                    label="Postavi kao podrazumijevanu"
-                                />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-[var(--color-border)]">
-                            <button
-                                type="button"
-                                onClick={() => setEditingItem(null)}
-                                className="px-5 py-2.5 text-sm font-bold text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] transition-colors"
-                            >
-                                Odustani
-                            </button>
-                            <button
-                                type="submit"
-                                className="bg-primary hover:bg-primary-hover text-white font-bold py-2.5 px-6 rounded-xl shadow-glow-primary transition-all text-sm"
-                            >
-                                Sačuvaj
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                <ModalForm
+                    title={editingItem.id ? "Izmjeni Valutu" : "Nova Valuta"}
+                    onSubmit={handleSave}
+                    onClose={() => setEditingItem(null)}
+                    sizeClassName="max-w-sm md:max-w-md"
+                >
+                    <FormInput
+                        label="Kod (npr. EUR)"
+                        value={editingItem.code || ""}
+                        onChange={(val: string) => setEditingItem({ ...editingItem, code: val.toUpperCase() })}
+                        required
+                        maxLength={3}
+                    />
+                    <FormInput
+                        label="Simbol (npr. €)"
+                        value={editingItem.symbol || ""}
+                        onChange={(val: string) => setEditingItem({ ...editingItem, symbol: val })}
+                        required
+                    />
+                    <FormInput
+                        label="Naziv"
+                        value={editingItem.name || ""}
+                        onChange={(val: string) => setEditingItem({ ...editingItem, name: val })}
+                        required
+                    />
+                    <div className="pt-2">
+                        <Toggle
+                            id="is_default_curr"
+                            checked={editingItem.is_default || false}
+                            onChange={(v) => setEditingItem({ ...editingItem, is_default: v })}
+                            label="Postavi kao podrazumijevanu"
+                        />
+                    </div>
+                </ModalForm>
             )}
 
             <ConfirmModal

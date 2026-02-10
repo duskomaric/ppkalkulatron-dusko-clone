@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent, ElementType } from "react";
+import { FieldLabel } from "./FieldLabel";
 
 interface CurrencyInputProps {
     value: number; // Value in cents (smallest currency unit)
@@ -9,7 +11,7 @@ interface CurrencyInputProps {
     disabled?: boolean;
     className?: string;
     /** Ikona unutar inputa (lijeva strana) */
-    icon?: React.ElementType;
+    icon?: ElementType;
 }
 
 /**
@@ -20,6 +22,7 @@ interface CurrencyInputProps {
  * - Accepts both comma and dot as decimal separator for display
  * - Internally stores value in cents (smallest unit)
  */
+// Koristi se na: app/routes/invoices.tsx (kreiranje/uredjivanje racuna -> stavke -> jedinicna cijena)
 export function CurrencyInput({
     value,
     onChange,
@@ -45,7 +48,7 @@ export function CurrencyInput({
     }, [value]);
 
     // Handle input - ATM style (digits fill from right)
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         let input = e.target.value;
 
         // Remove all non-digits
@@ -60,12 +63,12 @@ export function CurrencyInput({
     };
 
     // Handle focus - select all for easy replacement
-    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
         e.target.select();
     };
 
     // Handle key events for better UX
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
         // Allow: backspace, delete, tab, escape, enter, arrows
         const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
         if (allowedKeys.includes(e.key)) {
@@ -84,10 +87,7 @@ export function CurrencyInput({
     return (
         <div className={`space-y-1.5 ${className}`}>
             {label && (
-                <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                    {label}
-                    {required && <span className="text-primary ml-0.5">*</span>}
-                </label>
+                <FieldLabel required={required}>{label}</FieldLabel>
             )}
             <div className="relative">
                 {Icon && (

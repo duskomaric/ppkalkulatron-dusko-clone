@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { SyntheticEvent } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import { AppLayout } from "~/components/layout/AppLayout";
@@ -15,19 +16,17 @@ import {
 } from "~/components/ui/icons";
 import { FormDrawer } from "~/components/ui/FormDrawer";
 import { FormInput } from "~/components/ui/Input";
-import { Toast, type ToastType } from "~/components/ui/Toast";
+import { Toast } from "~/components/ui/Toast";
 import { updateUser } from "~/api/users";
+import { SectionHeader } from "~/components/ui/SectionHeader";
+import { useToast } from "~/hooks/useToast";
 
 export default function ProfilePage() {
     const { user, token, selectedCompany, updateSelectedCompany, logoutAction, updateUserAction } = useAuth();
     const { theme, setTheme } = useTheme();
     const navigate = useNavigate();
     
-    const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
-        message: "",
-        type: "success",
-        isVisible: false,
-    });
+    const { toast, showToast, hideToast } = useToast();
 
     // User Edit State
     const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
@@ -50,11 +49,7 @@ export default function ProfilePage() {
         }
     }, [user]);
 
-    const showToast = (message: string, type: ToastType) => {
-        setToast({ message, type, isVisible: true });
-    };
-
-    const handleUserUpdate = async (e: React.SyntheticEvent) => {
+    const handleUserUpdate = async (e: SyntheticEvent) => {
         e.preventDefault();
         if (!user || !token) return;
 
@@ -110,10 +105,7 @@ export default function ProfilePage() {
 
                 {/* Theme Settings */}
                 <div className="space-y-3">
-                    <div className="flex items-center gap-2 px-1">
-                        <SettingsIcon className="h-4 w-4 text-primary" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-dim)]">Postavke Teme</h3>
-                    </div>
+                    <SectionHeader icon={SettingsIcon} title="Postavke Teme" className="px-1" />
 
                     <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] p-1 flex items-center gap-1">
                         {themes.map((t) => {
@@ -138,10 +130,7 @@ export default function ProfilePage() {
 
                 {/* Account Actions */}
                 <div className="space-y-3">
-                    <div className="flex items-center gap-2 px-1">
-                        <Building2Icon className="h-4 w-4 text-primary" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-dim)]">Račun</h3>
-                    </div>
+                    <SectionHeader icon={Building2Icon} title="Račun" className="px-1" />
 
                     <div className="bg-[var(--color-surface)] rounded-3xl border border-[var(--color-border)] overflow-hidden">
                         <button 
@@ -224,7 +213,7 @@ export default function ProfilePage() {
                 message={toast.message}
                 type={toast.type}
                 isVisible={toast.isVisible}
-                onClose={() => setToast({ ...toast, isVisible: false })}
+                onClose={hideToast}
             />
         </AppLayout>
     );

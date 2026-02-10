@@ -47,16 +47,6 @@ export interface CompanySettings {
     mail_encryption: string | null; // tls | ssl | null
 }
 
-export interface BankAccountInput {
-    company_id: number;
-    bank_name: string;
-    account_number: string;
-    currency: string;
-    swift?: string;
-    iban?: string;
-    is_default: boolean;
-}
-
 export interface BankAccount {
     id: number;
     company_id: number;
@@ -65,14 +55,6 @@ export interface BankAccount {
     currency: string;
     swift?: string;
     iban?: string;
-    is_default: boolean;
-}
-
-export interface CurrencyInput {
-    company_id: number;
-    code: string;
-    name: string;
-    symbol: string;
     is_default: boolean;
 }
 
@@ -88,7 +70,7 @@ export interface AppConfigData {
     tax_rates: TaxRateOption[];
 }
 
-export interface TaxRateOption {
+interface TaxRateOption {
     value: string;
     label: string;
     rate: number;

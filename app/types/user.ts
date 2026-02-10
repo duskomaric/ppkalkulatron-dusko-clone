@@ -1,4 +1,4 @@
-export interface Role {
+interface Role {
   value: string;
   label: string;
   color: string;

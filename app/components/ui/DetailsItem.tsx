@@ -1,15 +1,17 @@
-import React from "react";
+import type { ComponentType } from "react";
+import { CardRow } from "./CardRow";
 
 interface DetailsItemProps {
-    icon: React.ComponentType<{ className?: string; size?: number }>;
+    icon: ComponentType<{ className?: string; size?: number }>;
     label: string;
     value: string | null | undefined | boolean;
     color?: string;
 }
 
+// Koristi se na: clients/articles/invoices (stavka detalja u view draweru)
 export function DetailsItem({ icon: Icon, label, value, color }: DetailsItemProps) {
     return (
-        <div className="flex items-center gap-2.5 p-2 bg-[var(--color-border)] rounded-xl border border-[var(--color-border)]">
+        <CardRow variant="muted" size="sm" className="gap-2.5">
             <div className={`h-7 w-7 ${color || 'bg-primary/10 text-primary'} rounded-lg flex items-center justify-center shrink-0`}>
                 <Icon className="h-3.5 w-3.5" />
             </div>
@@ -19,6 +21,6 @@ export function DetailsItem({ icon: Icon, label, value, color }: DetailsItemProp
                     {typeof value === 'boolean' ? (value ? 'Aktivan' : 'Neaktivan') : (value || '-')}
                 </p>
             </div>
-        </div>
+        </CardRow>
     );
 }

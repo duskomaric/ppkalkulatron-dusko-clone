@@ -6,7 +6,7 @@ export const APP_CONFIG = {
         invoices: "Računi",
         clients: "Klijenti",
         articles: "Artikli",
-        proformas: "Proforme",
+        proformas: "Predračuni",
         quotes: "Ponude",
         settings: "Podešavanja",
         user: "Moj Nalog",

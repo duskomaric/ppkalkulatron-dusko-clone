@@ -1,3 +1,4 @@
+// Koristi se na: clients/articles/invoices i settings/* (loading state)
 export function LoadingState() {
     return (
         <div className="flex justify-center py-10">

@@ -1,19 +1,21 @@
-import React, { type ReactNode } from "react";
+import type { ElementType, ReactNode } from "react";
 import { Drawer } from "../layout/Drawer";
 import { TrashIcon, PencilIcon } from "./icons";
+import { DrawerSecondaryButton } from "./DrawerSecondaryButton";
 
 interface DetailDrawerProps {
     isOpen: boolean;
     onClose: () => void;
     title: string;
     entityName: string;
-    entityIcon: React.ElementType;
+    entityIcon: ElementType;
     badges?: ReactNode;
     onEdit?: () => void;
     onDelete?: () => void;
     children: ReactNode;
 }
 
+// Koristi se na: clients/articles/invoices (drawer za pregled detalja)
 export function DetailDrawer({
     isOpen,
     onClose,
@@ -73,12 +75,7 @@ export function DetailDrawer({
                             </button>
                         )}
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="w-full py-3.5 bg-[var(--color-border)] text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-xl font-black text-[10px] uppercase tracking-widest hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-all"
-                    >
-                        Zatvori
-                    </button>
+                    <DrawerSecondaryButton label="Zatvori" onClick={onClose} />
                 </div>
             </div>
         </Drawer>

@@ -1,0 +1,28 @@
+import type { ReactNode } from "react";
+
+type SectionVariant = "plain" | "card" | "accent";
+
+interface SectionBlockProps {
+  variant?: SectionVariant;
+  className?: string;
+  children: ReactNode;
+}
+
+const variantClasses: Record<SectionVariant, string> = {
+  plain: "space-y-2",
+  card: "rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/40 p-3 space-y-3",
+  accent: "rounded-2xl border-2 border-dashed border-amber-500/40 bg-amber-500/5 p-3 space-y-3",
+};
+
+// Koristi se na: invoices/clients/articles (sekcije u drawerima) i settings/company/general/fiscal (sekcije formi)
+export function SectionBlock({
+  variant = "plain",
+  className = "",
+  children,
+}: SectionBlockProps) {
+  return (
+    <div className={`${variantClasses[variant]} ${className}`.trim()}>
+      {children}
+    </div>
+  );
+}

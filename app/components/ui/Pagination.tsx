@@ -1,4 +1,3 @@
-import React from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "~/components/ui/icons";
 import type { PaginationMeta } from "~/types/api";
 
@@ -9,6 +8,7 @@ interface PaginationProps {
   loading?: boolean;
 }
 
+// Koristi se na: clients/articles/invoices (paginacija liste)
 export function Pagination({ pagination, currentPage, onPageChange, loading }: PaginationProps) {
   if (!pagination || pagination.last_page <= 1) return null;
 

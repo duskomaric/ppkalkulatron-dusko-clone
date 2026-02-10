@@ -1,6 +1,6 @@
-import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { getClients, createClient, updateClient, deleteClient } from "~/api/clients";
 import type { Client } from "~/types/client";
 import {
@@ -9,54 +9,36 @@ import {
   MailIcon,
   PhoneIcon,
   MapPinIcon,
-  TrashIcon,
-  PencilIcon,
   HashIcon,
   GlobeIcon,
   CheckCircleIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { CreateButton } from "~/components/ui/CreateButton";
-import { Toast, type ToastType } from "~/components/ui/Toast";
+import { Toast } from "~/components/ui/Toast";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge } from "~/components/ui/StatusBadge";
 import { Input } from "~/components/ui/Input";
-import { EntityCard } from "~/components/ui/EntityCard";
+import { ResponsiveEntityCard } from "~/components/ui/ResponsiveEntityCard";
+import { MetaItem } from "~/components/ui/MetaItem";
 import { EmptyState } from "~/components/ui/EmptyState";
 import { DetailsItem } from "~/components/ui/DetailsItem";
 import { LoadingState } from "~/components/ui/LoadingState";
 import { DetailDrawer } from "~/components/ui/DetailDrawer";
 import { FormDrawer } from "~/components/ui/FormDrawer";
 import { Toggle } from "~/components/ui/Toggle";
+import { SectionBlock } from "~/components/ui/SectionBlock";
+import { SectionHeader } from "~/components/ui/SectionHeader";
+import { DetailsGrid } from "~/components/ui/DetailsGrid";
+import { ListHeader } from "~/components/ui/ListHeader";
 import type { PaginationMeta } from "~/types/api";
+import { useToast } from "~/hooks/useToast";
 
 export default function ClientsPage() {
-  const { user, selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
+  const { selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
 
-  const [clients, setClients] = useState<Client[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-
-  // Toast state
-  const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
-    message: "",
-    type: "success",
-    isVisible: false,
-  });
-
-  // Modal State
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  // Drawer States
-  const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
-  const [formDrawerOpen, setFormDrawerOpen] = useState(false);
-  const [activeClient, setActiveClient] = useState<Client | null>(null);
-  const [formMode, setFormMode] = useState<"create" | "edit">("create");
-
-  // Form State
-  const [formData, setFormData] = useState<Partial<Client>>({
+  const createEmptyClientForm = (): Partial<Client> => ({
     name: "",
     email: "",
     phone: "",
@@ -69,11 +51,26 @@ export default function ClientsPage() {
     is_active: true,
   });
 
-  // Init company handled by useAuth
+  const [clients, setClients] = useState<Client[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  const showToast = (message: string, type: ToastType) => {
-    setToast({ message, type, isVisible: true });
-  };
+  const { toast, showToast, hideToast } = useToast();
+
+  // Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // Drawer States
+  const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
+  const [formDrawerOpen, setFormDrawerOpen] = useState(false);
+  const [activeClient, setActiveClient] = useState<Client | null>(null);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+
+  // Form State
+  const [formData, setFormData] = useState<Partial<Client>>(createEmptyClientForm);
+
+  // Init company handled by useAuth
 
   const fetchClients = useCallback(async (page: number = 1) => {
     if (!selectedCompany || !token) return;
@@ -103,18 +100,7 @@ export default function ClientsPage() {
 
   const openCreateForm = () => {
     setFormMode("create");
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      address: "",
-      city: "",
-      zip: "",
-      country: "",
-      tax_id: "",
-      vat_id: "",
-      is_active: true,
-    });
+    setFormData(createEmptyClientForm());
     setFormDrawerOpen(true);
   };
 
@@ -126,7 +112,7 @@ export default function ClientsPage() {
     setFormDrawerOpen(true);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedCompany || !token) return;
 
@@ -164,7 +150,7 @@ export default function ClientsPage() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -185,7 +171,7 @@ export default function ClientsPage() {
         message={toast.message}
         type={toast.type}
         isVisible={toast.isVisible}
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+        onClose={hideToast}
       />
 
       <ConfirmModal
@@ -196,111 +182,112 @@ export default function ClientsPage() {
         message={`Da li ste sigurni da želite trajno obrisati klijenta ${activeClient?.name}? Ova akcija se ne može poništiti.`}
       />
 
-      {/* Mobile: cards */}
-      <div className="md:hidden space-y-4">
-        {clients.map((client) => (
-          <EntityCard key={client.id} onClick={() => handleRowClick(client)}>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <ContactRoundIcon className="w-3 h-3 text-primary" />
-                <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-none group-hover:text-primary transition-colors">
-                  {client.name}
-                </span>
-              </div>
-              <StatusBadge
-                label={client.is_active ? 'Aktivan' : 'Neaktivan'}
-                color={client.is_active ? 'green' : 'gray'}
-              />
-            </div>
-            <div className="h-[1px] w-full bg-[var(--color-border)]" />
-            <div className="flex justify-between items-end">
-              <div className="flex gap-4">
-                {client.email && (
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                      <MailIcon className="w-2.5 h-2.5" />
-                      <span className="text-[9px] font-black uppercase tracking-tight">Email</span>
-                    </div>
-                    <p className="text-xs font-bold text-[var(--color-text-muted)] truncate max-w-[150px]">{client.email}</p>
-                  </div>
-                )}
-                {client.phone && (
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                      <PhoneIcon className="w-2.5 h-2.5" />
-                      <span className="text-[9px] font-black uppercase tracking-tight">Telefon</span>
-                    </div>
-                    <p className="text-xs font-bold text-[var(--color-text-muted)]">{client.phone}</p>
-                  </div>
-                )}
-              </div>
-              {(client.address || client.city) && (
-                <div className="text-right flex flex-col items-end gap-0.5">
-                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                    <MapPinIcon className="w-2.5 h-2.5" />
-                    <span className="text-[9px] font-black uppercase tracking-tight">Lokacija</span>
-                  </div>
-                  <p className="text-xs font-black text-[var(--color-text-main)] tracking-tight italic leading-none">
-                    <span className="text-primary text-[9px] not-italic opacity-70 mr-1">{client.zip}</span> {client.city}
-                  </p>
-                </div>
-              )}
-            </div>
-          </EntityCard>
-        ))}
-      </div>
+      {/* Desktop: header */}
+      <ListHeader
+        grid="grid-cols-[minmax(0,1.3fr)_0.5fr_0.9fr_0.7fr_0.8fr]"
+        columns={[
+          { label: "Klijent" },
+          { label: "Status" },
+          { label: "Email" },
+          { label: "Telefon" },
+          { label: "Lokacija" },
+        ]}
+      />
 
-      {/* Desktop: card list (1 kolona, isto kao mobile) */}
-      <div className="hidden md:block space-y-3">
+      {/* Cards */}
+      <div className="space-y-4 md:space-y-3">
         {clients.map((client) => (
-          <EntityCard key={client.id} onClick={() => handleRowClick(client)}>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <ContactRoundIcon className="w-3 h-3 text-primary" />
-                <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-none group-hover:text-primary transition-colors">
-                  {client.name}
-                </span>
-              </div>
-              <StatusBadge
-                label={client.is_active ? 'Aktivan' : 'Neaktivan'}
-                color={client.is_active ? 'green' : 'gray'}
-              />
-            </div>
-            <div className="h-[1px] w-full bg-[var(--color-border)]" />
-            <div className="flex justify-between items-end">
-              <div className="flex gap-4">
-                {client.email && (
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                      <MailIcon className="w-2.5 h-2.5" />
-                      <span className="text-[9px] font-black uppercase tracking-tight">Email</span>
-                    </div>
-                    <p className="text-xs font-bold text-[var(--color-text-muted)] truncate max-w-[150px]">{client.email}</p>
+          <ResponsiveEntityCard
+            key={client.id}
+            onClick={() => handleRowClick(client)}
+            mobile={
+              <div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <ContactRoundIcon className="w-3 h-3 text-primary" />
+                    <span className="text-base font-black text-[var(--color-text-main)] tracking-tighter italic leading-none group-hover:text-primary transition-colors">
+                      {client.name}
+                    </span>
                   </div>
-                )}
-                {client.phone && (
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                      <PhoneIcon className="w-2.5 h-2.5" />
-                      <span className="text-[9px] font-black uppercase tracking-tight">Telefon</span>
-                    </div>
-                    <p className="text-xs font-bold text-[var(--color-text-muted)]">{client.phone}</p>
-                  </div>
-                )}
-              </div>
-              {(client.address || client.city) && (
-                <div className="text-right flex flex-col items-end gap-0.5">
-                  <div className="flex items-center gap-1 text-[var(--color-text-dim)]">
-                    <MapPinIcon className="w-2.5 h-2.5" />
-                    <span className="text-[9px] font-black uppercase tracking-tight">Lokacija</span>
-                  </div>
-                  <p className="text-xs font-black text-[var(--color-text-main)] tracking-tight italic leading-none">
-                    <span className="text-primary text-[9px] not-italic opacity-70 mr-1">{client.zip}</span> {client.city}
-                  </p>
+                  <StatusBadge
+                    label={client.is_active ? 'Aktivan' : 'Neaktivan'}
+                    color={client.is_active ? 'green' : 'gray'}
+                  />
                 </div>
-              )}
-            </div>
-          </EntityCard>
+                <div className="h-[1px] w-full bg-[var(--color-border)]" />
+                <div className="flex justify-between items-end">
+                  <div className="flex gap-4">
+                    {client.email && (
+                      <MetaItem
+                        icon={MailIcon}
+                        label="Email"
+                        value={client.email}
+                        valueClassName="truncate max-w-[150px]"
+                      />
+                    )}
+                    {client.phone && (
+                      <MetaItem
+                        icon={PhoneIcon}
+                        label="Telefon"
+                        value={client.phone}
+                      />
+                    )}
+                  </div>
+                  {(client.address || client.city) && (
+                    <MetaItem
+                      icon={MapPinIcon}
+                      label="Lokacija"
+                      className="items-end text-right"
+                      valueClassName="text-[var(--color-text-main)] tracking-tight italic leading-none"
+                      value={
+                        <>
+                          <span className="text-primary text-[9px] not-italic opacity-70 mr-1">{client.zip}</span>
+                          {client.city}
+                        </>
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+            }
+            desktop={
+              <div className="grid grid-cols-[minmax(0,1.3fr)_0.5fr_0.9fr_0.7fr_0.8fr] gap-3 items-center">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <ContactRoundIcon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-[var(--color-text-main)] tracking-tighter italic truncate">
+                      {client.name}
+                    </p>
+                    {(client.address || client.city) && (
+                      <p className="text-xs font-bold text-[var(--color-text-muted)] truncate">
+                        {client.address || ""} {client.city ? `· ${client.city}` : ""}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <StatusBadge
+                  label={client.is_active ? 'Aktivan' : 'Neaktivan'}
+                  color={client.is_active ? 'green' : 'gray'}
+                />
+                <div className="text-xs font-bold text-[var(--color-text-muted)] truncate">
+                  {client.email || "—"}
+                </div>
+                <div className="text-xs font-bold text-[var(--color-text-muted)]">
+                  {client.phone || "—"}
+                </div>
+                <div className="text-xs font-bold text-[var(--color-text-muted)]">
+                  {client.city ? (
+                    <>
+                      <span className="text-primary text-[9px] not-italic opacity-70 mr-1">{client.zip}</span>
+                      {client.city}
+                    </>
+                  ) : "—"}
+                </div>
+              </div>
+            }
+          />
         ))}
       </div>
 
@@ -339,17 +326,20 @@ export default function ClientsPage() {
         onDelete={() => setIsDeleteModalOpen(true)}
       >
         {activeClient && (
-          <div className="grid grid-cols-2 gap-2">
-            <DetailsItem icon={MailIcon} label="Email" value={activeClient.email} />
-            <DetailsItem icon={PhoneIcon} label="Telefon" value={activeClient.phone} />
-            <DetailsItem icon={MapPinIcon} label="Adresa" value={activeClient.address} />
-            <DetailsItem icon={MapPinIcon} label="Grad" value={activeClient.city} />
-            <DetailsItem icon={HashIcon} label="ZIP" value={activeClient.zip} />
-            <DetailsItem icon={GlobeIcon} label="Država" value={activeClient.country} />
-            <DetailsItem icon={HashIcon} label="VAT ID" value={activeClient.vat_id} />
-            <DetailsItem icon={HashIcon} label="TAX ID" value={activeClient.tax_id} />
-            <DetailsItem icon={CheckCircleIcon} label="Status" value={activeClient.is_active} />
-          </div>
+          <SectionBlock variant="plain">
+            <SectionHeader icon={ContactRoundIcon} title="Osnovni podaci" />
+            <DetailsGrid columns={2}>
+              <DetailsItem icon={MailIcon} label="Email" value={activeClient.email} />
+              <DetailsItem icon={PhoneIcon} label="Telefon" value={activeClient.phone} />
+              <DetailsItem icon={MapPinIcon} label="Adresa" value={activeClient.address} />
+              <DetailsItem icon={MapPinIcon} label="Grad" value={activeClient.city} />
+              <DetailsItem icon={HashIcon} label="ZIP" value={activeClient.zip} />
+              <DetailsItem icon={GlobeIcon} label="Država" value={activeClient.country} />
+              <DetailsItem icon={HashIcon} label="VAT ID" value={activeClient.vat_id} />
+              <DetailsItem icon={HashIcon} label="TAX ID" value={activeClient.tax_id} />
+              <DetailsItem icon={CheckCircleIcon} label="Status" value={activeClient.is_active} />
+            </DetailsGrid>
+          </SectionBlock>
         )}
       </DetailDrawer>
 
@@ -362,100 +352,109 @@ export default function ClientsPage() {
         loading={loading}
         submitLabel={formMode === 'create' ? "Kreiraj klijenta" : "Sačuvaj izmjene"}
       >
-        <Input
-          label="Naziv klijenta"
-          name="name"
-          required
-          value={formData.name}
-          onChange={handleInputChange}
-          placeholder="npr. PlusPlus d.o.o."
-        />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <SectionBlock variant="card">
+          <SectionHeader icon={ContactRoundIcon} title="Osnovni podaci" />
           <Input
-            label="Email"
-            name="email"
-            type="email"
-            icon={MailIcon}
-            value={formData.email || ""}
+            label="Naziv klijenta"
+            name="name"
+            required
+            value={formData.name}
             onChange={handleInputChange}
-            placeholder="info@klijent.com"
+            placeholder="npr. PlusPlus d.o.o."
           />
-          <Input
-            label="Telefon"
-            name="phone"
-            icon={PhoneIcon}
-            value={formData.phone || ""}
-            onChange={handleInputChange}
-            placeholder="+387 61 ..."
+          <Toggle
+            id="is_active"
+            name="is_active"
+            checked={formData.is_active ?? false}
+            onChange={(v) => handleInputChange({ target: { name: "is_active", type: "checkbox", checked: v } } as ChangeEvent<HTMLInputElement>)}
+            label="Klijent je aktivan"
           />
-        </div>
+        </SectionBlock>
 
-        <Input
-          label="Adresa"
-          name="address"
-          icon={MapPinIcon}
-          value={formData.address || ""}
-          onChange={handleInputChange}
-          placeholder="Ulica i broj"
-        />
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-1">
+        <SectionBlock variant="card">
+          <SectionHeader icon={MailIcon} title="Kontakt" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="ZIP"
-              name="zip"
-              value={formData.zip || ""}
+              label="Email"
+              name="email"
+              type="email"
+              icon={MailIcon}
+              value={formData.email || ""}
               onChange={handleInputChange}
-              placeholder="71000"
+              placeholder="info@klijent.com"
+            />
+            <Input
+              label="Telefon"
+              name="phone"
+              icon={PhoneIcon}
+              value={formData.phone || ""}
+              onChange={handleInputChange}
+              placeholder="+387 61 ..."
             />
           </div>
-          <div className="col-span-2">
+        </SectionBlock>
+
+        <SectionBlock variant="card">
+          <SectionHeader icon={MapPinIcon} title="Adresa" />
+          <Input
+            label="Adresa"
+            name="address"
+            icon={MapPinIcon}
+            value={formData.address || ""}
+            onChange={handleInputChange}
+            placeholder="Ulica i broj"
+          />
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-1">
+              <Input
+                label="ZIP"
+                name="zip"
+                value={formData.zip || ""}
+                onChange={handleInputChange}
+                placeholder="71000"
+              />
+            </div>
+            <div className="col-span-2">
+              <Input
+                label="Grad"
+                name="city"
+                value={formData.city || ""}
+                onChange={handleInputChange}
+                placeholder="Sarajevo"
+              />
+            </div>
+          </div>
+          <Input
+            label="Država"
+            name="country"
+            icon={GlobeIcon}
+            value={formData.country || ""}
+            onChange={handleInputChange}
+            placeholder="Bosna i Hercegovina"
+          />
+        </SectionBlock>
+
+        <SectionBlock variant="card">
+          <SectionHeader icon={HashIcon} title="Porezni podaci" />
+          <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Grad"
-              name="city"
-              value={formData.city || ""}
+              label="VAT ID"
+              name="vat_id"
+              icon={HashIcon}
+              value={formData.vat_id || ""}
               onChange={handleInputChange}
-              placeholder="Sarajevo"
+              placeholder="Identifikacioni broj"
+            />
+            <Input
+              label="TAX ID"
+              name="tax_id"
+              icon={HashIcon}
+              value={formData.tax_id || ""}
+              onChange={handleInputChange}
+              placeholder="Porezni broj"
             />
           </div>
-        </div>
-
-        <Input
-          label="Država"
-          name="country"
-          icon={GlobeIcon}
-          value={formData.country || ""}
-          onChange={handleInputChange}
-          placeholder="Bosna i Hercegovina"
-        />
-
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="VAT ID"
-            name="vat_id"
-            icon={HashIcon}
-            value={formData.vat_id || ""}
-            onChange={handleInputChange}
-            placeholder="Identifikacioni broj"
-          />
-          <Input
-            label="TAX ID"
-            name="tax_id"
-            icon={HashIcon}
-            value={formData.tax_id || ""}
-            onChange={handleInputChange}
-            placeholder="Porezni broj"
-          />
-        </div>
-
-        <Toggle
-          id="is_active"
-          name="is_active"
-          checked={formData.is_active}
-          onChange={(v) => handleInputChange({ target: { name: "is_active", type: "checkbox", checked: v } } as React.ChangeEvent<HTMLInputElement>)}
-          label="Klijent je aktivan"
-        />
+        </SectionBlock>
       </FormDrawer>
     </AppLayout>
   );

@@ -1,24 +1,25 @@
 import { useState, useEffect } from "react";
+import type { FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import { AppLayout } from "~/components/layout/AppLayout";
 import {
-    ArrowLeftIcon,
-    CheckCircleIcon
+    CheckCircleIcon,
+    Building2Icon
 } from "~/components/ui/icons";
-import { Toast, type ToastType } from "~/components/ui/Toast";
+import { Toast } from "~/components/ui/Toast";
 import { updateCompany } from "~/api/companies";
 import { FormInput } from "~/components/ui/Input";
+import { SectionBlock } from "~/components/ui/SectionBlock";
+import { SectionHeader } from "~/components/ui/SectionHeader";
+import { PageHeader } from "~/components/ui/PageHeader";
+import { useToast } from "~/hooks/useToast";
 
 export default function CompanyProfilePage() {
     const { user, token, selectedCompany, updateSelectedCompany, updateUserAction } = useAuth();
     const navigate = useNavigate();
     
-    const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean }>({
-        message: "",
-        type: "success",
-        isVisible: false,
-    });
+    const { toast, showToast, hideToast } = useToast();
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -53,11 +54,7 @@ export default function CompanyProfilePage() {
         }
     }, [selectedCompany]);
 
-    const showToast = (message: string, type: ToastType) => {
-        setToast({ message, type, isVisible: true });
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!selectedCompany || !token) return;
 
@@ -93,23 +90,18 @@ export default function CompanyProfilePage() {
                 message={toast.message}
                 type={toast.type}
                 isVisible={toast.isVisible}
-                onClose={() => setToast({ ...toast, isVisible: false })}
+                onClose={hideToast}
             />
 
-            <div className="mb-6">
-                <button 
-                    onClick={() => navigate(-1)} 
-                    className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-dim)] hover:text-primary transition-colors mb-4 cursor-pointer"
-                >
-                    <ArrowLeftIcon className="h-4 w-4" />
-                    Nazad
-                </button>
-                <h1 className="text-2xl font-black text-[var(--color-text-main)]">Profil kompanije</h1>
-                <p className="text-[var(--color-text-dim)]">Osnovni podaci o vašoj firmi koji se koriste na dokumentima.</p>
-            </div>
+            <PageHeader
+                title="Profil kompanije"
+                description="Osnovni podaci o vašoj firmi koji se koriste na dokumentima."
+                onBack={() => navigate(-1)}
+            />
 
             <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 sm:p-8 space-y-6">
+                <SectionBlock variant="card" className="sm:p-8 space-y-6">
+                    <SectionHeader icon={Building2Icon} title="Osnovni podaci" />
                     <FormInput
                         label="Naziv kompanije"
                         value={formData.name}
@@ -178,7 +170,7 @@ export default function CompanyProfilePage() {
                             placeholder="PIB"
                         />
                     </div>
-                </div>
+                </SectionBlock>
 
                 <div className="flex justify-end pt-4">
                     <button

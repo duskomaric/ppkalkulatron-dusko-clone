@@ -1,9 +1,12 @@
+import type { ReactNode } from "react";
+
 interface EntityCardProps {
-    children: React.ReactNode;
+    children: ReactNode;
     onClick?: () => void;
     className?: string;
 }
 
+// Koristi se na: app/routes/invoices.tsx (kartica u listi faktura)
 export function EntityCard({ children, onClick, className = "" }: EntityCardProps) {
     return (
         <div
