@@ -10,15 +10,30 @@ use App\Models\Client;
 use App\Models\Company;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 #[Group('Clients', weight: 3)]
 class ClientController extends Controller
 {
     #[Endpoint(operationId: 'getClients', title: 'Get clients', description: 'Get all clients')]
-    public function index(Company $company): AnonymousResourceCollection
+    public function index(Request $request, Company $company): AnonymousResourceCollection
     {
-        return ClientResource::collection($company->clients()->latest()->paginate(20));
+        $query = $company->clients()->latest();
+
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        $status = $request->query('status');
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        }
+
+        return ClientResource::collection($query->paginate(20));
     }
 
     #[Endpoint(operationId: 'storeClient', title: 'Store client', description: 'Create a new client')]

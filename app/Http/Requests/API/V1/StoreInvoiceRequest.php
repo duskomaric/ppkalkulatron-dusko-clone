@@ -2,6 +2,10 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\DocumentFrequencyEnum;
+use App\Models\Enums\DocumentStatusEnum;
+use App\Models\Enums\DocumentTemplateEnum;
+use App\Models\Enums\FiscalPaymentTypeEnum;
 use App\Models\Enums\LanguageEnum;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,24 +21,24 @@ class StoreInvoiceRequest extends FormRequest
         return [
             'invoice_number' => 'nullable|string|max:255',
             'client_id' => ['required', 'integer', 'exists:clients,id'],
-            'status' => 'nullable|in:open,draft,sent,paid,cancelled,partial,overdue,fiscalized,refunded',
-            'language' => 'nullable|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
+            'status' => 'nullable|in:' . implode(',', array_column(DocumentStatusEnum::cases(), 'value')),
+            'language' => 'required|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
             'date' => 'required|date',
-            'due_date' => 'nullable|date|after_or_equal:date',
+            'due_date' => 'required|date|after_or_equal:date',
             'notes' => 'nullable|string',
             'is_recurring' => 'nullable|boolean',
-            'frequency' => 'nullable|in:weekly,monthly,quarterly,yearly',
+            'frequency' => 'nullable|in:' . implode(',', array_column(DocumentFrequencyEnum::cases(), 'value')),
             'next_invoice_date' => 'nullable|date|required_if:is_recurring,true',
-            'currency' => 'nullable|string|max:3',
+            'currency' => 'required|string|size:3',
             'currency_id' => 'nullable|exists:currencies,id',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
-            'invoice_template' => 'nullable|in:classic,modern,minimal,standard',
-            'payment_type' => 'nullable|in:Cash,Card,Check,WireTransfer,Voucher,MobileMoney,Other',
-            'subtotal' => 'nullable|integer|min:0',
-            'tax_total' => 'nullable|integer|min:0',
-            'discount_total' => 'nullable|integer|min:0',
-            'total' => 'nullable|integer|min:0',
-            'items' => 'nullable|array',
+            'invoice_template' => 'required|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
+            'payment_type' => 'required|in:' . implode(',', array_column(FiscalPaymentTypeEnum::cases(), 'value')),
+            'subtotal' => 'required|integer|min:0',
+            'tax_total' => 'required|integer|min:0',
+            'discount_total' => 'required|integer|min:0',
+            'total' => 'required|integer|min:0',
+            'items' => 'required|array|min:1',
             'items.*.article_id' => 'nullable|exists:articles,id',
             'items.*.name' => 'required|string|max:255',
             'items.*.description' => 'nullable|string',

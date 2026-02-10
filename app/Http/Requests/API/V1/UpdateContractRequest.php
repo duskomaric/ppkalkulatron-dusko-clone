@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\DocumentTemplateEnum;
+use App\Models\Enums\LanguageEnum;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateContractRequest extends FormRequest
@@ -17,12 +19,12 @@ class UpdateContractRequest extends FormRequest
             'contract_number' => 'sometimes|string|max:255',
             'client_id' => 'sometimes|exists:clients,id',
             'status' => 'sometimes|in:draft,sent,paid,cancelled,partial,overdue',
-            'language' => 'sometimes|in:en,sr-Latn,sr-Cyrl,fr,de,it,ru',
+            'language' => 'sometimes|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
             'date' => 'sometimes|date',
             'due_date' => 'sometimes|nullable|date|after_or_equal:date',
             'notes' => 'sometimes|nullable|string',
             'currency' => 'sometimes|string|max:3',
-            'contract_template' => 'sometimes|in:classic,modern,minimal',
+            'contract_template' => 'sometimes|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'subtotal' => 'sometimes|integer|min:0',
             'tax_total' => 'sometimes|integer|min:0',
             'discount_total' => 'sometimes|integer|min:0',

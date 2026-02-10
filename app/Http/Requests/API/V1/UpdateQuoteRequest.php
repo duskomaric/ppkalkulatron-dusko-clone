@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\DocumentStatusEnum;
+use App\Models\Enums\DocumentTemplateEnum;
+use App\Models\Enums\LanguageEnum;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateQuoteRequest extends FormRequest
@@ -16,13 +19,14 @@ class UpdateQuoteRequest extends FormRequest
         return [
             'quote_number' => 'sometimes|string|max:255',
             'client_id' => 'sometimes|exists:clients,id',
-            'status' => 'sometimes|in:draft,sent,paid,cancelled,partial,overdue',
-            'language' => 'sometimes|in:en,sr-Latn,sr-Cyrl,fr,de,it,ru',
+            'status' => 'sometimes|in:' . DocumentStatusEnum::Created->value,
+            'language' => 'sometimes|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
             'date' => 'sometimes|date',
             'valid_until' => 'sometimes|nullable|date|after_or_equal:date',
             'notes' => 'sometimes|nullable|string',
             'currency' => 'sometimes|string|max:3',
-            'quote_template' => 'sometimes|in:classic,modern,minimal',
+            'bank_account_id' => 'sometimes|nullable|exists:bank_accounts,id',
+            'quote_template' => 'sometimes|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'subtotal' => 'sometimes|integer|min:0',
             'tax_total' => 'sometimes|integer|min:0',
             'discount_total' => 'sometimes|integer|min:0',

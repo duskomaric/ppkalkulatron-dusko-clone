@@ -2,6 +2,10 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\DocumentFrequencyEnum;
+use App\Models\Enums\DocumentStatusEnum;
+use App\Models\Enums\DocumentTemplateEnum;
+use App\Models\Enums\FiscalPaymentTypeEnum;
 use App\Models\Enums\LanguageEnum;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,19 +21,19 @@ class UpdateInvoiceRequest extends FormRequest
         return [
             'invoice_number' => 'sometimes|string|max:255',
             'client_id' => 'sometimes|nullable|exists:clients,id',
-            'status' => 'sometimes|in:open,draft,sent,paid,cancelled,partial,overdue,fiscalized,refunded',
-            'language' => 'nullable|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
+            'status' => 'sometimes|in:' . implode(',', array_column(DocumentStatusEnum::cases(), 'value')),
+            'language' => 'sometimes|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
             'date' => 'sometimes|date',
-            'due_date' => 'sometimes|nullable|date|after_or_equal:date',
+            'due_date' => 'sometimes|date|after_or_equal:date',
             'notes' => 'sometimes|nullable|string',
             'is_recurring' => 'sometimes|boolean',
-            'frequency' => 'sometimes|nullable|in:weekly,monthly,quarterly,yearly',
+            'frequency' => 'sometimes|nullable|in:' . implode(',', array_column(DocumentFrequencyEnum::cases(), 'value')),
             'next_invoice_date' => 'sometimes|nullable|date',
-            'currency' => 'sometimes|string|max:3',
+            'currency' => 'sometimes|string|size:3',
             'currency_id' => 'sometimes|nullable|exists:currencies,id',
             'bank_account_id' => 'sometimes|nullable|exists:bank_accounts,id',
-            'invoice_template' => 'sometimes|in:classic,modern,minimal,standard',
-            'payment_type' => 'sometimes|in:Cash,Card,Check,WireTransfer,Voucher,MobileMoney,Other',
+            'invoice_template' => 'sometimes|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
+            'payment_type' => 'sometimes|in:' . implode(',', array_column(FiscalPaymentTypeEnum::cases(), 'value')),
             'subtotal' => 'sometimes|integer|min:0',
             'tax_total' => 'sometimes|integer|min:0',
             'discount_total' => 'sometimes|integer|min:0',

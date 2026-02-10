@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\DocumentStatusEnum;
+use App\Models\Enums\DocumentTemplateEnum;
+use App\Models\Enums\LanguageEnum;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreQuoteRequest extends FormRequest
@@ -16,17 +19,18 @@ class StoreQuoteRequest extends FormRequest
         return [
             'quote_number' => 'nullable|string|max:255',
             'client_id' => 'required|exists:clients,id',
-            'status' => 'nullable|in:draft,sent,paid,cancelled,partial,overdue',
-            'language' => 'nullable|in:en,sr-Latn,sr-Cyrl,fr,de,it,ru',
+            'status' => 'nullable|in:' . DocumentStatusEnum::Created->value,
+            'language' => 'required|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
             'date' => 'required|date',
-            'valid_until' => 'nullable|date|after_or_equal:date',
+            'valid_until' => 'required|date|after_or_equal:date',
             'notes' => 'nullable|string',
-            'currency' => 'nullable|string|max:3',
-            'quote_template' => 'nullable|in:classic,modern,minimal',
-            'subtotal' => 'nullable|integer|min:0',
-            'tax_total' => 'nullable|integer|min:0',
-            'discount_total' => 'nullable|integer|min:0',
-            'total' => 'nullable|integer|min:0',
+            'currency' => 'required|string|size:3',
+            'bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'quote_template' => 'required|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
+            'subtotal' => 'required|integer|min:0',
+            'tax_total' => 'required|integer|min:0',
+            'discount_total' => 'required|integer|min:0',
+            'total' => 'required|integer|min:0',
             'items' => 'nullable|array',
             'items.*.article_id' => 'nullable|exists:articles,id',
             'items.*.name' => 'required|string|max:255',

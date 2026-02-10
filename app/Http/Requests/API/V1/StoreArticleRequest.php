@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\ArticleTypeEnum;
+use App\Models\Enums\TaxRateEnum;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreArticleRequest extends FormRequest
@@ -27,9 +29,9 @@ class StoreArticleRequest extends FormRequest
             'prices_meta' => 'nullable|array',
             'prices_meta.*' => 'numeric|min:0',
             'unit' => 'nullable|string|max:10',
-            'tax_rate' => 'nullable|string|in:F,N,P,E,T,A,B,C',
+            'tax_rate' => 'nullable|string|in:' . implode(',', array_column(TaxRateEnum::cases(), 'value')),
             'is_active' => 'boolean',
-            'type' => 'nullable|in:goods,services,products',
+            'type' => 'nullable|in:' . implode(',', array_column(ArticleTypeEnum::cases(), 'value')),
         ];
     }
 

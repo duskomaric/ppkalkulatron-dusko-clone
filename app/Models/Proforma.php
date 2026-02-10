@@ -27,6 +27,7 @@ class Proforma extends Model
         'source_type',
         'source_id',
         'currency',
+        'bank_account_id',
         'proforma_template',
         'subtotal',
         'tax_total',
@@ -40,6 +41,7 @@ class Proforma extends Model
         'proforma_template' => DocumentTemplateEnum::class,
         'date' => 'date',
         'due_date' => 'date',
+        'bank_account_id' => 'integer',
         'subtotal' => 'integer',
         'tax_total' => 'integer',
         'discount_total' => 'integer',
@@ -67,5 +69,10 @@ class Proforma extends Model
     public function source(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class);
     }
 }

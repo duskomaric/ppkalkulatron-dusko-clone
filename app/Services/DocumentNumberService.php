@@ -68,7 +68,7 @@ class DocumentNumberService
     protected function resolveYear(Company $company, string $type, ?int $year): int
     {
         $resetYearly = $type === 'invoice'
-            ? CompanySetting::get('invoice_numbering_reset_yearly', true, $company->id)
+            ? CompanySetting::get('document_numbering_reset_yearly', true, $company->id)
             : true;
 
         if (!$resetYearly) {
@@ -80,37 +80,63 @@ class DocumentNumberService
 
     protected function getStartingNumber(Company $company, string $type): int
     {
-        if ($type !== 'invoice') {
+        $key = match ($type) {
+            'invoice' => 'invoice_numbering_starting_number',
+            'quote' => 'quote_numbering_starting_number',
+            'proforma' => 'proforma_numbering_starting_number',
+            default => null,
+        };
+
+        if ($key === null) {
             return 1;
         }
 
-        return (int) CompanySetting::get('invoice_numbering_starting_number', 1, $company->id);
+        return max(1, (int) CompanySetting::get($key, 1, $company->id));
     }
 
     /**
-     * Format the document number using CompanySettings for invoice
+     * Get prefix for document type (trimmed, empty string if not set).
+     * Format: PREFIX-broj/godina or broj/godina if no prefix.
+     */
+    protected function getPrefix(Company $company, string $type): string
+    {
+        $key = match ($type) {
+            'invoice' => 'invoice_numbering_prefix',
+            'quote' => 'quote_numbering_prefix',
+            'proforma' => 'proforma_numbering_prefix',
+            default => null,
+        };
+
+        if ($key === null) {
+            return '';
+        }
+
+        $value = (string) CompanySetting::get($key, '', $company->id);
+        // Backward compat: invoice can fall back to document_numbering_prefix
+        if ($type === 'invoice' && $value === '') {
+            $value = (string) CompanySetting::get('document_numbering_prefix', '', $company->id);
+        }
+
+        return trim($value);
+    }
+
+    /**
+     * Format the document number: PREFIX-broj/godina or broj/godina if no prefix.
      */
     protected function formatNumber(Company $company, string $type, int $year, int $number): string
     {
-        $padZeros = 3;
-        $prefix = strtoupper(substr($type, 0, 3));
+        $padZeros = (int) CompanySetting::get('document_numbering_pad_zeros', 4, $company->id);
+        $padZeros = max(1, $padZeros);
+        $padded = str_pad((string) $number, $padZeros, '0', STR_PAD_LEFT);
 
-        if ($type === 'invoice') {
-            $prefix = (string) CompanySetting::get('invoice_numbering_prefix', '', $company->id) ?: 'INV';
-            $padZeros = (int) CompanySetting::get('invoice_numbering_pad_zeros', 4, $company->id);
-        } else {
-            $prefix = match ($type) {
-                'proforma' => 'PRO',
-                'contract' => 'CON',
-                'quote' => 'QUO',
-                default => $prefix,
-            };
-        }
+        $part = $year > 0
+            ? $padded . '/' . $year
+            : $padded;
 
-        $padded = str_pad((string) $number, max(1, $padZeros), '0', STR_PAD_LEFT);
+        $prefix = $this->getPrefix($company, $type);
 
-        return $year > 0
-            ? sprintf('%s-%d-%s', $prefix, $year, $padded)
-            : sprintf('%s-%s', $prefix, $padded);
+        return $prefix !== ''
+            ? $prefix . '-' . $part
+            : $part;
     }
 }

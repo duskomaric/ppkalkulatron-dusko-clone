@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('status')->default('created');
             $table->string('language')->default('en');
             $table->date('date');
-            $table->date('due_date')->nullable();
+            $table->date('due_date');
             $table->text('notes')->nullable();
 
             // Source tracking (polymorphic - for Quote)

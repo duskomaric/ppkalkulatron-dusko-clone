@@ -8,7 +8,6 @@ use App\Http\Requests\API\V1\UpdateInvoiceRequest;
 use App\Http\Requests\API\V1\CreateFromProformaRequest;
 use App\Http\Requests\API\V1\CreateFromContractRequest;
 use App\Http\Resources\API\V1\InvoiceResource;
-use App\Models\BankAccount;
 use App\Models\Company;
 use App\Models\CompanySetting;
 use App\Models\Contract;
@@ -23,6 +22,7 @@ use Carbon\Carbon;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Mail;
@@ -39,14 +39,51 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'getInvoices', title: 'Get invoices', description: 'Get all invoices')]
-    public function index(Company $company): AnonymousResourceCollection
+    public function index(Request $request, Company $company): AnonymousResourceCollection
     {
-        return InvoiceResource::collection(
-            $company->invoices()
-                ->with(['items', 'source', 'client', 'fiscalRecords', 'currencyRelation', 'bankAccount'])
-                ->latest()
-                ->paginate(20)
-        );
+        $query = $company->invoices()
+            ->with(['items', 'source', 'client', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'refundInvoice', 'originalInvoice'])
+            ->latest();
+
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('invoice_number', 'like', '%' . $search . '%')
+                    ->orWhereHas('client', function ($clientQuery) use ($search) {
+                        $clientQuery->where('name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $status = $request->query('status');
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $paymentType = $request->query('payment_type');
+        if ($paymentType) {
+            $query->where('payment_type', $paymentType);
+        }
+
+        $createdFrom = $request->query('created_from');
+        if ($createdFrom) {
+            try {
+                $from = Carbon::parse($createdFrom)->startOfDay();
+                $query->where('created_at', '>=', $from);
+            } catch (\Throwable $e) {
+            }
+        }
+
+        $createdTo = $request->query('created_to');
+        if ($createdTo) {
+            try {
+                $to = Carbon::parse($createdTo)->endOfDay();
+                $query->where('created_at', '<=', $to);
+            } catch (\Throwable $e) {
+            }
+        }
+
+        return InvoiceResource::collection($query->paginate(20));
     }
 
     #[Endpoint(operationId: 'storeInvoice', title: 'Store invoice', description: 'Create a new invoice')]
@@ -58,31 +95,12 @@ class InvoiceController extends Controller
         $items = $data['items'] ?? [];
         unset($data['items']);
 
-        // Apply invoice defaults from CompanySettings
-        $data = $this->applyInvoiceDefaults($company, $data);
-
-        // Resolve currency_id from currency (string) or default
-        if (empty($data['currency_id']) && ! empty($data['currency'])) {
-            $currency = Currency::where('company_id', $company->id)->where('code', $data['currency'])->first();
-            $data['currency_id'] = $currency?->id;
+        // Resolve currency_id from required currency (must exist for this company)
+        $currency = Currency::where('company_id', $company->id)->where('code', $data['currency'])->first();
+        if (! $currency) {
+            abort(422, 'Valuta nije pronađena za ovu kompaniju.');
         }
-        if (empty($data['currency_id'])) {
-            $defaultCode = CompanySetting::get('default_invoice_currency', 'BAM', $company->id);
-            $currency = Currency::where('company_id', $company->id)->where('code', $defaultCode)->first();
-            $data['currency_id'] = $currency?->id;
-        }
-        if (empty($data['currency_id'])) {
-            $data['currency'] = $data['currency'] ?? CompanySetting::get('default_invoice_currency', 'BAM', $company->id);
-        } else {
-            $currency = Currency::find($data['currency_id']);
-            $data['currency'] = $currency?->code ?? $data['currency'] ?? 'BAM';
-        }
-
-        // Resolve bank_account_id from BankAccount.is_default when not provided
-        if (empty($data['bank_account_id'])) {
-            $defaultBank = BankAccount::where('company_id', $company->id)->where('is_default', true)->first();
-            $data['bank_account_id'] = $defaultBank?->id;
-        }
+        $data['currency_id'] = $currency->id;
 
         // Reserve invoice number if not provided
         if (empty($data['invoice_number'])) {
@@ -90,13 +108,18 @@ class InvoiceController extends Controller
             $data['invoice_number'] = $numberData['formatted'];
         }
 
-        // New invoices default to open (not fiscalized)
         $data['status'] = $data['status'] ?? DocumentStatusEnum::Created->value;
 
         $invoice = $company->invoices()->create($data);
 
         foreach ($items as $itemData) {
-            $itemData = $this->ensureItemTaxLabel($itemData);
+            if (empty($itemData['tax_label']) && ! empty($itemData['article_id'])) {
+                $article = \App\Models\Article::find($itemData['article_id']);
+                if ($article?->tax_rate) {
+                    $itemData['tax_label'] = $article->tax_rate;
+                }
+            }
+            $itemData['tax_label'] = $itemData['tax_label'] ?? 'A';
             $invoice->items()->create($itemData);
         }
 
@@ -106,22 +129,18 @@ class InvoiceController extends Controller
     #[Endpoint(operationId: 'showInvoice', title: 'Show invoice', description: 'Get invoice')]
     public function show(Company $company, Invoice $invoice): InvoiceResource
     {
-        return new InvoiceResource($invoice->load(['client', 'items', 'source', 'parent', 'children', 'fiscalRecords', 'currencyRelation', 'bankAccount']));
+        return new InvoiceResource($invoice->load(['client', 'items', 'source', 'parent', 'children', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'refundInvoice', 'originalInvoice']));
     }
 
     #[Endpoint(operationId: 'downloadInvoicePdf', title: 'Download invoice PDF', description: 'Export invoice as PDF')]
     public function downloadPdf(Company $company, Invoice $invoice): Response
     {
-        abort_if($invoice->company_id !== $company->id, 404);
-
         return $this->pdfService->download($invoice)->toResponse(request());
     }
 
     #[Endpoint(operationId: 'sendInvoiceEmail', title: 'Send invoice email', description: 'Send invoice and fiscal receipt via email')]
     public function sendEmail(\App\Http\Requests\API\V1\SendInvoiceEmailRequest $request, Company $company, Invoice $invoice): JsonResponse
     {
-        abort_if($invoice->company_id !== $company->id, 404);
-
         $invoice->load(['client', 'company', 'fiscalRecords']);
         $verificationUrl = $invoice->fiscal_verification_url;
 
@@ -201,69 +220,49 @@ class InvoiceController extends Controller
             $data['client_id'] = null;
         }
 
+        if (isset($data['currency'])) {
+            $currency = Currency::where('company_id', $company->id)->where('code', $data['currency'])->first();
+            $data['currency_id'] = $currency?->id;
+        }
+
         $invoice->update($data);
 
         if ($items !== null) {
             $invoice->items()->delete();
             foreach ($items as $itemData) {
-                $itemData = $this->ensureItemTaxLabel($itemData);
+                if (empty($itemData['tax_label']) && ! empty($itemData['article_id'])) {
+                    $article = \App\Models\Article::find($itemData['article_id']);
+                    if ($article?->tax_rate) {
+                        $itemData['tax_label'] = $article->tax_rate;
+                    }
+                }
+                $itemData['tax_label'] = $itemData['tax_label'] ?? 'A';
                 $invoice->items()->create($itemData);
             }
         }
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount']));
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'refundInvoice', 'originalInvoice']));
     }
 
     #[Endpoint(operationId: 'destroyInvoice', title: 'Destroy invoice', description: 'Remove invoice')]
     public function destroy(Company $company, Invoice $invoice): JsonResponse
     {
+        if (! in_array($invoice->status, [DocumentStatusEnum::Created, DocumentStatusEnum::RefundCreated], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Moguće je obrisati samo račune sa statusom Kreiran ili Storno kreiran.',
+            ], 422);
+        }
+        if ($invoice->status === DocumentStatusEnum::RefundCreated) {
+            $invoice->originalInvoice()->update(['refund_invoice_id' => null]);
+        }
         $invoice->delete();
         return response()->json(['message' => 'Invoice deleted successfully']);
-    }
-
-    private function applyInvoiceDefaults(Company $company, array $data): array
-    {
-        $defaults = [
-            'invoice_template' => CompanySetting::get('default_invoice_template', 'classic', $company->id),
-            'language' => CompanySetting::get('default_invoice_language', 'sr-Latn', $company->id),
-        ];
-
-        $dueDays = (int) CompanySetting::get('default_invoice_due_days', 14, $company->id);
-        $date = isset($data['date']) ? Carbon::parse($data['date']) : now();
-        $defaults['due_date'] = $date->copy()->addDays($dueDays)->format('Y-m-d');
-
-        // Notes: default_invoice_notes iz podešavanja
-        if (empty($data['notes'])) {
-            $defaults['notes'] = (string) CompanySetting::get('default_invoice_notes', '', $company->id);
-        }
-
-        foreach ($defaults as $key => $value) {
-            if (! isset($data[$key]) || $data[$key] === '' || $data[$key] === null) {
-                $data[$key] = $value;
-            }
-        }
-
-        return $data;
-    }
-
-    private function ensureItemTaxLabel(array $itemData): array
-    {
-        if (empty($itemData['tax_label']) && ! empty($itemData['article_id'])) {
-            $article = \App\Models\Article::find($itemData['article_id']);
-            if ($article?->tax_rate) {
-                $itemData['tax_label'] = $article->tax_rate;
-            }
-        }
-        $itemData['tax_label'] ??= 'A';
-
-        return $itemData;
     }
 
     #[Endpoint(operationId: 'createInvoiceFromProforma', title: 'Create invoice from proforma', description: 'Create invoice from proforma')]
     public function createFromProforma(CreateFromProformaRequest $request, Company $company, Proforma $proforma): InvoiceResource
     {
-        abort_if($proforma->company_id !== $company->id, 404);
-
         $proforma->load(['items.article']);
         $invoice = $this->conversionService->convertProformaToInvoice($proforma);
 
@@ -272,14 +271,12 @@ class InvoiceController extends Controller
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount']));
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'refundInvoice', 'originalInvoice']));
     }
 
     #[Endpoint(operationId: 'createInvoiceFromContract', title: 'Create invoice from contract', description: 'Create invoice from contract')]
     public function createFromContract(CreateFromContractRequest $request, Company $company, Contract $contract): InvoiceResource
     {
-        abort_if($contract->company_id !== $company->id, 404);
-
         $contract->load(['items.article']);
         $invoice = $this->conversionService->convertContractToInvoice($contract);
 
@@ -289,6 +286,80 @@ class InvoiceController extends Controller
         $invoice->save();
 
         return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount']));
+    }
+
+    #[Endpoint(operationId: 'createRefundInvoice', title: 'Create refund invoice', description: 'Create refund/storno invoice from original')]
+    public function createRefund(Company $company, Invoice $invoice): InvoiceResource|JsonResponse
+    {
+        if ($invoice->status === DocumentStatusEnum::RefundCreated || $invoice->status === DocumentStatusEnum::Refunded) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Storno fakturu nije moguće kreirati iz storno računa.',
+            ], 422);
+        }
+
+        if (! $invoice->originalFiscalRecord()?->fiscal_invoice_number) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Račun mora biti fiskalizovan prije kreiranja storno fakture.',
+            ], 422);
+        }
+
+        if ($invoice->refund_invoice_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Storno faktura je već kreirana.',
+            ], 422);
+        }
+
+        $invoice->load(['items']);
+
+        $refundInvoice = Invoice::create([
+            'invoice_number' => '',
+            'company_id' => $invoice->company_id,
+            'client_id' => $invoice->client_id,
+            'status' => DocumentStatusEnum::RefundCreated,
+            'language' => $invoice->language,
+            'date' => $invoice->date,
+            'due_date' => $invoice->due_date,
+            'notes' => $invoice->notes,
+            'is_recurring' => false,
+            'frequency' => null,
+            'next_invoice_date' => null,
+            'parent_id' => null,
+            'currency' => $invoice->currency,
+            'currency_id' => $invoice->currency_id,
+            'bank_account_id' => $invoice->bank_account_id,
+            'invoice_template' => $invoice->invoice_template,
+            'payment_type' => $invoice->payment_type,
+            'subtotal' => abs($invoice->subtotal),
+            'tax_total' => abs($invoice->tax_total),
+            'discount_total' => abs($invoice->discount_total),
+            'total' => abs($invoice->total),
+        ]);
+
+        $numberData = $this->numberService->reserveNumber($company, 'invoice');
+        $refundInvoice->invoice_number = $numberData['formatted'];
+        $refundInvoice->save();
+
+        foreach ($invoice->items as $item) {
+            $refundInvoice->items()->create([
+                'article_id' => $item->article_id,
+                'name' => $item->name,
+                'description' => $item->description,
+                'quantity' => $item->quantity,
+                'unit_price' => abs($item->unit_price),
+                'subtotal' => abs($item->subtotal),
+                'tax_rate' => $item->tax_rate,
+                'tax_label' => $item->tax_label ?? 'A',
+                'tax_amount' => abs($item->tax_amount),
+                'total' => abs($item->total),
+            ]);
+        }
+
+        $invoice->update(['refund_invoice_id' => $refundInvoice->id]);
+
+        return new InvoiceResource($refundInvoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'originalInvoice']));
     }
 
 }

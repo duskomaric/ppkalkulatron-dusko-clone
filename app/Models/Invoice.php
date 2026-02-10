@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use App\Models\Enums\FiscalRecordTypeEnum;
 
@@ -34,6 +35,7 @@ class Invoice extends Model
         'frequency',
         'next_invoice_date',
         'parent_id',
+        'refund_invoice_id',
 
         'source_type',
         'source_id',
@@ -119,6 +121,16 @@ class Invoice extends Model
         return $this->hasMany(Invoice::class, 'parent_id');
     }
 
+    public function refundInvoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class, 'refund_invoice_id');
+    }
+
+    public function originalInvoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class, 'refund_invoice_id');
+    }
+
     public function fiscalRecords(): HasMany
     {
         return $this->hasMany(FiscalRecord::class);
@@ -162,4 +174,5 @@ class Invoice extends Model
     {
         return $this->originalFiscalRecord()?->fiscal_meta;
     }
+
 }

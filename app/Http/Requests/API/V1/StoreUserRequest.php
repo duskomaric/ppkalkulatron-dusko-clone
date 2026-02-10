@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\UserRoleEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -27,7 +28,7 @@ class StoreUserRequest extends FormRequest
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => ['required', Password::defaults()],
-            'role' => 'sometimes|in:admin,user',
+            'role' => 'sometimes|in:' . implode(',', array_column(UserRoleEnum::cases(), 'value')),
             'is_active' => 'boolean',
         ];
     }

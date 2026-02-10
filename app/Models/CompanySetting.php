@@ -27,15 +27,23 @@ class CompanySetting extends Model
     protected static string $configKey = 'company_settings';
 
     protected static array $castsTo = [
-        'default_invoice_template' => 'string',
-        'default_invoice_due_days' => 'integer',
-        'default_invoice_language' => 'string',
-        'default_invoice_currency' => 'string',
+        'default_document_template' => 'string',
+        'default_document_due_days' => 'integer',
+        'default_document_language' => 'string',
+        'default_document_currency' => 'string',
+        'default_document_notes' => 'string',
         'default_invoice_notes' => 'string',
-        'invoice_numbering_reset_yearly' => 'boolean',
-        'invoice_numbering_pad_zeros' => 'integer',
+        'default_proforma_notes' => 'string',
+        'default_quote_notes' => 'string',
+        'document_numbering_reset_yearly' => 'boolean',
+        'document_numbering_pad_zeros' => 'integer',
         'invoice_numbering_starting_number' => 'integer',
+        'quote_numbering_starting_number' => 'integer',
+        'proforma_numbering_starting_number' => 'integer',
+        'document_numbering_prefix' => 'string',
         'invoice_numbering_prefix' => 'string',
+        'quote_numbering_prefix' => 'string',
+        'proforma_numbering_prefix' => 'string',
 
         //OFS fiscal
         'ofs_base_url' => 'string', //https://pos.ofs.ba/api

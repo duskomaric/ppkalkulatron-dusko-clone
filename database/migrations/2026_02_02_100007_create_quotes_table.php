@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('status')->default('created');
             $table->string('language')->default('en');
             $table->date('date');
-            $table->date('valid_until')->nullable(); // Instead of due_date
+            $table->date('valid_until');
             $table->text('notes')->nullable();
 
             // Currency and template

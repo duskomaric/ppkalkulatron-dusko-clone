@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 
-    Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:90,1'])->group(function () {
         // Admin only routes
         Route::middleware('admin')->group(function () {
             Route::apiResource('users', UserController::class);
@@ -59,6 +59,7 @@ Route::prefix('v1')->group(function () {
                 Route::apiResource('invoices', InvoiceController::class);
                 Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf']);
                 Route::post('invoices/{invoice}/send-email', [InvoiceController::class, 'sendEmail']);
+                Route::post('invoices/{invoice}/create-refund', [InvoiceController::class, 'createRefund']);
                 Route::post('invoices/{invoice}/fiscalize', [FiscalController::class, 'fiscalize']);
                 Route::post('invoices/{invoice}/fiscalize-copy', [FiscalController::class, 'fiscalizeCopy']);
                 Route::post('invoices/{invoice}/fiscalize-refund', [FiscalController::class, 'fiscalizeRefund']);
@@ -71,9 +72,8 @@ Route::prefix('v1')->group(function () {
                 ///api/v1/{company:slug}/test-invoice/minimal
                 ///api/v1/{company:slug}/test-invoice/standard
                 Route::get('test-invoice/{template}', function (Company $company, string $template) {
-                    // Validate template
-                    $validTemplates = ['classic', 'modern', 'minimal', 'standard'];
-                    if (!in_array($template, $validTemplates)) {
+                    $templateEnum = \App\Models\Enums\DocumentTemplateEnum::tryFrom($template);
+                    if ($templateEnum === null) {
                         abort(404, 'Template not found');
                     }
 
@@ -89,7 +89,7 @@ Route::prefix('v1')->group(function () {
 
                     // Temporarily override template
                     $originalTemplate = $invoice->invoice_template;
-                    $invoice->invoice_template = \App\Models\Enums\DocumentTemplateEnum::from($template);
+                    $invoice->invoice_template = $templateEnum;
 
                     // Get view name from template enum
                     $viewName = $invoice->invoice_template->getViewName();
@@ -109,9 +109,13 @@ Route::prefix('v1')->group(function () {
                 Route::get('fiscal/invoices/request/{requestId}', [FiscalController::class, 'getInvoiceByRequestId']);
                 Route::post('proformas/{proforma}/convert-to-invoice', [ProformaController::class, 'convertToInvoice']);
                 Route::post('proformas/{proforma}/create-invoice', [InvoiceController::class, 'createFromProforma']);
+                Route::get('proformas/{proforma}/pdf', [ProformaController::class, 'downloadPdf']);
+                Route::post('proformas/{proforma}/send-email', [ProformaController::class, 'sendEmail']);
                 Route::apiResource('proformas', ProformaController::class);
                 Route::post('quotes/{quote}/convert-to-proforma', [QuoteController::class, 'convertToProforma']);
                 Route::post('quotes/{quote}/create-proforma', [ProformaController::class, 'createFromQuote']);
+                Route::get('quotes/{quote}/pdf', [QuoteController::class, 'downloadPdf']);
+                Route::post('quotes/{quote}/send-email', [QuoteController::class, 'sendEmail']);
                 Route::apiResource('quotes', QuoteController::class);
                 Route::post('contracts/{contract}/convert-to-invoice', [ContractController::class, 'convertToInvoice']);
                 Route::post('contracts/{contract}/create-invoice', [InvoiceController::class, 'createFromContract']);
@@ -122,6 +126,4 @@ Route::prefix('v1')->group(function () {
             });
     });
 });
-
-
 

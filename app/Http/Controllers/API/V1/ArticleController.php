@@ -11,15 +11,42 @@ use App\Models\Company;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 #[Group('Articles', weight: 4)]
 class ArticleController extends Controller
 {
     #[Endpoint(operationId: 'getArticles', title: 'Get articles', description: 'Get all articles')]
-    public function index(Company $company): AnonymousResourceCollection
+    public function index(Request $request, Company $company): AnonymousResourceCollection
     {
-        return ArticleResource::collection($company->articles()->latest()->paginate(20));
+        $query = $company->articles()->latest();
+
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        $status = $request->query('status');
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        }
+
+        $type = $request->query('type');
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        $taxRate = $request->query('tax_rate');
+        if ($taxRate === 'none') {
+            $query->whereNull('tax_rate');
+        } elseif ($taxRate) {
+            $query->where('tax_rate', $taxRate);
+        }
+
+        return ArticleResource::collection($query->paginate(20));
     }
 
     #[Endpoint(operationId: 'storeArticle', title: 'Store article', description: 'Create a new article')]

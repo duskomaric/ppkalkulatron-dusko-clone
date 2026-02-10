@@ -109,9 +109,9 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Create 4 companies
-        $duskoCompany = Company::factory()->create(['name' => '++Dusko d.o.o.', 'slug' => 'plusplus-dusko']);
-        $sandroCompany = Company::factory()->create(['name' => '++Sandro d.o.o.', 'slug' => 'plusplus-sandro']);
-        $borisCompany = Company::factory()->create(['name' => '++Boris d.o.o.', 'slug' => 'plusplus-boris']);
+        $duskoCompany = Company::factory()->create(['name' => '++Dusko d.o.o.', 'slug' => 'plusplus-dusko', 'subscription_ends_at' => now()->addMonths(1)]);
+        $sandroCompany = Company::factory()->create(['name' => '++Sandro d.o.o.', 'slug' => 'plusplus-sandro', 'subscription_ends_at' => now()->addDays(8)]);
+        $borisCompany = Company::factory()->create(['name' => '++Boris d.o.o.', 'slug' => 'plusplus-boris', 'subscription_ends_at' => null ]);
         $plusiCompany = Company::factory()->create(['name' => '++i d.o.o.', 'slug' => 'plusplus-i']);
 
         // Assign companies to users

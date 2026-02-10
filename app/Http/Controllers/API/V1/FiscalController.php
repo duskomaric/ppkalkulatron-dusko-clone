@@ -100,10 +100,14 @@ class FiscalController extends Controller
     {
         abort_if($invoice->company_id !== $company->id, 404);
 
-        if ($invoice->status === \App\Models\Enums\DocumentStatusEnum::Fiscalized || $invoice->status === \App\Models\Enums\DocumentStatusEnum::Refunded) {
+        if (
+            $invoice->status === \App\Models\Enums\DocumentStatusEnum::Fiscalized
+            || $invoice->status === \App\Models\Enums\DocumentStatusEnum::Refunded
+            || $invoice->status === \App\Models\Enums\DocumentStatusEnum::RefundCreated
+        ) {
             return response()->json([
                 'success' => false,
-                'message' => 'Račun je već fiskalizovan.',
+                'message' => 'Račun nije moguće fiskalizovati.',
             ], 422);
         }
 
@@ -309,11 +313,26 @@ class FiscalController extends Controller
     {
         abort_if($invoice->company_id !== $company->id, 404);
 
-        $originalRecord = $invoice->originalFiscalRecord();
+        if ($invoice->status !== DocumentStatusEnum::RefundCreated) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Storno faktura mora biti kreirana prije refundacije.',
+            ], 422);
+        }
+
+        $originalInvoice = $invoice->originalInvoice()->with('fiscalRecords')->first();
+        if (! $originalInvoice) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Originalni račun nije pronađen.',
+            ], 422);
+        }
+
+        $originalRecord = $originalInvoice->originalFiscalRecord();
         if (! $originalRecord?->fiscal_invoice_number) {
             return response()->json([
                 'success' => false,
-                'message' => 'Račun mora biti fiskalizovan prije storniranja.',
+                'message' => 'Originalni račun mora biti fiskalizovan prije refundacije.',
             ], 422);
         }
 
@@ -427,8 +446,8 @@ class FiscalController extends Controller
             $name = $item->name . ' / ' . $unit;
 
             // unit_price i total su SA porezom (inclusive) - ono što kupac plaća
-            $unitPrice = (float) ($item->unit_price / 100);
-            $totalAmount = (float) ($item->total / 100);
+            $unitPrice = (float) (abs($item->unit_price) / 100);
+            $totalAmount = (float) (abs($item->total) / 100);
 
             $items[] = [
                 'name' => $name,

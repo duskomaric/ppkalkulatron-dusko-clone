@@ -24,6 +24,7 @@ class Quote extends Model
         'valid_until',
         'notes',
         'currency',
+        'bank_account_id',
         'quote_template',
         'subtotal',
         'tax_total',
@@ -37,6 +38,7 @@ class Quote extends Model
         'quote_template' => DocumentTemplateEnum::class,
         'date' => 'date',
         'valid_until' => 'date',
+        'bank_account_id' => 'integer',
         'subtotal' => 'integer',
         'tax_total' => 'integer',
         'discount_total' => 'integer',
@@ -56,5 +58,10 @@ class Quote extends Model
     public function items(): HasMany
     {
         return $this->hasMany(QuoteItem::class);
+    }
+
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class);
     }
 }
