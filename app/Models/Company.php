@@ -86,8 +86,4 @@ class Company extends Model
         return $this->hasMany(Quote::class);
     }
 
-    public function documentCounters(): HasMany
-    {
-        return $this->hasMany(DocumentCounter::class);
-    }
 }

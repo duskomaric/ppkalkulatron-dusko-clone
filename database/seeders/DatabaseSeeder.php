@@ -3,10 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Article;
-use App\Models\BankAccount;
 use App\Models\Contract;
 use App\Models\ContractItem;
-use App\Models\Currency;
 use App\Models\Enums\ArticleTypeEnum;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Enums\DocumentTemplateEnum;

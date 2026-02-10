@@ -61,14 +61,6 @@ class User extends Authenticatable
         return $hasAccess;
     }
 
-    /**
-     * @deprecated Use canAccessCompany() instead
-     */
-    public function canAccessTenant(Company $tenant): bool
-    {
-        return $this->canAccessCompany($tenant);
-    }
-
     public function isAdmin(): bool
     {
         return $this->role->isAdmin();
