@@ -84,33 +84,39 @@ export async function createRefundInvoice(
 export async function fiscalizeInvoice(
     companySlug: string,
     invoiceId: number,
-    token: string
-): Promise<{ success: boolean; message: string; data?: { fiscal_invoice_number?: string; fiscal_counter?: number; verification_url?: string } }> {
+    token: string,
+    params?: { localDeviceResponse?: any; request_id?: string }
+): Promise<{ success: boolean; message: string; data?: any; request_id?: string }> {
     return fetchApi(`/${companySlug}/invoices/${invoiceId}/fiscalize`, {
         method: "POST",
         token,
+        body: params?.localDeviceResponse ? JSON.stringify({ localDeviceResponse: params.localDeviceResponse, request_id: params.request_id }) : undefined,
     });
 }
 
 export async function fiscalizeCopy(
     companySlug: string,
     invoiceId: number,
-    token: string
-): Promise<{ success: boolean; message: string }> {
+    token: string,
+    params?: { localDeviceResponse?: any; request_id?: string }
+): Promise<{ success: boolean; message: string; data?: any; request_id?: string }> {
     return fetchApi(`/${companySlug}/invoices/${invoiceId}/fiscalize-copy`, {
         method: "POST",
         token,
+        body: params?.localDeviceResponse ? JSON.stringify({ localDeviceResponse: params.localDeviceResponse, request_id: params.request_id }) : undefined,
     });
 }
 
 export async function fiscalizeRefund(
     companySlug: string,
     invoiceId: number,
-    token: string
-): Promise<{ success: boolean; message: string }> {
+    token: string,
+    params?: { localDeviceResponse?: any; request_id?: string }
+): Promise<{ success: boolean; message: string; data?: any; request_id?: string }> {
     return fetchApi(`/${companySlug}/invoices/${invoiceId}/fiscalize-refund`, {
         method: "POST",
         token,
+        body: params?.localDeviceResponse ? JSON.stringify({ localDeviceResponse: params.localDeviceResponse, request_id: params.request_id }) : undefined,
     });
 }
 

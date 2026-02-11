@@ -26,6 +26,7 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "vite-plugin-pwa": "^1.2.0",
+    "workbox-precaching": "^7.0.0",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

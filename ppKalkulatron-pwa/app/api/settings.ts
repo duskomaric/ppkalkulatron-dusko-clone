@@ -25,6 +25,13 @@ export async function testFiscalSettings(companySlug: string, token: string) {
     );
 }
 
+export async function testFiscalStatus(companySlug: string, token: string) {
+    return fetchApi<{ success: boolean; message: string; data?: any }>(
+        `/${companySlug}/fiscal/test-status`,
+        { token }
+    );
+}
+
 // --- Bank Accounts ---
 
 export async function getBankAccounts(companySlug: string, token: string, page = 1) {
