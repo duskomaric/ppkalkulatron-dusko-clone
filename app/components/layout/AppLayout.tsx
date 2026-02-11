@@ -114,7 +114,7 @@ export function AppLayout({
 
   return (
     <div
-      className="min-h-screen flex flex-col pb-32 lg:pb-8 overflow-hidden relative"
+      className="min-h-screen flex flex-col pb-32 lg:pb-8 relative"
       style={{
         "--primary-base": currentRGB,
         "--color-primary": `rgb(${currentRGB})`,
@@ -125,13 +125,14 @@ export function AppLayout({
         "--color-page-bg-hover": `rgba(${currentRGB}, 0.15)`,
         "--color-page-border": `rgba(${currentRGB}, 0.4)`,
         "--color-page-border-subtle": `rgba(${currentRGB}, 0.3)`,
+        // Glow efekt radijalnim gradijentima
+        backgroundImage: [
+          `radial-gradient(ellipse 320px 320px at -80px -80px, rgba(${currentRGB}, 0.4), transparent 70%)`,
+          `radial-gradient(ellipse 280px 280px at calc(100% + 30px) calc(100% + 30px), rgba(${currentRGB}, 0.35), transparent 70%)`,
+          `radial-gradient(ellipse 450px 450px at 18% 42%, rgba(${currentRGB}, 0.2), transparent 65%)`,
+        ].join(", "),
       } as CSSProperties}
     >
-      {/* Background Effects */}
-      <div className="glow-ball glow-ball-primary top-[-100px] left-[-100px]"></div>
-      <div className="glow-ball glow-ball-secondary bottom-[-50px] right-[-50px]"></div>
-      <div className="glow-ball bg-primary/10 w-[400px] h-[400px] top-[40%] left-[20%] blur-[120px] pointer-events-none absolute"></div>
-
       {/* Header */}
       <header className="sticky top-0 z-40 h-[60px] flex items-center bg-[var(--color-bg)]/20 backdrop-blur-lg border-b border-[var(--color-border)]">
         <div className="max-w-[1200px] w-full mx-auto px-6 flex justify-between items-center">

@@ -136,7 +136,7 @@ body {
 /* Glowing balls effect */
 .glow-ball {
     background-color: var(--color-primary);
-    @apply absolute rounded-full blur-[100px] opacity-20 pointer-events-none z-[-1];
+    @apply absolute rounded-full blur-[100px] opacity-30 pointer-events-none;
 }
 
 .glow-ball-primary {
