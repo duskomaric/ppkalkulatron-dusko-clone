@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Http\Resources\API\V1;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class ContractItemResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'contract_id' => $this->contract_id,
+            'article_id' => $this->article_id,
+            'name' => $this->name,
+            'description' => $this->description,
+            'quantity' => $this->quantity,
+            'unit_price' => $this->unit_price,
+            'subtotal' => $this->subtotal,
+            'tax_rate' => $this->tax_rate,
+            'tax_amount' => $this->tax_amount,
+            'total' => $this->total,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+        ];
+    }
+}
