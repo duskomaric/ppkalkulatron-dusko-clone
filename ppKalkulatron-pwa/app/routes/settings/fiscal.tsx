@@ -365,15 +365,19 @@ export default function FiscalSettingsPage() {
                                 ]}
                             />
                             <FormInput
-                                label="Base URL (lokalni: http://192.168.x.x:port, cloud: URL OFS servisa)"
+                                label="Base URL"
                                 value={formData.ofs_base_url || ""}
                                 onChange={(val: string) =>
                                     setFormData({ ...formData, ofs_base_url: val || null })
                                 }
-                                placeholder="npr. https://pos.ofs.ba ili http://192.168.1.1:3566"
+                                placeholder={
+                                    formData.ofs_device_mode === "local"
+                                        ? "npr. http://192.168.31.102:3566"
+                                        : "npr. https://pos.ofs.ba"
+                                }
                             />
                             <FormInput
-                                label="API ključ (Bearer) (za lokalni SN uredjaja)"
+                                label="API ključ (Bearer)"
                                 type="password"
                                 value={formData.ofs_api_key || ""}
                                 onChange={(val: string) =>
@@ -381,22 +385,26 @@ export default function FiscalSettingsPage() {
                                 }
                                 placeholder="API key uređaja"
                             />
-                            <FormInput
-                                label="Serijski broj (X-Teron-SerialNumber) (samo za cloude)"
-                                value={formData.ofs_serial_number || ""}
-                                onChange={(val: string) =>
-                                    setFormData({ ...formData, ofs_serial_number: val || null })
-                                }
-                                placeholder="npr. F41AEFFF110A4B5ABB266299A41EE479"
-                            />
-                            <FormInput
-                                label="PAK (X-PAC) (samo za cloude)"
-                                value={formData.ofs_pac || ""}
-                                onChange={(val: string) =>
-                                    setFormData({ ...formData, ofs_pac: val || null })
-                                }
-                                placeholder="npr. 123456"
-                            />
+                            {formData.ofs_device_mode === "cloud" && (
+                                <>
+                                    <FormInput
+                                        label="Serijski broj (X-Teron-SerialNumber)"
+                                        value={formData.ofs_serial_number || ""}
+                                        onChange={(val: string) =>
+                                            setFormData({ ...formData, ofs_serial_number: val || null })
+                                        }
+                                        placeholder="npr. F41AEFFF110A4B5ABB266299A41EE479"
+                                    />
+                                    <FormInput
+                                        label="PAK (X-PAC)"
+                                        value={formData.ofs_pac || ""}
+                                        onChange={(val: string) =>
+                                            setFormData({ ...formData, ofs_pac: val || null })
+                                        }
+                                        placeholder="npr. 123456"
+                                    />
+                                </>
+                            )}
                         </div>
                         <div className="flex flex-col gap-2 mt-4">
                             <p className="text-[10px] text-[var(--color-text-dim)]">

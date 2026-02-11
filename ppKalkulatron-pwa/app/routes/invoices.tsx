@@ -1347,7 +1347,7 @@ export default function InvoicesPage() {
 
                                 <div>
                                     {activeInvoice.fiscal_records && activeInvoice.fiscal_records.length > 0 ? (
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-3">
                                             {activeInvoice.fiscal_records.map((rec) => {
                                                 const isOriginal = rec.type === "original";
                                                 const isCopy = rec.type === "copy";
@@ -1357,44 +1357,57 @@ export default function InvoicesPage() {
                                                         ? "bg-blue-500/10 border-blue-500/30"
                                                         : "bg-red-500/10 border-red-500/30";
                                                 const textClass = isOriginal ? "text-emerald-600" : isCopy ? "text-blue-600" : "text-red-600";
-                                                const hoverClass = isOriginal ? "hover:bg-emerald-500/15" : isCopy ? "hover:bg-blue-500/15" : "hover:bg-red-500/15";
+                                                const accentBg = isOriginal ? "bg-emerald-500" : isCopy ? "bg-blue-500" : "bg-red-500";
+
                                                 const hasActions = Boolean(rec.verification_url || rec.fiscal_receipt_image_path);
 
                                                 return (
                                                     <div
                                                         key={rec.id}
-                                                        className={`rounded-xl border-2 overflow-hidden transition-colors ${bgClass}`}
+                                                        className={`relative rounded-xl border-2 ${bgClass} transition-all overflow-hidden`}
                                                     >
-                                                        <div className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-4 py-3 ${hoverClass}`}>
-                                                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 min-w-0 flex-1">
-                                <span className={`text-[9px] font-black uppercase tracking-widest shrink-0 ${textClass}`}>
-                                  {rec.type_label}
-                                </span>
-                                                                <span className="text-xs font-bold text-[var(--color-text-main)] truncate min-w-0 flex-1" title={rec.fiscal_invoice_number || undefined}>
-                                  {rec.fiscal_invoice_number || "—"}
-                                </span>
-                                                                {rec.fiscalized_at && (
-                                                                    <span className="text-[9px] text-[var(--color-text-dim)] shrink-0 whitespace-nowrap">
-                                    {rec.fiscalized_at}
-                                  </span>
-                                                                )}
-                                                                {rec.fiscal_counter != null && (
-                                                                    <span className="text-[9px] text-[var(--color-text-dim)] shrink-0 whitespace-nowrap">
-                                    Brojač: {String(rec.fiscal_counter)}
-                                  </span>
-                                                                )}
+                                                        <div className="p-3 sm:px-4 flex flex-col sm:flex-row justify-between gap-3">
+
+                                                            {/* INFO SEKCIJA */}
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-2 mb-1.5">
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded text-white ${accentBg} shrink-0`}>
+                    {rec.type_label}
+                  </span>
+                                                                    <span className="text-sm font-bold text-[var(--color-text-main)] truncate leading-none">
+                    {rec.fiscal_invoice_number || "—"}
+                  </span>
+                                                                </div>
+
+                                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--color-text-dim)]">
+                                                                    {rec.fiscalized_at && (
+                                                                        <span className="flex items-center gap-1 shrink-0">
+                      <span className="opacity-60 text-[9px] uppercase font-bold tracking-tighter">Vrijeme:</span>
+                                                                            {rec.fiscalized_at}
+                    </span>
+                                                                    )}
+                                                                    {rec.fiscal_counter != null && (
+                                                                        <span className="flex items-center gap-1 shrink-0">
+                      <span className="opacity-60 text-[9px] uppercase font-bold tracking-tighter">Brojač:</span>
+                                                                            {String(rec.fiscal_counter)}
+                    </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
+
+                                                            {/* AKCIJE - Jasno definisana dugmad sa tvojim bojama */}
                                                             {hasActions && (
-                                                                <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                                                                <div className="flex items-center gap-2 sm:self-center border-t sm:border-t-0 pt-2 sm:pt-0 border-black/5">
                                                                     {rec.verification_url && (
                                                                         <a
                                                                             href={rec.verification_url}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
-                                                                            className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
-                                                                            title="Verifikacija na Poreskoj upravi"
+                                                                            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-black/5 hover:scale-[1.02] active:scale-[0.98] transition-all ${textClass}`}
+                                                                            title="Verifikacija"
                                                                         >
-                                                                            <ExternalLinkIcon className="h-3.5 w-3.5" />
+                                                                            <ExternalLinkIcon className="h-5 w-5 stroke-[2.5]" />
+                                                                            <span className="text-[10px] font-black uppercase sm:hidden">Provjeri</span>
                                                                         </a>
                                                                     )}
                                                                     {rec.fiscal_receipt_image_path && (
@@ -1404,15 +1417,11 @@ export default function InvoicesPage() {
                                                                                 setFiscalImageRecordId(rec.id);
                                                                                 setFiscalImageModalOpen(true);
                                                                             }}
-                                                                            className={`p-1 rounded-lg transition-all cursor-pointer ${isOriginal
-                                                                                ? "text-emerald-500 hover:bg-emerald-500/20"
-                                                                                : isCopy
-                                                                                    ? "text-blue-500 hover:bg-blue-500/20"
-                                                                                    : "text-red-500 hover:bg-red-500/20"
-                                                                            }`}
-                                                                            title="Pregled slike računa"
+                                                                            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-black/5 hover:scale-[1.02] active:scale-[0.98] transition-all ${textClass}`}
+                                                                            title="Slika"
                                                                         >
-                                                                            <ImageIcon className="h-3.5 w-3.5" />
+                                                                            <ImageIcon className="h-5 w-5 stroke-[2.5]" />
+                                                                            <span className="text-[10px] font-black uppercase sm:hidden">Prikaži</span>
                                                                         </button>
                                                                     )}
                                                                 </div>
@@ -1422,43 +1431,13 @@ export default function InvoicesPage() {
                                                 );
                                             })}
                                         </div>
-                                    ) : activeInvoice.fiscal_invoice_number ? (
-                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
-                                            <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                            <span className="text-xs font-bold text-[var(--color-text-main)]">{activeInvoice.fiscal_invoice_number}</span>
-                                            {activeInvoice.fiscal_counter != null && (
-                                                <span className="text-[9px] text-[var(--color-text-dim)]">Brojač: {String(activeInvoice.fiscal_counter)}</span>
-                                            )}
-                                            {activeInvoice.fiscal_verification_url && (
-                                                <a
-                                                    href={activeInvoice.fiscal_verification_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex text-primary hover:text-primary/80 shrink-0"
-                                                    title="Verifikacija na Poreskoj upravi"
-                                                >
-                                                    <ExternalLinkIcon className="h-3.5 w-3.5" />
-                                                </a>
-                                            )}
-                                            {activeInvoice.fiscal_receipt_image_path && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const origRec = activeInvoice.fiscal_records?.find((r) => r.type === "original");
-                                                        setFiscalImageRecordId(origRec?.id ?? null);
-                                                        setFiscalImageModalOpen(true);
-                                                    }}
-                                                    className="p-1 rounded-lg text-emerald-500 hover:bg-emerald-500/20 transition-all cursor-pointer shrink-0"
-                                                    title="Pregled slike računa"
-                                                >
-                                                    <ImageIcon className="h-3.5 w-3.5" />
-                                                </button>
-                                            )}
-                                        </div>
                                     ) : (
-                                        <p className="text-[11px] text-[var(--color-text-dim)]">
-                                            Nema fiskalnih zapisa za ovaj račun.
-                                        </p>
+                                        /* Fallback sekcija */
+                                        <div className="p-4 rounded-xl border-2 border-dashed border-[var(--color-text-dim)]/20 text-center bg-[var(--color-text-dim)]/5">
+                                            <p className="text-[10px] text-[var(--color-text-dim)] font-black uppercase tracking-[0.2em]">
+                                                Nema fiskalnih zapisa
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
 
