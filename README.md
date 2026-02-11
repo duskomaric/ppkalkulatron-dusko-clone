@@ -1,7 +1,5 @@
 # ppKalkulatron
 
-Kalkulator za fakture i ponude - kompletno rešenje za izradu i upravljanje dokumentima.
-
 ## Struktura projekta
 
 - **ppKalkulatron-api/** - Laravel API backend
