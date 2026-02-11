@@ -16,3 +16,15 @@ API će biti dostupan na `http://localhost`, a PWA na `http://localhost:5173`.
 
 - **Backend**: Laravel 12, PHP 8.2+, MySQL, Sanctum
 - **Frontend**: React Router 7, TypeScript, TailwindCSS, Vite
+
+## Slika
+
+![mobile-login.jpg](mobile-login.jpg)
+
+![mobile-racuni.jpg](mobile-racuni.jpg)
+
+![mobile-racuni-pregled.jpg](mobile-racuni-pregled.jpg)
+
+![desktop-login.jpg](desktop-login.jpg)
+
+![desktop-racuni.jpg](desktop-racuni.jpg)
