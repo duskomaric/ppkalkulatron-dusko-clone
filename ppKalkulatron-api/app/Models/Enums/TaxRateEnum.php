@@ -4,26 +4,16 @@ namespace App\Models\Enums;
 
 enum TaxRateEnum: string
 {
-    case F = 'F';
-    case N = 'N';
-    case P = 'P';
-    case E = 'E';
-    case T = 'T';
-    case A = 'A';
-    case B = 'B';
-    case C = 'C';
+    case A = 'А';
+    case E = 'Е';
+    case K = 'К';
 
     public function rate(): int
     {
         return match ($this) {
-            self::F => 11,
-            self::N => 0,
-            self::P => 40,
-            self::E => 6,
-            self::T => 2,
-            self::A => 9,
-            self::B => 0,
-            self::C => 0,
+            self::A => 0,
+            self::E => 17,
+            self::K => 0,
         };
     }
 

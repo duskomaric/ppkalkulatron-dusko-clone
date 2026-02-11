@@ -106,6 +106,7 @@ Route::prefix('v1')->group(function () {
                 // Fiscal (OFS ESIR)
                 Route::get('fiscal/test-attention', [FiscalController::class, 'testAttention']);
                 Route::get('fiscal/test-settings', [FiscalController::class, 'testSettings']);
+                Route::get('fiscal/test-status', [FiscalController::class, 'testStatus']);
                 Route::get('fiscal/invoices/request/{requestId}', [FiscalController::class, 'getInvoiceByRequestId']);
                 Route::post('proformas/{proforma}/convert-to-invoice', [ProformaController::class, 'convertToInvoice']);
                 Route::post('proformas/{proforma}/create-invoice', [InvoiceController::class, 'createFromProforma']);

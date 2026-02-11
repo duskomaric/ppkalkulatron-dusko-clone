@@ -93,6 +93,40 @@ class FiscalController extends Controller
     }
 
     /**
+     * Test OFS status (GET /api/status)
+     */
+    #[Endpoint(operationId: 'testFiscalStatus', title: 'Test fiscal status', description: 'Fetch OFS device status')]
+    public function testStatus(Company $company): JsonResponse
+    {
+        try {
+            $ofs = new OFSService($company);
+            $response = $ofs->getStatus();
+
+            if ($response->successful()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Status uspješno učitan',
+                    'data' => $response->json(),
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Greška pri učitavanju statusa',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ], 502);
+        } catch (\Exception $e) {
+            Log::error('Fiscal test status failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Greška: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Fiskalizuj i štampaj račun (Sale)
      */
     #[Endpoint(operationId: 'fiscalizeInvoice', title: 'Fiscalize invoice', description: 'Create and print fiscal invoice')]
@@ -122,18 +156,42 @@ class FiscalController extends Controller
             $payload = $this->buildInvoicePayload($company, $invoice, $items, $paymentAmount, 'Sale', 'Normal');
 
             $requestId = 'inv-'.$invoice->id.'-'.Str::random(8);
+            $deviceMode = CompanySetting::get('ofs_device_mode', 'cloud', $company->id);
 
             Log::info('Fiscalizing invoice', [
                 'invoice_id' => $invoice->id,
                 'request_id' => $requestId,
-                'payment_amount_bam' => $paymentAmount,
+                'device_mode' => $deviceMode,
             ]);
 
-            $response = $ofs->createInvoice($payload, $requestId);
+            if ($deviceMode === 'local') {
+                $data = request('local_response') ?: request('localDeviceResponse');
+                if (!$data) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Nedostaje odgovor lokalnog uređaja.',
+                    ], 422);
+                }
+            } else {
+                $response = $ofs->createInvoice($payload, $requestId);
+                if (!$response->successful()) {
+                    Log::error('Fiscalization failed', [
+                        'invoice_id' => $invoice->id,
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ]);
 
-            if ($response->successful()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Greška prilikom fiskalizacije',
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ], 502);
+                }
                 $data = $response->json();
+            }
 
+            if (isset($data['invoiceNumber'])) {
                 $fiscalCounter = $data['invoiceCounter'] ?? null;
                 if ($fiscalCounter !== null) {
                     $fiscalCounter = (string) $fiscalCounter;
@@ -175,17 +233,9 @@ class FiscalController extends Controller
                 ]);
             }
 
-            Log::error('Fiscalization failed', [
-                'invoice_id' => $invoice->id,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Greška prilikom fiskalizacije',
-                'status' => $response->status(),
-                'body' => $response->body(),
+                'message' => 'Neispravan odgovor fiskalnog uređaja',
             ], 502);
         } catch (\Exception $e) {
             Log::error('Exception during fiscalization', [
@@ -238,16 +288,42 @@ class FiscalController extends Controller
             );
 
             $requestId = 'copy-'.$invoice->id.'-'.Str::random(8);
+            $deviceMode = CompanySetting::get('ofs_device_mode', 'cloud', $company->id);
 
-            Log::info('Fiscalizing copy', ['invoice_id' => $invoice->id, 'request_id' => $requestId, 'referent' => $originalRecord->fiscal_invoice_number]);
+            Log::info('Fiscalizing copy', [
+                'invoice_id' => $invoice->id,
+                'request_id' => $requestId,
+                'device_mode' => $deviceMode,
+            ]);
 
-            $response = $ofs->createInvoice($payload, $requestId);
+            if ($deviceMode === 'local') {
+                $data = request('local_response') ?: request('localDeviceResponse');
+                if (!$data) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Nedostaje odgovor lokalnog uređaja.',
+                    ], 422);
+                }
+            } else {
+                $response = $ofs->createInvoice($payload, $requestId);
+                if (!$response->successful()) {
+                    Log::error('Fiscal copy failed', [
+                        'invoice_id' => $invoice->id,
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ]);
 
-            logger('Fiscal copy response:', $response->json());
-
-            if ($response->successful()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Greška prilikom štampe kopije',
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ], 502);
+                }
                 $data = $response->json();
+            }
 
+            if (isset($data['invoiceNumber'])) {
                 $receiptImagePath = null;
                 $base64Image = $data['invoiceImagePngBase64'] ?? null;
                 if ($base64Image) {
@@ -280,17 +356,9 @@ class FiscalController extends Controller
                 ]);
             }
 
-            Log::error('Fiscal copy failed', [
-                'invoice_id' => $invoice->id,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Greška prilikom štampe kopije',
-                'status' => $response->status(),
-                'body' => $response->body(),
+                'message' => 'Neispravan odgovor fiskalnog uređaja',
             ], 502);
         } catch (\Exception $e) {
             Log::error('Exception during fiscal copy', [
@@ -358,14 +426,42 @@ class FiscalController extends Controller
             );
 
             $requestId = 'refund-'.$invoice->id.'-'.Str::random(8);
+            $deviceMode = CompanySetting::get('ofs_device_mode', 'cloud', $company->id);
 
-            Log::info('Fiscalizing refund', ['invoice_id' => $invoice->id, 'request_id' => $requestId, 'referent' => $originalRecord->fiscal_invoice_number]);
+            Log::info('Fiscalizing refund', [
+                'invoice_id' => $invoice->id,
+                'request_id' => $requestId,
+                'device_mode' => $deviceMode,
+            ]);
 
-            $response = $ofs->createInvoice($payload, $requestId);
+            if ($deviceMode === 'local') {
+                $data = request('local_response') ?: request('localDeviceResponse');
+                if (!$data) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Nedostaje odgovor lokalnog uređaja.',
+                    ], 422);
+                }
+            } else {
+                $response = $ofs->createInvoice($payload, $requestId);
+                if (!$response->successful()) {
+                    Log::error('Fiscal refund failed', [
+                        'invoice_id' => $invoice->id,
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ]);
 
-            if ($response->successful()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Greška prilikom storniranja',
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ], 502);
+                }
                 $data = $response->json();
+            }
 
+            if (isset($data['invoiceNumber'])) {
                 $receiptImagePath = null;
                 $base64Image = $data['invoiceImagePngBase64'] ?? null;
                 if ($base64Image) {
@@ -402,17 +498,9 @@ class FiscalController extends Controller
                 ]);
             }
 
-            Log::error('Fiscal refund failed', [
-                'invoice_id' => $invoice->id,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Greška prilikom storniranja',
-                'status' => $response->status(),
-                'body' => $response->body(),
+                'message' => 'Neispravan odgovor fiskalnog uređaja',
             ], 502);
         } catch (\Exception $e) {
             Log::error('Exception during fiscal refund', [
