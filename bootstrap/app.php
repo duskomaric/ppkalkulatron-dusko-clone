@@ -31,7 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (ValidationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'message' => 'The given data was invalid.',
+                    'message' => 'Dati podaci su bili nevažeći.',
                     'errors' => $e->errors(),
                 ], 422);
             }
