@@ -1,7 +1,8 @@
+import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
-import { getProformas, getProforma, createProforma, updateProforma, deleteProforma, downloadProformaPdf, sendProformaEmail } from "~/api/proformas";
+import { getProformas, getProforma, createProforma, updateProforma, deleteProforma, downloadProformaPdf, sendProformaEmail, convertProformaToInvoice } from "~/api/proformas";
 import { getClients } from "~/api/clients";
 import { getArticles } from "~/api/articles";
 import { getMe, getCurrencies } from "~/api/config";
@@ -72,6 +73,7 @@ const emptyProformaItem: InvoiceItemInput = {
 };
 
 export default function ProformasPage() {
+  const navigate = useNavigate();
   const { selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
 
   const [proformas, setProformas] = useState<Proforma[]>([]);
@@ -80,6 +82,7 @@ export default function ProformasPage() {
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [convertLoading, setConvertLoading] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailForm, setEmailForm] = useState({
@@ -410,6 +413,21 @@ export default function ProformasPage() {
     }
   };
 
+  const handleConvertToInvoice = async () => {
+    if (!selectedCompany || !token || !activeProforma) return;
+    setConvertLoading(true);
+    try {
+      await convertProformaToInvoice(selectedCompany.slug, activeProforma.id, token);
+      showToast("Predračun pretvoren u račun", "success");
+      setViewDrawerOpen(false);
+      navigate("/invoices");
+    } catch (err: any) {
+      showToast(err.message || "Greška pri pretvaranju u račun", "error");
+    } finally {
+      setConvertLoading(false);
+    }
+  };
+
   const openEmailModal = () => {
     setEmailForm({
       to: activeProforma?.client?.email || "",
@@ -549,7 +567,7 @@ export default function ProformasPage() {
                   setCurrentPage(1);
                 }}
               />
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 w-full min-w-0">
                 <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)] ml-1">
                   Datum predračuna
                 </span>
@@ -875,6 +893,19 @@ export default function ProformasPage() {
                 Pošalji mail
               </button>
             </div>
+            <button
+              type="button"
+              onClick={handleConvertToInvoice}
+              disabled={convertLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-primary/30 bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px] mt-2"
+            >
+              {convertLoading ? (
+                <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+              ) : (
+                <FileCheckIcon className="h-4 w-4" />
+              )}
+              Pretvori u račun
+            </button>
           </div>
         )}
       </DetailDrawer>

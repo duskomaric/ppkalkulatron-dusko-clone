@@ -761,7 +761,7 @@ export default function InvoicesPage() {
                   setCurrentPage(1);
                 }}
               />
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 w-full min-w-0">
                 <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)] ml-1">
                   Datum kreiranja
                 </span>

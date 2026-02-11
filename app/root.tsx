@@ -35,8 +35,16 @@ export function Layout({ children }: { children: ReactNode }) {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon-512.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
+        {/* Share preview (društvene mreže, link u chatu) – za puni URL u productionu postavi VITE_APP_URL */}
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="/icon-512.png" />
+        <meta property="og:image:width" content="512" />
+        <meta property="og:image:height" content="512" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:image" content="/icon-512.png" />
         <Meta />
         <Links />
       </head>

@@ -3,16 +3,16 @@ import type { CSSProperties, ReactNode } from "react";
 import { useNavigate, Link, useLocation } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import {
-  CalculatorIcon,
-  CogIcon,
-  UserIcon,
-  ChevronUpIcon,
-  ChevronRightIcon,
-  BoxesIcon,
-  CreditCardIcon,
-  CurrencyEuroIcon,
-  Building2Icon,
-  FileTextIcon
+    CalculatorIcon,
+    CogIcon,
+    UserIcon,
+    ChevronUpIcon,
+    ChevronRightIcon,
+    BoxesIcon,
+    CreditCardIcon,
+    CurrencyEuroIcon,
+    Building2Icon,
+    FileTextIcon, ChevronDownIcon
 } from "~/components/ui/icons";
 import { Drawer } from "./Drawer";
 import { DrawerNavItem } from "~/components/ui/DrawerNavItem";
@@ -184,7 +184,7 @@ export function AppLayout({
                       {selectedCompany.name}
                     </span>
                   </span>
-                  <ChevronRightIcon className="h-4 w-4 text-[var(--color-text-dim)] group-hover:text-primary transition-colors shrink-0" />
+                  <ChevronDownIcon className="h-4 w-4 text-[var(--color-text-dim)] group-hover:text-primary transition-colors shrink-0" />
                 </button>
               ) : (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/40 max-w-[280px]">

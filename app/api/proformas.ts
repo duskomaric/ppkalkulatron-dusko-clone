@@ -1,6 +1,7 @@
 import { API_URL } from "~/config/constants";
 import { fetchApi } from "~/utils/api";
 import type { Proforma, ProformasResponse, ProformaInput } from "~/types/proforma";
+import type { Invoice } from "~/types/invoice";
 
 export interface ProformaFilters {
     search?: string;
@@ -64,6 +65,18 @@ export async function deleteProforma(
 ): Promise<{ message: string }> {
     return fetchApi<{ message: string }>(`/${companySlug}/proformas/${proformaId}`, {
         method: "DELETE",
+        token,
+    });
+}
+
+/** Pretvori predračun u račun. Vraća kreirani račun. */
+export async function convertProformaToInvoice(
+    companySlug: string,
+    proformaId: number,
+    token: string
+): Promise<{ data: Invoice }> {
+    return fetchApi<{ data: Invoice }>(`/${companySlug}/proformas/${proformaId}/convert-to-invoice`, {
+        method: "POST",
         token,
     });
 }

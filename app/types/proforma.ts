@@ -60,7 +60,7 @@ export interface ProformaInput {
     date: string;
     due_date?: string | null;
     notes?: string | null;
-    currency?: string;
+    currency: string;
     bank_account_id?: number | null;
     proforma_template?: string;
     subtotal: number;

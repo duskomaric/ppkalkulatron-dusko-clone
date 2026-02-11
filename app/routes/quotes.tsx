@@ -1,7 +1,8 @@
+import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
-import { getQuotes, getQuote, createQuote, updateQuote, deleteQuote, downloadQuotePdf, sendQuoteEmail } from "~/api/quotes";
+import { getQuotes, getQuote, createQuote, updateQuote, deleteQuote, downloadQuotePdf, sendQuoteEmail, convertQuoteToProforma } from "~/api/quotes";
 import { getClients } from "~/api/clients";
 import { getArticles } from "~/api/articles";
 import { getMe, getCurrencies } from "~/api/config";
@@ -71,6 +72,7 @@ const emptyQuoteItem: InvoiceItemInput = {
 };
 
 export default function QuotesPage() {
+  const navigate = useNavigate();
   const { selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -79,6 +81,7 @@ export default function QuotesPage() {
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [convertLoading, setConvertLoading] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailForm, setEmailForm] = useState({
@@ -409,6 +412,21 @@ export default function QuotesPage() {
     }
   };
 
+  const handleConvertToProforma = async () => {
+    if (!selectedCompany || !token || !activeQuote) return;
+    setConvertLoading(true);
+    try {
+      await convertQuoteToProforma(selectedCompany.slug, activeQuote.id, token);
+      showToast("Ponuda pretvorena u predračun", "success");
+      setViewDrawerOpen(false);
+      navigate("/proformas");
+    } catch (err: any) {
+      showToast(err.message || "Greška pri pretvaranju u predračun", "error");
+    } finally {
+      setConvertLoading(false);
+    }
+  };
+
   const openEmailModal = () => {
     setEmailForm({
       to: activeQuote?.client?.email || "",
@@ -548,7 +566,7 @@ export default function QuotesPage() {
                   setCurrentPage(1);
                 }}
               />
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 w-full min-w-0">
                 <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)] ml-1">
                   Datum ponude
                 </span>
@@ -874,6 +892,19 @@ export default function QuotesPage() {
                 Pošalji mail
               </button>
             </div>
+            <button
+              type="button"
+              onClick={handleConvertToProforma}
+              disabled={convertLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-primary/30 bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px] mt-2"
+            >
+              {convertLoading ? (
+                <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+              ) : (
+                <FileSlidersIcon className="h-4 w-4" />
+              )}
+              Pretvori u predračun
+            </button>
           </div>
         )}
       </DetailDrawer>

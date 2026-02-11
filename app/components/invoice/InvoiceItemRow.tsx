@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { TrashIcon, BoxesIcon, CurrencyEuroIcon } from "~/components/ui/icons";
 import { SearchSelect } from "~/components/ui/SearchSelect";
 import { CurrencyInput } from "~/components/ui/CurrencyInput";
@@ -90,6 +91,22 @@ export function InvoiceItemRow({
             tax_amount: taxAmount,
             total: totalInclusive
         });
+    };
+
+    // Lokalni string za količinu da se može normalno editirati (brisati, mijenjati) bez skakanja na 1
+    const [quantityFocused, setQuantityFocused] = useState(false);
+    const [quantityStr, setQuantityStr] = useState(() => String(item.quantity));
+
+    useEffect(() => {
+        if (!quantityFocused) setQuantityStr(String(item.quantity));
+    }, [item.quantity, quantityFocused]);
+
+    const handleQuantityBlur = () => {
+        setQuantityFocused(false);
+        const parsed = parseInt(quantityStr, 10);
+        const qty = Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
+        if (qty !== item.quantity) handleQuantityChange(qty);
+        setQuantityStr(String(qty));
     };
 
     // Jed. cijena = cijena SA porezom (inclusive) - ono što kupac plaća
@@ -192,11 +209,12 @@ export function InvoiceItemRow({
                                 <BoxesIcon className="h-3.5 w-3.5" />
                             </div>
                             <input
-                                type="number"
-                                min="1"
-                                step="1"
-                                value={item.quantity}
-                                onChange={(e) => handleQuantityChange(Math.max(1, parseInt(e.target.value) || 1))}
+                                type="text"
+                                inputMode="numeric"
+                                value={quantityStr}
+                                onChange={(e) => setQuantityStr(e.target.value.replace(/\D/g, ""))}
+                                onFocus={() => setQuantityFocused(true)}
+                                onBlur={handleQuantityBlur}
                                 disabled={disabled}
                                 className="w-full h-[44px] min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-main)] font-bold text-sm pl-8 pr-2 py-2 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all"
                             />

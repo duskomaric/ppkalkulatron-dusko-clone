@@ -56,7 +56,7 @@ export interface QuoteInput {
     date: string;
     valid_until?: string | null;
     notes?: string | null;
-    currency?: string;
+    currency: string;
     bank_account_id?: number | null;
     quote_template?: string;
     subtotal: number;

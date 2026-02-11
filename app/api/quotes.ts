@@ -1,6 +1,7 @@
 import { API_URL } from "~/config/constants";
 import { fetchApi } from "~/utils/api";
 import type { Quote, QuotesResponse, QuoteInput } from "~/types/quote";
+import type { Proforma } from "~/types/proforma";
 
 export interface QuoteFilters {
     search?: string;
@@ -64,6 +65,18 @@ export async function deleteQuote(
 ): Promise<{ message: string }> {
     return fetchApi<{ message: string }>(`/${companySlug}/quotes/${quoteId}`, {
         method: "DELETE",
+        token,
+    });
+}
+
+/** Pretvori ponudu u predračun. Vraća kreirani predračun. */
+export async function convertQuoteToProforma(
+    companySlug: string,
+    quoteId: number,
+    token: string
+): Promise<{ data: Proforma }> {
+    return fetchApi<{ data: Proforma }>(`/${companySlug}/quotes/${quoteId}/convert-to-proforma`, {
+        method: "POST",
         token,
     });
 }
