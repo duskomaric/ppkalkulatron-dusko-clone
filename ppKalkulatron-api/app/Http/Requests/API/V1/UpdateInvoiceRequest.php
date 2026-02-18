@@ -8,6 +8,7 @@ use App\Models\Enums\DocumentTemplateEnum;
 use App\Models\Enums\FiscalPaymentTypeEnum;
 use App\Models\Enums\LanguageEnum;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateInvoiceRequest extends FormRequest
 {
@@ -18,6 +19,12 @@ class UpdateInvoiceRequest extends FormRequest
 
     public function rules(): array
     {
+        $company = $this->route('company');
+        $currencyRule = Rule::exists('currencies', 'id');
+        if ($company) {
+            $currencyRule = $currencyRule->where('company_id', $company->id);
+        }
+
         return [
             'invoice_number' => 'sometimes|string|max:255',
             'client_id' => 'sometimes|nullable|exists:clients,id',
@@ -30,7 +37,7 @@ class UpdateInvoiceRequest extends FormRequest
             'frequency' => 'sometimes|nullable|in:' . implode(',', array_column(DocumentFrequencyEnum::cases(), 'value')),
             'next_invoice_date' => 'sometimes|nullable|date',
             'currency' => 'sometimes|string|size:3',
-            'currency_id' => 'sometimes|nullable|exists:currencies,id',
+            'currency_id' => ['sometimes', 'nullable', $currencyRule],
             'bank_account_id' => 'sometimes|nullable|exists:bank_accounts,id',
             'invoice_template' => 'sometimes|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'payment_type' => 'sometimes|in:' . implode(',', array_column(FiscalPaymentTypeEnum::cases(), 'value')),
@@ -50,5 +57,19 @@ class UpdateInvoiceRequest extends FormRequest
             'items.*.tax_amount' => 'sometimes|required|integer|min:0',
             'items.*.total' => 'sometimes|required|integer|min:0',
         ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'currency_id.exists' => 'Valuta nije pronađena za ovu kompaniju.',
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('client_id') && (string) $this->input('client_id') === '0') {
+            $this->merge(['client_id' => null]);
+        }
     }
 }

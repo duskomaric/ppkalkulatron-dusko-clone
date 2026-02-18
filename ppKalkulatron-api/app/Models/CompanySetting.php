@@ -56,7 +56,7 @@ class CompanySetting extends Model
 
         // Receipt/print settings - zavise od cloud vs lokalni uređaj
         'ofs_receipt_layout' => 'string', // Slip | Invoice - Slip=termalni, Invoice=A4
-        'ofs_receipt_image_format' => 'string', // Png - format slike računa
+        'ofs_receipt_image_format' => 'string', // Png/Pdf - format slike računa
         'ofs_render_receipt_image' => 'boolean', // da li generisati sliku računa
         'ofs_receipt_header_text_lines' => 'array', // linije teksta u zaglavlju
         'ofs_device_mode' => 'string', // cloud | local - način korištenja (cloud = pos.ofs.ba, local = fizički ESIR)

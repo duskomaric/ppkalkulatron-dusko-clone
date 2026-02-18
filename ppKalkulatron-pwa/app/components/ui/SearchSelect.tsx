@@ -124,7 +124,9 @@ export function SearchSelect<T>({
 
                 {/* Dropdown */}
                 {isOpen && (
-                    <div className="absolute z-50 top-full left-0 right-0 mt-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+                    <div
+                        className="fixed z-[1100] left-3 right-3 bottom-3 top-24 md:absolute md:z-50 md:top-full md:left-0 md:right-0 md:bottom-auto md:mt-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
+                    >
                         {/* Search Input */}
                         <div className="p-2 border-b border-[var(--color-border)]">
                             <div className="relative">
@@ -141,7 +143,7 @@ export function SearchSelect<T>({
                         </div>
 
                         {/* Items List */}
-                        <div className="max-h-[240px] overflow-y-auto">
+                        <div className="max-h-[calc(100vh-220px)] md:max-h-[240px] overflow-y-auto">
                             {filteredItems.length === 0 ? (
                                 <div className="p-4 text-center text-[var(--color-text-dim)] text-sm font-bold">
                                     Nema rezultata

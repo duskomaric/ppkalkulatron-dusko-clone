@@ -152,8 +152,8 @@ export default function ClientsPage() {
 
     setLoading(true);
     try {
-      await deleteClient(selectedCompany.slug, activeClient.id, token);
-      showToast("Klijent uspješno obrisan", "info");
+      const res = await deleteClient(selectedCompany.slug, activeClient.id, token);
+      showToast(res.message || "Klijent uspješno obrisan", "info");
       setViewDrawerOpen(false);
       fetchClients(currentPage);
     } catch (err: any) {

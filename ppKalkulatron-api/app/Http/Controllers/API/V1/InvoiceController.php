@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\API\V1\IndexInvoiceRequest;
 use App\Http\Requests\API\V1\StoreInvoiceRequest;
 use App\Http\Requests\API\V1\UpdateInvoiceRequest;
 use App\Http\Requests\API\V1\CreateFromProformaRequest;
@@ -11,7 +12,6 @@ use App\Http\Resources\API\V1\InvoiceResource;
 use App\Models\Company;
 use App\Models\CompanySetting;
 use App\Models\Contract;
-use App\Models\Currency;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Invoice;
 use App\Models\Proforma;
@@ -22,7 +22,6 @@ use Carbon\Carbon;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Mail;
@@ -39,101 +38,50 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'getInvoices', title: 'Get invoices', description: 'Get all invoices')]
-    public function index(Request $request, Company $company): AnonymousResourceCollection
+    public function index(IndexInvoiceRequest $request, Company $company): AnonymousResourceCollection
     {
         $query = $company->invoices()
             ->with(['items', 'source', 'client', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice'])
             ->latest();
 
-        $search = trim((string) $request->query('search', ''));
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('invoice_number', 'like', '%' . $search . '%')
-                    ->orWhereHas('client', function ($clientQuery) use ($search) {
-                        $clientQuery->where('name', 'like', '%' . $search . '%');
-                    });
-            });
-        }
-
-        $status = $request->query('status');
-        if ($status) {
-            $query->where('status', $status);
-        }
-
-        $paymentType = $request->query('payment_type');
-        if ($paymentType) {
-            $query->where('payment_type', $paymentType);
-        }
-
-        $createdFrom = $request->query('created_from');
-        if ($createdFrom) {
-            try {
+        $query
+            ->when($request->validated('search'), function ($q, $search) {
+                $q->where(function ($q) use ($search) {
+                    $q->where('invoice_number', 'like', '%' . $search . '%')
+                        ->orWhereHas('client', function ($clientQuery) use ($search) {
+                            $clientQuery->where('name', 'like', '%' . $search . '%');
+                        });
+                });
+            })
+            ->when($request->validated('status'), fn ($q, $status) => $q->where('status', $status))
+            ->when($request->validated('payment_type'), fn ($q, $paymentType) => $q->where('payment_type', $paymentType))
+            ->when($request->validated('created_from'), function ($q, $createdFrom) {
                 $from = Carbon::parse($createdFrom)->startOfDay();
-                $query->where('created_at', '>=', $from);
-            } catch (\Throwable $e) {
-            }
-        }
-
-        $createdTo = $request->query('created_to');
-        if ($createdTo) {
-            try {
+                $q->where('created_at', '>=', $from);
+            })
+            ->when($request->validated('created_to'), function ($q, $createdTo) {
                 $to = Carbon::parse($createdTo)->endOfDay();
-                $query->where('created_at', '<=', $to);
-            } catch (\Throwable $e) {
-            }
-        }
+                $q->where('created_at', '<=', $to);
+            });
 
         return InvoiceResource::collection($query->paginate(20));
     }
 
     #[Endpoint(operationId: 'storeInvoice', title: 'Store invoice', description: 'Create a new invoice')]
     public function store(StoreInvoiceRequest $request, Company $company): InvoiceResource
-    {
-        $data = $request->validated();
-
-        // Extract items before creating invoice
-        $items = $data['items'] ?? [];
-        unset($data['items']);
-
-        // Resolve currency_id - use provided currency_id or default currency
-        if (!isset($data['currency_id'])) {
-            // Use default currency
-            $currency = Currency::where('company_id', $company->id)->where('is_default', true)->first();
-            if (!$currency) {
-                $currency = $company->currencies()->first();
-            }
-            if (!$currency) {
-                abort(422, 'Nema konfigurisane valute za ovu kompaniju.');
-            }
-            $data['currency_id'] = $currency->id;
-        } else {
-            // Validate currency_id belongs to company
-            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
-            if (!$currency) {
-                abort(422, 'Valuta nije pronađena za ovu kompaniju.');
-            }
-        }
-
+    {logger('Store: ' . print_r($request->validated(), true));
         // Reserve invoice number if not provided
-        if (empty($data['invoice_number'])) {
-            $numberData = $this->numberService->reserveNumber($company, 'invoice');
-            $data['invoice_number'] = $numberData['formatted'];
-        }
+        $invoice = $company->invoices()->create(
+            $request->safe()
+                ->merge([
+                    'invoice_number' => $request->validated('invoice_number')
+                        ?: $this->numberService->reserveNumber($company, 'invoice')['formatted'],
+                ])
+                ->except('items')
+        );
 
-        $data['status'] = $data['status'] ?? DocumentStatusEnum::Created->value;
-
-        $invoice = $company->invoices()->create($data);
-
-        foreach ($items as $itemData) {
-            if (empty($itemData['tax_label']) && ! empty($itemData['article_id'])) {
-                $article = \App\Models\Article::find($itemData['article_id']);
-                if ($article?->tax_rate) {
-                    $itemData['tax_label'] = $article->tax_rate;
-                }
-            }
-            $itemData['tax_label'] = $itemData['tax_label'] ?? 'A';
-            $invoice->items()->create($itemData);
-        }
+        $items = $request->validated('items') ?? [];
+        $invoice->items()->createMany($items);
 
         return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount']));
     }
@@ -224,36 +172,11 @@ class InvoiceController extends Controller
     #[Endpoint(operationId: 'updateInvoice', title: 'Update invoice', description: 'Update invoice')]
     public function update(UpdateInvoiceRequest $request, Company $company, Invoice $invoice): InvoiceResource
     {
-        $data = $request->validated();
-        $items = $data['items'] ?? null;
-        unset($data['items']);
+        $invoice->update($request->safe()->except('items'));
 
-        if (isset($data['client_id']) && $data['client_id'] == 0) {
-            $data['client_id'] = null;
-        }
-
-        // Validate currency_id if provided
-        if (isset($data['currency_id'])) {
-            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
-            if (!$currency) {
-                abort(422, 'Valuta nije pronađena za ovu kompaniju.');
-            }
-        }
-
-        $invoice->update($data);
-
-        if ($items !== null) {
+        if ($request->has('items')) {
             $invoice->items()->delete();
-            foreach ($items as $itemData) {
-                if (empty($itemData['tax_label']) && ! empty($itemData['article_id'])) {
-                    $article = \App\Models\Article::find($itemData['article_id']);
-                    if ($article?->tax_rate) {
-                        $itemData['tax_label'] = $article->tax_rate;
-                    }
-                }
-                $itemData['tax_label'] = $itemData['tax_label'] ?? 'A';
-                $invoice->items()->create($itemData);
-            }
+            $invoice->items()->createMany($request->validated('items') ?? []);
         }
 
         return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice']));

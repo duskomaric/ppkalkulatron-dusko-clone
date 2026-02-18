@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\API\V1\IndexProformaRequest;
 use App\Http\Requests\API\V1\StoreProformaRequest;
 use App\Http\Requests\API\V1\UpdateProformaRequest;
 use App\Http\Requests\API\V1\CreateFromQuoteRequest;
@@ -12,7 +13,6 @@ use App\Http\Resources\API\V1\InvoiceResource;
 use App\Mail\ProformaMail;
 use App\Models\Company;
 use App\Models\CompanySetting;
-use App\Models\Currency;
 use App\Models\Proforma;
 use App\Models\Quote;
 use App\Services\DocumentConversionService;
@@ -22,7 +22,6 @@ use Carbon\Carbon;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Mail;
@@ -39,44 +38,30 @@ class ProformaController extends Controller
     }
 
     #[Endpoint(operationId: 'getProformas', title: 'Get proformas', description: 'Get all proformas')]
-    public function index(Request $request, Company $company): AnonymousResourceCollection
+    public function index(IndexProformaRequest $request, Company $company): AnonymousResourceCollection
     {
         $query = $company->proformas()
             ->with(['items', 'client', 'source', 'bankAccount', 'currency'])
             ->latest();
 
-        $search = trim((string) $request->query('search', ''));
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('proforma_number', 'like', '%' . $search . '%')
-                    ->orWhereHas('client', function ($clientQuery) use ($search) {
-                        $clientQuery->where('name', 'like', '%' . $search . '%');
-                    });
-            });
-        }
-
-        $status = $request->query('status');
-        if ($status) {
-            $query->where('status', $status);
-        }
-
-        $dateFrom = $request->query('date_from');
-        if ($dateFrom) {
-            try {
+        $query
+            ->when($request->validated('search'), function ($q, $search) {
+                $q->where(function ($q) use ($search) {
+                    $q->where('proforma_number', 'like', '%' . $search . '%')
+                        ->orWhereHas('client', function ($clientQuery) use ($search) {
+                            $clientQuery->where('name', 'like', '%' . $search . '%');
+                        });
+                });
+            })
+            ->when($request->validated('status'), fn ($q, $status) => $q->where('status', $status))
+            ->when($request->validated('date_from'), function ($q, $dateFrom) {
                 $from = Carbon::parse($dateFrom)->toDateString();
-                $query->whereDate('date', '>=', $from);
-            } catch (\Throwable $e) {
-            }
-        }
-
-        $dateTo = $request->query('date_to');
-        if ($dateTo) {
-            try {
+                $q->whereDate('date', '>=', $from);
+            })
+            ->when($request->validated('date_to'), function ($q, $dateTo) {
                 $to = Carbon::parse($dateTo)->toDateString();
-                $query->whereDate('date', '<=', $to);
-            } catch (\Throwable $e) {
-            }
-        }
+                $q->whereDate('date', '<=', $to);
+            });
 
         return ProformaResource::collection($query->paginate(20));
     }
@@ -84,41 +69,16 @@ class ProformaController extends Controller
     #[Endpoint(operationId: 'storeProforma', title: 'Store proforma', description: 'Create a new proforma')]
     public function store(StoreProformaRequest $request, Company $company): ProformaResource
     {
-        $data = $request->validated();
+        $proforma = $company->proformas()->create(
+            $request->safe()
+                ->merge([
+                    'proforma_number' => $request->validated('proforma_number')
+                        ?: $this->numberService->reserveNumber($company, 'proforma')['formatted'],
+                ])
+                ->except('items')
+        );
 
-        $items = $data['items'] ?? [];
-        unset($data['items']);
-
-        // Resolve currency_id - use provided currency_id or default currency
-        if (!isset($data['currency_id'])) {
-            // Use default currency
-            $currency = Currency::where('company_id', $company->id)->where('is_default', true)->first();
-            if (!$currency) {
-                $currency = $company->currencies()->first();
-            }
-            if (!$currency) {
-                return response()->json(['message' => 'Nema konfigurisane valute za ovu kompaniju.'], 422);
-            }
-            $data['currency_id'] = $currency->id;
-        } else {
-            // Validate currency_id belongs to company
-            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
-            if (!$currency) {
-                return response()->json(['message' => 'Currency not found'], 422);
-            }
-        }
-
-        // Reserve proforma number if not provided
-        if (empty($data['proforma_number'])) {
-            $numberData = $this->numberService->reserveNumber($company, 'proforma');
-            $data['proforma_number'] = $numberData['formatted'];
-        }
-
-        $proforma = $company->proformas()->create($data);
-
-        foreach ($items as $itemData) {
-            $proforma->items()->create($itemData);
-        }
+        $proforma->items()->createMany($request->validated('items') ?? []);
 
         return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));
     }
@@ -197,24 +157,12 @@ class ProformaController extends Controller
     #[Endpoint(operationId: 'updateProforma', title: 'Update proforma', description: 'Update proforma')]
     public function update(UpdateProformaRequest $request, Company $company, Proforma $proforma): ProformaResource
     {
-        $data = $request->validated();
-
-        // Validate currency_id if provided
-        if (isset($data['currency_id'])) {
-            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
-            if (!$currency) {
-                return response()->json(['message' => 'Currency not found'], 422);
-            }
-        }
-
-        $proforma->update($data);
+        $proforma->update($request->safe()->except('items'));
 
         // Update items if provided
         if ($request->has('items')) {
             $proforma->items()->delete();
-            foreach ($request->input('items') as $itemData) {
-                $proforma->items()->create($itemData);
-            }
+            $proforma->items()->createMany($request->validated('items') ?? []);
         }
 
         return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));

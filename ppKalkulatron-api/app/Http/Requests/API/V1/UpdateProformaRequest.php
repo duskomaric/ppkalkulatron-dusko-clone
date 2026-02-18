@@ -6,6 +6,7 @@ use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Enums\DocumentTemplateEnum;
 use App\Models\Enums\LanguageEnum;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateProformaRequest extends FormRequest
 {
@@ -16,6 +17,12 @@ class UpdateProformaRequest extends FormRequest
 
     public function rules(): array
     {
+        $company = $this->route('company');
+        $currencyRule = Rule::exists('currencies', 'id');
+        if ($company) {
+            $currencyRule = $currencyRule->where('company_id', $company->id);
+        }
+
         return [
             'proforma_number' => 'sometimes|string|max:255',
             'client_id' => 'sometimes|exists:clients,id',
@@ -24,7 +31,7 @@ class UpdateProformaRequest extends FormRequest
             'date' => 'sometimes|date',
             'due_date' => 'sometimes|nullable|date|after_or_equal:date',
             'notes' => 'sometimes|nullable|string',
-            'currency_id' => 'sometimes|nullable|exists:currencies,id',
+            'currency_id' => ['sometimes', 'nullable', $currencyRule],
             'bank_account_id' => 'sometimes|nullable|exists:bank_accounts,id',
             'proforma_template' => 'sometimes|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'subtotal' => 'sometimes|integer|min:0',
@@ -41,6 +48,13 @@ class UpdateProformaRequest extends FormRequest
             'items.*.tax_rate' => 'sometimes|required|integer|min:0|max:10000',
             'items.*.tax_amount' => 'sometimes|required|integer|min:0',
             'items.*.total' => 'sometimes|required|integer|min:0',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'currency_id.exists' => 'Valuta nije pronađena za ovu kompaniju.',
         ];
     }
 }

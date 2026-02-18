@@ -149,7 +149,7 @@ export function InvoiceItemRow({
             </div>
 
             {/* Article + quantity + unit price - compact */}
-            <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+            <div className="flex flex-col md:flex-row md:items-end gap-2">
                 <div className="flex-1 min-w-0">
                     <SearchSelect
                         items={articles}
@@ -199,8 +199,8 @@ export function InvoiceItemRow({
                     />
                 </div>
 
-                <div className="flex flex-row gap-2 sm:flex-shrink-0 items-end">
-                    <div className="w-20 sm:w-24 flex flex-col gap-1 group">
+                <div className="flex flex-row gap-2 md:flex-shrink-0 items-end">
+                    <div className="w-20 md:w-24 flex flex-col gap-1 group">
                         <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 shrink-0">
                             Kol.
                         </label>
@@ -220,7 +220,7 @@ export function InvoiceItemRow({
                             />
                         </div>
                     </div>
-                    <div className="flex-1 min-w-[90px] sm:min-w-[100px]">
+                    <div className="flex-1 min-w-[90px] md:min-w-[100px]">
                         <CurrencyInput
                             label="Cijena"
                             icon={CurrencyEuroIcon}

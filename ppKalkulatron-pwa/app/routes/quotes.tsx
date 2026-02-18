@@ -345,8 +345,8 @@ export default function QuotesPage() {
     if (!selectedCompany || !token || !activeQuote) return;
     setLoading(true);
     try {
-      await deleteQuote(selectedCompany.slug, activeQuote.id, token);
-      showToast("Ponuda uspješno obrisana", "info");
+      const res = await deleteQuote(selectedCompany.slug, activeQuote.id, token);
+      showToast(res.message || "Ponuda uspješno obrisana", "info");
       setViewDrawerOpen(false);
       fetchQuotes(currentPage);
     } catch (err: any) {
@@ -448,13 +448,13 @@ export default function QuotesPage() {
     }
     setEmailLoading(true);
     try {
-      await sendQuoteEmail(selectedCompany.slug, activeQuote.id, token, {
+      const res = await sendQuoteEmail(selectedCompany.slug, activeQuote.id, token, {
         to: emailForm.to,
         subject: emailForm.subject,
         body: emailForm.body,
         attach_pdf: emailForm.attach_pdf,
       });
-      showToast("Ponuda uspješno poslata na email", "success");
+      showToast(res.message || "Ponuda uspješno poslata na email", "success");
       setEmailModalOpen(false);
     } catch (err: any) {
       showToast(err.message || "Greška pri slanju maila", "error");

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\API\V1\IndexQuoteRequest;
 use App\Http\Requests\API\V1\StoreQuoteRequest;
 use App\Http\Requests\API\V1\UpdateQuoteRequest;
 use App\Http\Requests\API\V1\SendQuoteEmailRequest;
@@ -11,7 +12,6 @@ use App\Http\Resources\API\V1\ProformaResource;
 use App\Mail\QuoteMail;
 use App\Models\Company;
 use App\Models\CompanySetting;
-use App\Models\Currency;
 use App\Models\Quote;
 use App\Services\DocumentConversionService;
 use App\Services\DocumentNumberService;
@@ -20,7 +20,6 @@ use Carbon\Carbon;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Mail;
@@ -37,44 +36,30 @@ class QuoteController extends Controller
     }
 
     #[Endpoint(operationId: 'getQuotes', title: 'Get quotes', description: 'Get all quotes')]
-    public function index(Request $request, Company $company): AnonymousResourceCollection
+    public function index(IndexQuoteRequest $request, Company $company): AnonymousResourceCollection
     {
         $query = $company->quotes()
             ->with(['items', 'client', 'bankAccount', 'currency'])
             ->latest();
 
-        $search = trim((string) $request->query('search', ''));
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('quote_number', 'like', '%' . $search . '%')
-                    ->orWhereHas('client', function ($clientQuery) use ($search) {
-                        $clientQuery->where('name', 'like', '%' . $search . '%');
-                    });
-            });
-        }
-
-        $status = $request->query('status');
-        if ($status) {
-            $query->where('status', $status);
-        }
-
-        $dateFrom = $request->query('date_from');
-        if ($dateFrom) {
-            try {
+        $query
+            ->when($request->validated('search'), function ($q, $search) {
+                $q->where(function ($q) use ($search) {
+                    $q->where('quote_number', 'like', '%' . $search . '%')
+                        ->orWhereHas('client', function ($clientQuery) use ($search) {
+                            $clientQuery->where('name', 'like', '%' . $search . '%');
+                        });
+                });
+            })
+            ->when($request->validated('status'), fn ($q, $status) => $q->where('status', $status))
+            ->when($request->validated('date_from'), function ($q, $dateFrom) {
                 $from = Carbon::parse($dateFrom)->toDateString();
-                $query->whereDate('date', '>=', $from);
-            } catch (\Throwable $e) {
-            }
-        }
-
-        $dateTo = $request->query('date_to');
-        if ($dateTo) {
-            try {
+                $q->whereDate('date', '>=', $from);
+            })
+            ->when($request->validated('date_to'), function ($q, $dateTo) {
                 $to = Carbon::parse($dateTo)->toDateString();
-                $query->whereDate('date', '<=', $to);
-            } catch (\Throwable $e) {
-            }
-        }
+                $q->whereDate('date', '<=', $to);
+            });
 
         return QuoteResource::collection($query->paginate(20));
     }
@@ -82,40 +67,16 @@ class QuoteController extends Controller
     #[Endpoint(operationId: 'storeQuote', title: 'Store quote', description: 'Create a new quote')]
     public function store(StoreQuoteRequest $request, Company $company): QuoteResource
     {
-        $data = $request->validated();
+        $quote = $company->quotes()->create(
+            $request->safe()
+                ->merge([
+                    'quote_number' => $request->validated('quote_number')
+                        ?: $this->numberService->reserveNumber($company, 'quote')['formatted'],
+                ])
+                ->except('items')
+        );
 
-        $items = $data['items'] ?? [];
-        unset($data['items']);
-
-        // Resolve currency_id - use provided currency_id or default currency
-        if (!isset($data['currency_id'])) {
-            // Use default currency
-            $currency = Currency::where('company_id', $company->id)->where('is_default', true)->first();
-            if (!$currency) {
-                $currency = $company->currencies()->first();
-            }
-            if (!$currency) {
-                return response()->json(['message' => 'Nema konfigurisane valute za ovu kompaniju.'], 422);
-            }
-            $data['currency_id'] = $currency->id;
-        } else {
-            // Validate currency_id belongs to company
-            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
-            if (!$currency) {
-                return response()->json(['message' => 'Currency not found'], 422);
-            }
-        }
-
-        if (empty($data['quote_number'])) {
-            $numberData = $this->numberService->reserveNumber($company, 'quote');
-            $data['quote_number'] = $numberData['formatted'];
-        }
-
-        $quote = $company->quotes()->create($data);
-
-        foreach ($items as $itemData) {
-            $quote->items()->create($itemData);
-        }
+        $quote->items()->createMany($request->validated('items') ?? []);
 
         return new QuoteResource($quote->load(['items', 'client', 'bankAccount', 'currency']));
     }
@@ -194,23 +155,11 @@ class QuoteController extends Controller
     #[Endpoint(operationId: 'updateQuote', title: 'Update quote', description: 'Update quote')]
     public function update(UpdateQuoteRequest $request, Company $company, Quote $quote): QuoteResource
     {
-        $data = $request->validated();
-
-        // Validate currency_id if provided
-        if (isset($data['currency_id'])) {
-            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
-            if (!$currency) {
-                return response()->json(['message' => 'Currency not found'], 422);
-            }
-        }
-
-        $quote->update($data);
+        $quote->update($request->safe()->except('items'));
 
         if ($request->has('items')) {
             $quote->items()->delete();
-            foreach ($request->input('items') as $itemData) {
-                $quote->items()->create($itemData);
-            }
+            $quote->items()->createMany($request->validated('items') ?? []);
         }
 
         return new QuoteResource($quote->load(['items', 'client', 'bankAccount', 'currency']));

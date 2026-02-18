@@ -34,7 +34,7 @@ export function Drawer({ title, children, isOpen, onClose }: DrawerProps) {
       ></div>
 
       {/* Drawer Container */}
-      <div className="relative w-full max-w-lg md:max-w-3xl lg:max-w-4xl bg-[var(--color-surface)]/95 backdrop-blur-2xl rounded-t-[32px] sm:rounded-[40px] shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden animate-slide-in-bottom border-t sm:border border-[var(--color-border)] flex flex-col max-h-[94vh] sm:max-h-[90vh]">
+      <div className="relative w-full max-w-lg md:max-w-3xl lg:max-w-4xl bg-[var(--color-surface)]/95 backdrop-blur-2xl rounded-t-[32px] sm:rounded-[40px] shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.5)] overflow-visible sm:overflow-hidden animate-slide-in-bottom border-t sm:border border-[var(--color-border)] flex flex-col max-h-[94vh] sm:max-h-[90vh]">
 
         {/* Mobile Pull Handle */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">

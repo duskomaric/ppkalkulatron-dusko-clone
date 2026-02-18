@@ -208,8 +208,8 @@ export default function ArticlesPage() {
 
         setLoading(true);
         try {
-            await deleteArticle(selectedCompany.slug, activeArticle.id, token);
-            showToast("Artikal uspješno obrisan", "info");
+            const res = await deleteArticle(selectedCompany.slug, activeArticle.id, token);
+            showToast(res.message || "Artikal uspješno obrisan", "info");
             setViewDrawerOpen(false);
             fetchArticles(currentPage);
         } catch (err: any) {

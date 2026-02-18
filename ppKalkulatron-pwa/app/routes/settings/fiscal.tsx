@@ -163,10 +163,12 @@ export default function FiscalSettingsPage() {
             // Cloud: Laravel zove OFS (api.ofs.ba), odgovor vraća ovdje
             const res = await testFiscalAttention(selectedCompany.slug, token);
             console.log("[Fiscal] Cloud mode – attention response:", res);
-            showToast(res.success ? "API dostupan – cloud ESIR je pravilno konfigurisan." : res.message, res.success ? "success" : "error");
+            const message = res.message || (res.success ? "API dostupan." : "API nije dostupan.");
+            showToast(message, res.success ? "success" : "error");
         } catch (error: unknown) {
             if (!isLocal) {
-                showToast("Greška pri testiranju API-ja", "error");
+                const msg = error instanceof Error ? error.message : String(error);
+                showToast(msg || "Greška pri testiranju API-ja", "error");
             } else {
                 const msg = error instanceof Error ? error.message : String(error);
                 if (msg.includes("abort") || msg.includes("Timeout")) {
@@ -242,10 +244,12 @@ export default function FiscalSettingsPage() {
             }
             const res = await testFiscalStatus(selectedCompany.slug, token);
             console.log("[Fiscal] Cloud mode – status response:", res);
-            showToast(res.success ? "Status uspješno učitan (Cloud)." : res.message, res.success ? "success" : "error");
+            const message = res.message || (res.success ? "Status uspješno učitan." : "Greška pri dohvatu statusa.");
+            showToast(message, res.success ? "success" : "error");
         } catch (error: unknown) {
             if (!isLocal) {
-                showToast("Greška pri dohvatu statusa", "error");
+                const msg = error instanceof Error ? error.message : String(error);
+                showToast(msg || "Greška pri dohvatu statusa", "error");
             } else {
                 const msg = error instanceof Error ? error.message : String(error);
                 showToast("Greška pri dohvatu statusa: " + msg, "error");
@@ -409,7 +413,8 @@ export default function FiscalSettingsPage() {
             showToast(msg, res.success ? "success" : "error");
         } catch (error: unknown) {
             if (!isLocal) {
-                showToast("Greška pri testiranju podešavanja", "error");
+                const msg = error instanceof Error ? error.message : String(error);
+                showToast(msg || "Greška pri testiranju podešavanja", "error");
             } else {
                 const msg = error instanceof Error ? error.message : String(error);
                 showToast("Greška pri testiranju podešavanja: " + msg, "error");

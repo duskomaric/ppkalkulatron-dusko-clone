@@ -3,11 +3,12 @@
 namespace App\Http\Requests\API\V1;
 
 use App\Models\Enums\DocumentFrequencyEnum;
-use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Enums\DocumentTemplateEnum;
 use App\Models\Enums\FiscalPaymentTypeEnum;
 use App\Models\Enums\LanguageEnum;
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\ValidationException;
 
 class StoreInvoiceRequest extends FormRequest
 {
@@ -18,10 +19,15 @@ class StoreInvoiceRequest extends FormRequest
 
     public function rules(): array
     {
+        $company = $this->route('company');
+        $currencyRule = Rule::exists('currencies', 'id');
+        if ($company) {
+            $currencyRule = $currencyRule->where('company_id', $company->id);
+        }
+
         return [
             'invoice_number' => 'nullable|string|max:255',
             'client_id' => ['required', 'integer', 'exists:clients,id'],
-            'status' => 'nullable|in:' . implode(',', array_column(DocumentStatusEnum::cases(), 'value')),
             'language' => 'required|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
             'date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:date',
@@ -29,7 +35,7 @@ class StoreInvoiceRequest extends FormRequest
             'is_recurring' => 'nullable|boolean',
             'frequency' => 'nullable|in:' . implode(',', array_column(DocumentFrequencyEnum::cases(), 'value')),
             'next_invoice_date' => 'nullable|date|required_if:is_recurring,true',
-            'currency_id' => 'nullable|exists:currencies,id',
+            'currency_id' => ['nullable', $currencyRule],
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'invoice_template' => 'required|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'payment_type' => 'required|in:' . implode(',', array_column(FiscalPaymentTypeEnum::cases(), 'value')),
@@ -49,5 +55,33 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.tax_amount' => 'required|integer|min:0',
             'items.*.total' => 'required|integer|min:0',
         ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'currency_id.exists' => 'Valuta nije pronađena za ovu kompaniju.',
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $company = $this->route('company');
+        if (! $company) {
+            return;
+        }
+
+        if (! $this->filled('currency_id')) {
+            $currency = $company->currencies()->where('is_default', true)->first()
+                ?? $company->currencies()->first();
+
+            if (! $currency) {
+                throw ValidationException::withMessages([
+                    'currency_id' => 'Nema konfigurisane valute za ovu kompaniju.',
+                ]);
+            }
+
+            $this->merge(['currency_id' => $currency->id]);
+        }
     }
 }

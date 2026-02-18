@@ -346,8 +346,8 @@ export default function ProformasPage() {
     if (!selectedCompany || !token || !activeProforma) return;
     setLoading(true);
     try {
-      await deleteProforma(selectedCompany.slug, activeProforma.id, token);
-      showToast("Predračun uspješno obrisan", "info");
+      const res = await deleteProforma(selectedCompany.slug, activeProforma.id, token);
+      showToast(res.message || "Predračun uspješno obrisan", "info");
       setViewDrawerOpen(false);
       fetchProformas(currentPage);
     } catch (err: any) {
@@ -449,13 +449,13 @@ export default function ProformasPage() {
     }
     setEmailLoading(true);
     try {
-      await sendProformaEmail(selectedCompany.slug, activeProforma.id, token, {
+      const res = await sendProformaEmail(selectedCompany.slug, activeProforma.id, token, {
         to: emailForm.to,
         subject: emailForm.subject,
         body: emailForm.body,
         attach_pdf: emailForm.attach_pdf,
       });
-      showToast("Predračun uspješno poslat na email", "success");
+      showToast(res.message || "Predračun uspješno poslat na email", "success");
       setEmailModalOpen(false);
     } catch (err: any) {
       showToast(err.message || "Greška pri slanju maila", "error");

@@ -690,14 +690,14 @@ export default function InvoicesPage() {
         }
         setEmailLoading(true);
         try {
-            await sendInvoiceEmail(selectedCompany.slug, activeInvoice.id, token, {
+            const res = await sendInvoiceEmail(selectedCompany.slug, activeInvoice.id, token, {
                 to: emailForm.to,
                 subject: emailForm.subject,
                 body: emailForm.body,
                 attach_pdf: emailForm.attach_pdf,
                 attach_fiscal_record_ids: emailForm.attach_fiscal_record_ids,
             });
-            showToast("Faktura uspješno poslata na email", "success");
+            showToast(res.message || "Faktura uspješno poslata na email", "success");
             setEmailModalOpen(false);
         } catch (err: any) {
             showToast(err.message || "Greška pri slanju maila", "error");
