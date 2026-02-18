@@ -80,7 +80,7 @@ export interface Invoice {
     source_id: number | null;
 
     // Currency & Template
-    currency: string;
+    currency: string | null; // From currencyRelation->code
     currency_id: number | null;
     bank_account_id: number | null;
     bank_account?: { id: number; bank_name: string; account_number: string } | null;
@@ -121,7 +121,6 @@ export interface InvoiceInput {
     is_recurring: boolean;
     frequency?: string | null;
     next_invoice_date?: string | null;
-    currency?: string;
     currency_id?: number | null;
     bank_account_id?: number | null;
     invoice_template?: string;

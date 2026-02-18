@@ -12,7 +12,6 @@ import { useNavigate } from "react-router";
 import { FormInput, FormSelect, FormTextarea } from "~/components/ui/Input";
 import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
-import { PageHeader } from "~/components/ui/PageHeader";
 import { LoadingState } from "~/components/ui/LoadingState";
 import { useToast } from "~/hooks/useToast";
 
@@ -85,11 +84,17 @@ export default function GeneralSettingsPage() {
                 onClose={hideToast}
             />
 
-            <PageHeader
-                title="Generalna Podešavanja"
-                description="Konfigurišite osnovna podešavanja za vašu kompaniju."
-                onBack={() => navigate(-1)}
-            />
+            <div className="mb-6">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-dim)] hover:text-primary transition-colors mb-4 cursor-pointer"
+                >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Nazad
+                </button>
+            </div>
 
             {loading && (
                 <LoadingState />
@@ -118,12 +123,6 @@ export default function GeneralSettingsPage() {
                                 value={formData.default_document_language || ""}
                                 onChange={(val: string) => setFormData({ ...formData, default_document_language: val })}
                                 options={configData.languages}
-                            />
-                            <FormSelect
-                                label="Podrazumijevana Valuta"
-                                value={formData.default_document_currency || ""}
-                                onChange={(val: string) => setFormData({ ...formData, default_document_currency: val })}
-                                options={currencies.map(c => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
                             />
                         </div>
                     </SectionBlock>

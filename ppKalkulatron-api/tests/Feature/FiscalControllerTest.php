@@ -30,6 +30,7 @@ it('F 11% - 1 item 100 BAM: invoice store pa fiscalize', function () {
     $client = Client::factory()->create(['company_id' => $company->id]);
     attachUserToCompany($user, $company);
     setOfsTestCredentials($company);
+    \App\Models\Currency::factory()->bam()->create(['company_id' => $company->id, 'is_default' => true]);
 
     $articleResp = $this->withHeaders(authHeaders($user))
         ->postJson("/api/v1/{$company->slug}/articles", [
@@ -49,6 +50,13 @@ it('F 11% - 1 item 100 BAM: invoice store pa fiscalize', function () {
             'client_id' => $client->id,
             'date' => now()->format('Y-m-d'),
             'due_date' => now()->addDays(30)->format('Y-m-d'),
+            'language' => \App\Models\Enums\LanguageEnum::Bosnian->value,
+            'invoice_template' => \App\Models\Enums\DocumentTemplateEnum::Classic->value,
+            'payment_type' => \App\Models\Enums\FiscalPaymentTypeEnum::Cash->value,
+            'subtotal' => 9009,
+            'tax_total' => 991,
+            'discount_total' => 0,
+            'total' => 10000,
             'items' => [
                 [
                     'article_id' => $articleId,
@@ -87,6 +95,7 @@ it('F 11% - 2 items 50 BAM each: invoice store pa fiscalize', function () {
     $client = Client::factory()->create(['company_id' => $company->id]);
     attachUserToCompany($user, $company);
     setOfsTestCredentials($company);
+    \App\Models\Currency::factory()->bam()->create(['company_id' => $company->id, 'is_default' => true]);
 
     $articleResp = $this->withHeaders(authHeaders($user))
         ->postJson("/api/v1/{$company->slug}/articles", [
@@ -106,6 +115,13 @@ it('F 11% - 2 items 50 BAM each: invoice store pa fiscalize', function () {
             'client_id' => $client->id,
             'date' => now()->format('Y-m-d'),
             'due_date' => now()->addDays(30)->format('Y-m-d'),
+            'language' => \App\Models\Enums\LanguageEnum::Bosnian->value,
+            'invoice_template' => \App\Models\Enums\DocumentTemplateEnum::Classic->value,
+            'payment_type' => \App\Models\Enums\FiscalPaymentTypeEnum::Cash->value,
+            'subtotal' => 9010,
+            'tax_total' => 990,
+            'discount_total' => 0,
+            'total' => 10000,
             'items' => [
                 [
                     'article_id' => $articleId,
@@ -140,6 +156,7 @@ it('P 40% - 1 item 140 BAM: invoice store pa fiscalize', function () {
     $client = Client::factory()->create(['company_id' => $company->id]);
     attachUserToCompany($user, $company);
     setOfsTestCredentials($company);
+    \App\Models\Currency::factory()->bam()->create(['company_id' => $company->id, 'is_default' => true]);
 
     $articleResp = $this->withHeaders(authHeaders($user))
         ->postJson("/api/v1/{$company->slug}/articles", [
@@ -159,6 +176,13 @@ it('P 40% - 1 item 140 BAM: invoice store pa fiscalize', function () {
             'client_id' => $client->id,
             'date' => now()->format('Y-m-d'),
             'due_date' => now()->addDays(30)->format('Y-m-d'),
+            'language' => \App\Models\Enums\LanguageEnum::Bosnian->value,
+            'invoice_template' => \App\Models\Enums\DocumentTemplateEnum::Classic->value,
+            'payment_type' => \App\Models\Enums\FiscalPaymentTypeEnum::Cash->value,
+            'subtotal' => 10000,
+            'tax_total' => 4000,
+            'discount_total' => 0,
+            'total' => 14000,
             'items' => [
                 [
                     'article_id' => $articleId,
@@ -193,6 +217,7 @@ it('Multiple items F + P: invoice store pa fiscalize', function () {
     $client = Client::factory()->create(['company_id' => $company->id]);
     attachUserToCompany($user, $company);
     setOfsTestCredentials($company);
+    \App\Models\Currency::factory()->bam()->create(['company_id' => $company->id, 'is_default' => true]);
 
     $articleFResp = $this->withHeaders(authHeaders($user))
         ->postJson("/api/v1/{$company->slug}/articles", [
@@ -216,6 +241,13 @@ it('Multiple items F + P: invoice store pa fiscalize', function () {
             'client_id' => $client->id,
             'date' => now()->format('Y-m-d'),
             'due_date' => now()->addDays(30)->format('Y-m-d'),
+            'language' => \App\Models\Enums\LanguageEnum::Bosnian->value,
+            'invoice_template' => \App\Models\Enums\DocumentTemplateEnum::Classic->value,
+            'payment_type' => \App\Models\Enums\FiscalPaymentTypeEnum::Cash->value,
+            'subtotal' => 28018,
+            'tax_total' => 5982,
+            'discount_total' => 0,
+            'total' => 34000,
             'items' => [
                 [
                     'article_id' => $articleFId,

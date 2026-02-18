@@ -54,12 +54,6 @@ export async function updateBankAccount(companySlug: string, token: string, id: 
     });
 }
 
-export async function deleteBankAccount(companySlug: string, token: string, id: number) {
-    return fetchApi(`/${companySlug}/bank-accounts/${id}`, {
-        method: "DELETE",
-        token,
-    });
-}
 
 // --- Currencies ---
 
@@ -79,9 +73,3 @@ export async function updateCurrency(companySlug: string, token: string, id: num
     });
 }
 
-export async function deleteCurrency(companySlug: string, token: string, id: number) {
-    return fetchApi(`/${companySlug}/currencies/${id}`, {
-        method: "DELETE",
-        token,
-    });
-}

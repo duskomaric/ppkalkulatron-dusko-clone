@@ -16,7 +16,7 @@ class SyncExchangeRatesCommand extends Command
 
     public function handle(): int
     {
-        $apiKey = env('FIXER_API_KEY');
+        $apiKey = config('services.fixer.key');
 
         if (! $apiKey) {
             $this->error('FIXER_API_KEY is missing');

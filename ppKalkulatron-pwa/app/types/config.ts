@@ -17,7 +17,6 @@ export interface CompanySettings {
     default_document_template: string | null;
     default_document_due_days: number | null;
     default_document_language: string | null;
-    default_document_currency: string | null;
     default_document_notes: string | null;
     default_invoice_notes: string | null;
     default_proforma_notes: string | null;

@@ -4,19 +4,17 @@ import { AppLayout } from "~/components/layout/AppLayout";
 import { useAuth } from "~/hooks/useAuth";
 import {
     createCurrency,
-    updateCurrency,
-    deleteCurrency
+    updateCurrency
 } from "~/api/settings";
 import { getCurrencies } from "~/api/config";
 import type { Currency } from "~/types/config";
 import { Toast } from "~/components/ui/Toast";
 import { Toggle } from "~/components/ui/Toggle";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
-import { PencilIcon, TrashIcon } from "~/components/ui/icons";
+import { PencilIcon } from "~/components/ui/icons";
 import { CreateButton } from "~/components/ui/CreateButton";
 import { useNavigate } from "react-router";
 import { FormInput } from "~/components/ui/Input";
-import { PageHeader } from "~/components/ui/PageHeader";
 import { ModalForm } from "~/components/ui/ModalForm";
 import { CardGrid } from "~/components/ui/CardGrid";
 import { LoadingState } from "~/components/ui/LoadingState";
@@ -30,8 +28,6 @@ export default function CurrenciesPage() {
 
     // Edit/Create State
     const [editingItem, setEditingItem] = useState<Partial<Currency> | null>(null);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
     const { toast, showToast, hideToast } = useToast();
 
@@ -73,17 +69,6 @@ export default function CurrenciesPage() {
         }
     };
 
-    const handleDelete = async () => {
-        if (!itemToDelete || !selectedCompany || !token) return;
-        try {
-            await deleteCurrency(selectedCompany.slug, token, itemToDelete);
-            showToast("Valuta obrisana", "success");
-            loadData();
-        } catch (error) {
-            showToast("Greška pri brisanju", "error");
-        }
-        setIsDeleteModalOpen(false);
-    };
 
     if (!selectedCompany) return null;
 
@@ -100,19 +85,27 @@ export default function CurrenciesPage() {
                 onClose={hideToast}
             />
 
-            <PageHeader
-                title="Valute"
-                description="Upravljajte listom valuta koje vaša kompanija koristi."
-                onBack={() => navigate(-1)}
-                actions={
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-dim)] hover:text-primary transition-colors mb-2 cursor-pointer"
+                    >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Nazad
+                    </button>
+                </div>
+                <div>
                     <CreateButton
                         label="Nova valuta"
                         onClick={() => setEditingItem({
                             code: "", name: "", symbol: "", is_default: false
                         })}
                     />
-                }
-            />
+                </div>
+            </div>
 
             {loading && (
                 <LoadingState />
@@ -130,7 +123,7 @@ export default function CurrenciesPage() {
                 >
                     {currencies.map(curr => (
                         <div key={curr.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl relative group shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-center mb-3">
+                            <div className="flex justify-between items-center mb-3 pr-12">
                                 <div className="flex items-center gap-3">
                                     <div className="h-10 min-w-10 px-2 bg-[var(--color-surface-hover)] rounded-full flex items-center justify-center text-primary font-black text-sm">
                                         {curr.symbol}
@@ -138,23 +131,17 @@ export default function CurrenciesPage() {
                                     <span className="font-bold text-[var(--color-text-main)] text-lg">{curr.code}</span>
                                 </div>
                                 {curr.is_default && (
-                                    <span className="text-primary text-lg" title="Podrazumijevana valuta">★</span>
+                                    <span className="text-primary text-lg shrink-0" title="Podrazumijevana valuta">★</span>
                                 )}
                             </div>
                             <p className="text-sm text-[var(--color-text-dim)] font-medium pl-1">{curr.name}</p>
 
-                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute top-4 right-4 flex gap-2">
                                 <button
                                     onClick={() => setEditingItem(curr)}
                                     className="h-8 w-8 bg-[var(--color-surface-hover)] hover:text-primary rounded-lg flex items-center justify-center transition-colors"
                                 >
                                     <PencilIcon className="h-4 w-4" />
-                                </button>
-                                <button
-                                    onClick={() => { setItemToDelete(curr.id); setIsDeleteModalOpen(true); }}
-                                    className="h-8 w-8 bg-[var(--color-surface-hover)] hover:text-red-500 rounded-lg flex items-center justify-center transition-colors"
-                                >
-                                    <TrashIcon className="h-4 w-4" />
                                 </button>
                             </div>
                         </div>
@@ -199,16 +186,6 @@ export default function CurrenciesPage() {
                 </ModalForm>
             )}
 
-            <ConfirmModal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                onConfirm={handleDelete}
-                title="Obriši valutu?"
-                message="Da li ste sigurni da želite obrisati ovu valutu?"
-                confirmLabel="Obriši"
-                cancelLabel="Odustani"
-                type="danger"
-            />
         </AppLayout>
     );
 }

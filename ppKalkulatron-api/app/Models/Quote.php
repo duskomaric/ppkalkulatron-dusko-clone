@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Enums\DocumentTemplateEnum;
 use App\Models\Enums\LanguageEnum;
+use App\Models\Currency;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,7 +24,7 @@ class Quote extends Model
         'date',
         'valid_until',
         'notes',
-        'currency',
+        'currency_id',
         'bank_account_id',
         'quote_template',
         'subtotal',
@@ -63,5 +64,10 @@ class Quote extends Model
     public function bankAccount(): BelongsTo
     {
         return $this->belongsTo(BankAccount::class);
+    }
+
+    public function currency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class, 'currency_id');
     }
 }

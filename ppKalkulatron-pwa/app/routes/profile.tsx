@@ -166,7 +166,7 @@ export default function ProfilePage() {
                 {/* App Version Info */}
                 <div className="text-center pt-4">
                     <p className="text-[8px] font-black text-[var(--color-text-dim)] uppercase tracking-[0.3em]">
-                        Kalkulatron PWA v1.0.0
+                        ++Kalkulatron v1.0.0
                     </p>
                 </div>
             </div>

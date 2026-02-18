@@ -32,7 +32,6 @@ class InvoiceFactory extends Factory
             'parent_id' => null,
             'source_type' => null,
             'source_id' => null,
-            'currency' => 'BAM',
             'invoice_template' => DocumentTemplateEnum::Classic,
             'payment_type' => \App\Models\Enums\FiscalPaymentTypeEnum::Cash,
             'subtotal' => fake()->numberBetween(10000, 100000),

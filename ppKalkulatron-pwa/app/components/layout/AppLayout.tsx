@@ -12,7 +12,8 @@ import {
     CreditCardIcon,
     CurrencyEuroIcon,
     Building2Icon,
-    FileTextIcon, ChevronDownIcon
+    FileTextIcon, ChevronDownIcon,
+    InfoIcon
 } from "~/components/ui/icons";
 import { Drawer } from "./Drawer";
 import { DrawerNavItem } from "~/components/ui/DrawerNavItem";
@@ -201,6 +202,12 @@ export function AppLayout({
           </div>
 
           <div className="flex items-center gap-2">
+            <Link
+              to="/help"
+              className="cursor-pointer h-9 w-9 flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:bg-[var(--color-surface-hover)] rounded-xl transition-all"
+            >
+              <InfoIcon className="h-5 w-5" />
+            </Link>
             <button
               onClick={() => setActiveDrawer("settings")}
               className="relative cursor-pointer h-9 w-9 flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:bg-[var(--color-surface-hover)] rounded-xl transition-all"

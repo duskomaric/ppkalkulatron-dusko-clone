@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Companies\RelationManagers;
 
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms;
@@ -77,7 +76,6 @@ class CurrenciesRelationManager extends RelationManager
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
-                DeleteAction::make(),
             ]);
     }
 

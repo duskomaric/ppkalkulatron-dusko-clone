@@ -35,6 +35,8 @@ export interface Quote {
     valid_until: string | null;
     notes: string | null;
     currency: string;
+    currency_id: number | null;
+    currency_relation?: { id: number; code: string; name: string; symbol: string } | null;
     bank_account_id: number | null;
     bank_account?: { id: number; bank_name: string; account_number: string } | null;
     quote_template: string;
@@ -56,7 +58,7 @@ export interface QuoteInput {
     date: string;
     valid_until?: string | null;
     notes?: string | null;
-    currency: string;
+    currency_id?: number | null;
     bank_account_id?: number | null;
     quote_template?: string;
     subtotal: number;

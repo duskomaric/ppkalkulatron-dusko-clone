@@ -42,7 +42,7 @@ class InvoiceController extends Controller
     public function index(Request $request, Company $company): AnonymousResourceCollection
     {
         $query = $company->invoices()
-            ->with(['items', 'source', 'client', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'refundInvoice', 'originalInvoice'])
+            ->with(['items', 'source', 'client', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice'])
             ->latest();
 
         $search = trim((string) $request->query('search', ''));
@@ -95,12 +95,24 @@ class InvoiceController extends Controller
         $items = $data['items'] ?? [];
         unset($data['items']);
 
-        // Resolve currency_id from required currency (must exist for this company)
-        $currency = Currency::where('company_id', $company->id)->where('code', $data['currency'])->first();
-        if (! $currency) {
-            abort(422, 'Valuta nije pronađena za ovu kompaniju.');
+        // Resolve currency_id - use provided currency_id or default currency
+        if (!isset($data['currency_id'])) {
+            // Use default currency
+            $currency = Currency::where('company_id', $company->id)->where('is_default', true)->first();
+            if (!$currency) {
+                $currency = $company->currencies()->first();
+            }
+            if (!$currency) {
+                abort(422, 'Nema konfigurisane valute za ovu kompaniju.');
+            }
+            $data['currency_id'] = $currency->id;
+        } else {
+            // Validate currency_id belongs to company
+            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
+            if (!$currency) {
+                abort(422, 'Valuta nije pronađena za ovu kompaniju.');
+            }
         }
-        $data['currency_id'] = $currency->id;
 
         // Reserve invoice number if not provided
         if (empty($data['invoice_number'])) {
@@ -123,13 +135,13 @@ class InvoiceController extends Controller
             $invoice->items()->create($itemData);
         }
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount']));
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount']));
     }
 
     #[Endpoint(operationId: 'showInvoice', title: 'Show invoice', description: 'Get invoice')]
     public function show(Company $company, Invoice $invoice): InvoiceResource
     {
-        return new InvoiceResource($invoice->load(['client', 'items', 'source', 'parent', 'children', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'refundInvoice', 'originalInvoice']));
+        return new InvoiceResource($invoice->load(['client', 'items', 'source', 'parent', 'children', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice']));
     }
 
     #[Endpoint(operationId: 'downloadInvoicePdf', title: 'Download invoice PDF', description: 'Export invoice as PDF')]
@@ -220,9 +232,12 @@ class InvoiceController extends Controller
             $data['client_id'] = null;
         }
 
-        if (isset($data['currency'])) {
-            $currency = Currency::where('company_id', $company->id)->where('code', $data['currency'])->first();
-            $data['currency_id'] = $currency?->id;
+        // Validate currency_id if provided
+        if (isset($data['currency_id'])) {
+            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
+            if (!$currency) {
+                abort(422, 'Valuta nije pronađena za ovu kompaniju.');
+            }
         }
 
         $invoice->update($data);
@@ -241,7 +256,7 @@ class InvoiceController extends Controller
             }
         }
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'refundInvoice', 'originalInvoice']));
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice']));
     }
 
     #[Endpoint(operationId: 'destroyInvoice', title: 'Destroy invoice', description: 'Remove invoice')]
@@ -271,7 +286,7 @@ class InvoiceController extends Controller
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'refundInvoice', 'originalInvoice']));
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice']));
     }
 
     #[Endpoint(operationId: 'createInvoiceFromContract', title: 'Create invoice from contract', description: 'Create invoice from contract')]
@@ -285,7 +300,7 @@ class InvoiceController extends Controller
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount']));
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount']));
     }
 
     #[Endpoint(operationId: 'createRefundInvoice', title: 'Create refund invoice', description: 'Create refund/storno invoice from original')]
@@ -327,7 +342,6 @@ class InvoiceController extends Controller
             'frequency' => null,
             'next_invoice_date' => null,
             'parent_id' => null,
-            'currency' => $invoice->currency,
             'currency_id' => $invoice->currency_id,
             'bank_account_id' => $invoice->bank_account_id,
             'invoice_template' => $invoice->invoice_template,
@@ -359,7 +373,7 @@ class InvoiceController extends Controller
 
         $invoice->update(['refund_invoice_id' => $refundInvoice->id]);
 
-        return new InvoiceResource($refundInvoice->load(['items', 'fiscalRecords', 'currencyRelation', 'bankAccount', 'originalInvoice']));
+        return new InvoiceResource($refundInvoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount', 'originalInvoice']));
     }
 
 }

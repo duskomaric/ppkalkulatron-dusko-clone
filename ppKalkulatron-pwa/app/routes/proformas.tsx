@@ -127,7 +127,7 @@ export default function ProformasPage() {
     client_id: 0,
     date: new Date().toISOString().split("T")[0],
     due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    currency: "BAM",
+    currency_id: null,
     language: "sr-Latn",
     proforma_template: "classic",
     notes: "",
@@ -137,6 +137,13 @@ export default function ProformasPage() {
     total: 0,
     items: [{ ...emptyProformaItem }]
   });
+
+  // Helper to get currency code from currency_id
+  const getCurrencyCode = (currencyId: number | null | undefined): string => {
+    if (!currencyId) return "BAM";
+    const curr = currencies.find(c => c.id === currencyId);
+    return curr?.code || "BAM";
+  };
 
   // Selected client for form
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -192,12 +199,9 @@ export default function ProformasPage() {
       setTemplates(meRes.data.templates);
       setCompanySettings(meRes.data.company_settings || null);
 
-      const settings = meRes.data.company_settings;
-      const defaultCurrency = settings?.default_document_currency
-        ? currenciesRes.data.find(c => c.code === settings.default_document_currency) || currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0]
-        : currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0];
+      const defaultCurrency = currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0];
       if (defaultCurrency) {
-        setFormData(prev => ({ ...prev, currency: defaultCurrency.code }));
+        setFormData(prev => ({ ...prev, currency_id: defaultCurrency.id }));
       }
     } catch (error: any) {
       showToast(error.message || "Greška pri učitavanju podataka", "error");
@@ -227,9 +231,7 @@ export default function ProformasPage() {
   const openCreateForm = () => {
     const settings = companySettings;
     const dueDays = settings?.default_document_due_days ?? 14;
-    const defaultCurrency = settings?.default_document_currency
-      ? currencies.find(c => c.code === settings.default_document_currency) || currencies.find(c => c.is_default) || currencies[0]
-      : currencies.find(c => c.is_default) || currencies[0];
+    const defaultCurrency = currencies.find(c => c.is_default) || currencies[0];
     const defaultBank = bankAccounts.find(b => b.is_default) || bankAccounts[0];
     setFormMode("create");
     setSelectedClient(null);
@@ -237,7 +239,7 @@ export default function ProformasPage() {
       client_id: 0,
       date: new Date().toISOString().split("T")[0],
       due_date: new Date(Date.now() + dueDays * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      currency: defaultCurrency?.code || "BAM",
+      currency_id: defaultCurrency?.id ?? null,
       bank_account_id: defaultBank?.id ?? null,
       language: (settings?.default_document_language || languages[0]?.value) ?? "",
       proforma_template: settings?.default_document_template || "classic",
@@ -273,7 +275,7 @@ export default function ProformasPage() {
       client_id: activeProforma.client_id ?? 0,
       date: parseDateForInput(activeProforma.date),
       due_date: parseDateForInput(activeProforma.due_date),
-      currency: activeProforma.currency,
+      currency_id: activeProforma.currency_id ?? null,
       bank_account_id: activeProforma.bank_account_id ?? null,
       language: activeProforma.language,
       proforma_template: activeProforma.proforma_template,
@@ -634,7 +636,7 @@ export default function ProformasPage() {
                 />
               </div>
               <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
-                {formatPrice(proforma.total)} {proforma.currency}
+                {formatPrice(proforma.total)} {proforma.currency || "BAM"}
               </p>
             </div>
           </EntityCard>
@@ -688,7 +690,7 @@ export default function ProformasPage() {
                 <span>{proforma.due_date || "—"}</span>
               </div>
               <p className="text-right text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
-                {formatPrice(proforma.total)} {proforma.currency}
+                {formatPrice(proforma.total)} {proforma.currency || "BAM"}
               </p>
             </div>
           </EntityCard>
@@ -761,7 +763,7 @@ export default function ProformasPage() {
                 <DetailsItem
                   icon={CreditCardIcon}
                   label="Valuta"
-                  value={activeProforma.currency}
+                  value={activeProforma.currency || "BAM"}
                   color="bg-amber-500/10 text-amber-500"
                 />
                 {activeProforma.bank_account && (
@@ -818,12 +820,12 @@ export default function ProformasPage() {
                             )}
                           </div>
                           <p className="text-sm font-black text-primary">
-                            {formatPrice(item.total)} {activeProforma.currency}
+                            {formatPrice(item.total)} {activeProforma.currency || "BAM"}
                           </p>
                         </div>
                         <div className="flex gap-4 text-[10px] text-[var(--color-text-dim)]">
                           <span>Kol: <strong className="text-[var(--color-text-muted)]">{item.quantity}</strong></span>
-                          <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(unitPrice)} {activeProforma.currency}</strong></span>
+                          <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(unitPrice)} {activeProforma.currency || "BAM"}</strong></span>
                           <span>PDV: <strong className="text-[var(--color-text-muted)]">{item.tax_rate / 100}%</strong></span>
                         </div>
                       </div>
@@ -838,7 +840,7 @@ export default function ProformasPage() {
                           {item.quantity}
                         </div>
                         <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">
-                          {formatPrice(unitPrice)} {activeProforma.currency}
+                          {formatPrice(unitPrice)} {activeProforma.currency || "BAM"}
                         </div>
                         <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">
                           {item.tax_rate / 100}%
@@ -1066,12 +1068,15 @@ export default function ProformasPage() {
                         <CreditCardIcon className="h-4 w-4" />
                       </div>
                       <select
-                        value={formData.currency}
-                        onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                        value={formData.currency_id ?? ""}
+                        onChange={(e) => {
+                          const currencyId = e.target.value ? parseInt(e.target.value) : null;
+                          setFormData(prev => ({ ...prev, currency_id: currencyId }));
+                        }}
                         className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
                       >
                         {currencies.map(c => (
-                          <option key={c.id} value={c.code}>{c.code}</option>
+                          <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                         ))}
                       </select>
                     </div>
@@ -1160,7 +1165,7 @@ export default function ProformasPage() {
                   item={item}
                   index={index}
                   articles={articles}
-                  currency={formData.currency}
+                  currency={getCurrencyCode(formData.currency_id)}
                   onChange={handleItemChange}
                   onRemove={handleItemRemove}
                 />
@@ -1184,16 +1189,16 @@ export default function ProformasPage() {
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--color-text-dim)]">Osnovica:</span>
-                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {formData.currency}</span>
+                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {getCurrencyCode(formData.currency_id)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--color-text-dim)]">PDV:</span>
-                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {formData.currency}</span>
+                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {getCurrencyCode(formData.currency_id)}</span>
               </div>
               <div className="h-[1px] bg-primary/20" />
               <div className="flex justify-between items-center">
                 <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno</span>
-                <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {formData.currency}</span>
+                <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {getCurrencyCode(formData.currency_id)}</span>
               </div>
             </div>
           </div>

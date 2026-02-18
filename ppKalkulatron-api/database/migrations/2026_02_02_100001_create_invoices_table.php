@@ -27,13 +27,15 @@ return new class extends Migration
             $table->string('frequency')->nullable();
             $table->date('next_invoice_date')->nullable();
             $table->foreignId('parent_id')->nullable()->constrained('invoices')->nullOnDelete();
+            $table->foreignId('refund_invoice_id')->nullable()->constrained('invoices')->nullOnDelete();
 
             // Source tracking (polymorphic)
             $table->string('source_type')->nullable(); // proforma, contract
             $table->unsignedBigInteger('source_id')->nullable();
 
             // Currency and template
-            $table->string('currency')->default('BAM');
+            $table->foreignId('currency_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('bank_account_id')->nullable()->constrained('bank_accounts')->nullOnDelete();
             $table->string('invoice_template')->default('classic');
 
             // Fiscal payment type (Cash, Card, WireTransfer, Check, Voucher, MobileMoney, Other)

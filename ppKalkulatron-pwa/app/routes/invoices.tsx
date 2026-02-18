@@ -107,6 +107,13 @@ export default function InvoicesPage() {
 
     const { toast, showToast, hideToast } = useToast();
 
+    // Helper to get currency code from currency_id
+    const getCurrencyCode = (currencyId: number | null | undefined): string => {
+        if (!currencyId) return "BAM";
+        const curr = currencies.find(c => c.id === currencyId);
+        return curr?.code || "BAM";
+    };
+
     // Drawer states
     const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
     const [formDrawerOpen, setFormDrawerOpen] = useState(false);
@@ -143,7 +150,6 @@ export default function InvoicesPage() {
         client_id: 0,
         date: new Date().toISOString().split("T")[0],
         due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-        currency: "BAM",
         currency_id: null,
         bank_account_id: null,
         language: "sr-Latn",
@@ -433,13 +439,10 @@ export default function InvoicesPage() {
             setPaymentTypes(meRes.data.payment_types || []);
             setCompanySettings(meRes.data.company_settings || null);
 
-            // Set default currency from company settings or first/default
-            const settings = meRes.data.company_settings;
-            const defaultCurrency = settings?.default_document_currency
-                ? currenciesRes.data.find(c => c.code === settings.default_document_currency) || currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0]
-                : currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0];
+            // Set default currency from Currency model (is_default flag)
+            const defaultCurrency = currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0];
             if (defaultCurrency) {
-                setFormData(prev => ({ ...prev, currency: defaultCurrency.code, currency_id: defaultCurrency.id }));
+                setFormData(prev => ({ ...prev, currency_id: defaultCurrency.id }));
             }
         } catch (error: any) {
             showToast(error.message || "Greška pri učitavanju podataka", "error");
@@ -480,9 +483,7 @@ export default function InvoicesPage() {
     const openCreateForm = () => {
         const settings = companySettings;
         const dueDays = settings?.default_document_due_days ?? 14;
-        const defaultCurrency = settings?.default_document_currency
-            ? currencies.find(c => c.code === settings.default_document_currency) || currencies.find(c => c.is_default) || currencies[0]
-            : currencies.find(c => c.is_default) || currencies[0];
+        const defaultCurrency = currencies.find(c => c.is_default) || currencies[0];
         const defaultBank = bankAccounts.find(b => b.is_default) || bankAccounts[0];
         setFormMode("create");
         setSelectedClient(null);
@@ -490,7 +491,6 @@ export default function InvoicesPage() {
             client_id: 0,
             date: new Date().toISOString().split("T")[0],
             due_date: new Date(Date.now() + dueDays * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-            currency: defaultCurrency?.code || "BAM",
             currency_id: defaultCurrency?.id ?? null,
             bank_account_id: defaultBank?.id ?? null,
             language: (settings?.default_document_language || languages[0]?.value) ?? "",
@@ -533,7 +533,6 @@ export default function InvoicesPage() {
             client_id: activeInvoice.client_id ?? 0,
             date: parseDateForInput(activeInvoice.date),
             due_date: parseDateForInput(activeInvoice.due_date),
-            currency: activeInvoice.currency,
             currency_id: activeInvoice.currency_id ?? null,
             bank_account_id: activeInvoice.bank_account_id ?? null,
             language: activeInvoice.language,
@@ -1022,7 +1021,7 @@ export default function InvoicesPage() {
                                 />
                             </div>
                             <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
-                                {formatSignedPrice(inv.total, inv)} {inv.currency}
+                                {formatSignedPrice(inv.total, inv)} {inv.currency || "BAM"}
                             </p>
                         </div>
                     </EntityCard>
@@ -1087,7 +1086,7 @@ export default function InvoicesPage() {
                                 <span>{inv.payment_type_label || "—"}</span>
                             </div>
                             <p className="text-right text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
-                                {formatSignedPrice(inv.total, inv)} {inv.currency}
+                                {formatSignedPrice(inv.total, inv)} {inv.currency || "BAM"}
                             </p>
                         </div>
                     </EntityCard>
@@ -1170,7 +1169,7 @@ export default function InvoicesPage() {
                                 <DetailsItem
                                     icon={CreditCardIcon}
                                     label="Valuta"
-                                    value={activeInvoice.currency}
+                                    value={activeInvoice.currency || "BAM"}
                                     color="bg-amber-500/10 text-amber-500"
                                 />
                                 <DetailsItem
@@ -1238,12 +1237,12 @@ export default function InvoicesPage() {
                                                         )}
                                                     </div>
                                                     <p className="text-sm font-black text-primary">
-                                                        {formatPrice(signedTotal)} {activeInvoice.currency}
+                                                        {formatPrice(signedTotal)} {activeInvoice.currency || "BAM"}
                                                     </p>
                                                 </div>
                                                 <div className="flex gap-4 text-[10px] text-[var(--color-text-dim)]">
                                                     <span>Kol: <strong className="text-[var(--color-text-muted)]">{item.quantity}</strong></span>
-                                                    <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(unitPrice)} {activeInvoice.currency}</strong></span>
+                                                    <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(unitPrice)} {activeInvoice.currency || "BAM"}</strong></span>
                                                     <span>PDV: <strong className="text-[var(--color-text-muted)]">{item.tax_rate / 100}%</strong></span>
                                                 </div>
                                             </div>
@@ -1258,13 +1257,13 @@ export default function InvoicesPage() {
                                                     {item.quantity}
                                                 </div>
                                                 <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">
-                                                    {formatPrice(unitPrice)} {activeInvoice.currency}
+                                                    {formatPrice(unitPrice)} {activeInvoice.currency || "BAM"}
                                                 </div>
                                                 <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">
                                                     {item.tax_rate / 100}%
                                                 </div>
                                                 <div className="text-sm font-black text-primary text-right">
-                                                    {formatPrice(signedTotal)} {activeInvoice.currency}
+                                                    {formatPrice(signedTotal)} {activeInvoice.currency || "BAM"}
                                                 </div>
                                             </div>
                                         </div>
@@ -1756,11 +1755,10 @@ export default function InvoicesPage() {
                                                 <CreditCardIcon className="h-4 w-4" />
                                             </div>
                                             <select
-                                                value={formData.currency_id ?? currencies.find(c => c.code === formData.currency)?.id ?? ""}
+                                                value={formData.currency_id ?? ""}
                                                 onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    const curr = currencies.find(c => c.id === parseInt(val));
-                                                    setFormData(prev => ({ ...prev, currency_id: curr?.id ?? null, currency: curr?.code ?? prev.currency }));
+                                                    const currencyId = e.target.value ? parseInt(e.target.value) : null;
+                                                    setFormData(prev => ({ ...prev, currency_id: currencyId }));
                                                 }}
                                                 className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
                                             >
@@ -1908,7 +1906,7 @@ export default function InvoicesPage() {
                                 item={item}
                                 index={idx}
                                 articles={articles}
-                                currency={formData.currency ?? "BAM"}
+                                currency={getCurrencyCode(formData.currency_id)}
                                 onChange={handleItemChange}
                                 onRemove={handleItemRemove}
                                 disabled={formLoading}
@@ -1932,16 +1930,16 @@ export default function InvoicesPage() {
                         <div className="flex-1 min-w-0 space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span className="text-[var(--color-text-dim)]">Osnovica:</span>
-                                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {formData.currency}</span>
+                                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {getCurrencyCode(formData.currency_id)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-[var(--color-text-dim)]">PDV:</span>
-                                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {formData.currency}</span>
+                                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {getCurrencyCode(formData.currency_id)}</span>
                             </div>
                             <div className="h-[1px] bg-primary/20" />
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno</span>
-                                <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {formData.currency}</span>
+                                <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {getCurrencyCode(formData.currency_id)}</span>
                             </div>
                         </div>
                     </div>

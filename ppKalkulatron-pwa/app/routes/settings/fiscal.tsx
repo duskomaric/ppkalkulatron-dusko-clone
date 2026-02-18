@@ -16,7 +16,6 @@ import { Toggle } from "~/components/ui/Toggle";
 import { CheckCircleIcon, FileTextIcon, GlobeIcon, SearchIcon } from "~/components/ui/icons";
 import { useNavigate } from "react-router";
 import { FormInput, FormSelect, FormTextarea } from "~/components/ui/Input";
-import { PageHeader } from "~/components/ui/PageHeader";
 import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
 import { LoadingState } from "~/components/ui/LoadingState";
@@ -435,11 +434,17 @@ export default function FiscalSettingsPage() {
                 onClose={hideToast}
             />
 
-            <PageHeader
-                title="Fiskalizacija (OFS ESIR)"
-                description="Podešavanja za fiskalni uređaj. Cloud (pos.ofs.ba) ili lokalni ESIR – API je identičan."
-                onBack={() => navigate(-1)}
-            />
+            <div className="mb-6">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-dim)] hover:text-primary transition-colors mb-4 cursor-pointer"
+                >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Nazad
+                </button>
+            </div>
 
             {loading && (
                 <LoadingState />

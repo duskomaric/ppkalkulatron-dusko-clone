@@ -24,7 +24,7 @@ class UpdateProformaRequest extends FormRequest
             'date' => 'sometimes|date',
             'due_date' => 'sometimes|nullable|date|after_or_equal:date',
             'notes' => 'sometimes|nullable|string',
-            'currency' => 'sometimes|string|max:3',
+            'currency_id' => 'sometimes|nullable|exists:currencies,id',
             'bank_account_id' => 'sometimes|nullable|exists:bank_accounts,id',
             'proforma_template' => 'sometimes|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'subtotal' => 'sometimes|integer|min:0',

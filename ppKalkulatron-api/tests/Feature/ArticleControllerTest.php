@@ -55,6 +55,7 @@ it('tenant: user can create article for accessible company', function () {
         ->postJson("/api/v1/{$company->slug}/articles", [
             'name' => 'Test Article',
             'type' => 'goods',
+            'tax_rate' => \App\Models\Enums\TaxRateEnum::E->value,
         ]);
 
     $response->assertStatus(201)
@@ -72,6 +73,7 @@ it('tenant: user can create article for accessible company', function () {
         'company_id' => $company->id,
         'name' => 'Test Article',
         'type' => 'goods',
+        'tax_rate' => \App\Models\Enums\TaxRateEnum::E->value,
     ]);
 });
 

@@ -27,7 +27,8 @@ return new class extends Migration
             $table->unsignedBigInteger('source_id')->nullable();
 
             // Currency and template
-            $table->string('currency')->default('BAM');
+            $table->foreignId('currency_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('bank_account_id')->nullable()->constrained('bank_accounts')->nullOnDelete();
             $table->string('proforma_template')->default('classic');
 
             // Totals (pfening - integer)

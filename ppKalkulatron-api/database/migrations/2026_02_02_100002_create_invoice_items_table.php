@@ -25,6 +25,7 @@ return new class extends Migration
             $table->integer('unit_price')->default(0);
             $table->integer('subtotal')->default(0);
             $table->integer('tax_rate')->default(0); // e.g., 1700 = 17.00%
+            $table->string('tax_label', 4)->nullable(); // OFS label: F, N, A, ...
             $table->integer('tax_amount')->default(0);
             $table->integer('total')->default(0);
 

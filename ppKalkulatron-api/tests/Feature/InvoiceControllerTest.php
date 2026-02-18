@@ -39,12 +39,20 @@ it('tenant: user can create invoice for accessible company', function () {
     $company = Company::factory()->create();
     $client = Client::factory()->create(['company_id' => $company->id]);
     attachUserToCompany($user, $company);
+    \App\Models\Currency::factory()->bam()->create(['company_id' => $company->id, 'is_default' => true]);
 
     $response = $this->withHeaders(authHeaders($user))
         ->postJson("/api/v1/{$company->slug}/invoices", [
             'client_id' => $client->id,
             'date' => now()->format('Y-m-d'),
             'due_date' => now()->addDays(30)->format('Y-m-d'),
+            'language' => \App\Models\Enums\LanguageEnum::English->value,
+            'invoice_template' => \App\Models\Enums\DocumentTemplateEnum::Classic->value,
+            'payment_type' => \App\Models\Enums\FiscalPaymentTypeEnum::Cash->value,
+            'subtotal' => 10000,
+            'tax_total' => 1700,
+            'discount_total' => 0,
+            'total' => 11700,
             'items' => [
                 [
                     'name' => 'Test Item',
@@ -137,4 +145,43 @@ it('tenant: cannot show invoice from different company', function () {
         ->getJson("/api/v1/{$company1->slug}/invoices/{$invoice->id}");
 
     $response->assertStatus(404);
+});
+
+it('tenant: user can create refund invoice', function () {
+    $user = User::factory()->create();
+    $company = Company::factory()->create();
+    $client = Client::factory()->create(['company_id' => $company->id]);
+    attachUserToCompany($user, $company);
+    \App\Models\Currency::factory()->bam()->create(['company_id' => $company->id, 'is_default' => true]);
+
+    $invoice = Invoice::factory()->create([
+        'company_id' => $company->id,
+        'client_id' => $client->id,
+        'status' => \App\Models\Enums\DocumentStatusEnum::Fiscalized, // Must be fiscalized
+        'total' => 100,
+    ]);
+    
+    // Mock fiscal record
+    $invoice->fiscalRecords()->create([
+        'type' => \App\Models\Enums\FiscalRecordTypeEnum::Original,
+        'fiscal_invoice_number' => 'BF123456',
+        'request_id' => 'req-123',
+        // 'company_id', 'response_id', 'subtotal', etc do not exist in fiscal_records table
+    ]);
+
+    $response = $this->withHeaders(authHeaders($user))
+        ->postJson("/api/v1/{$company->slug}/invoices/{$invoice->id}/create-refund");
+
+    $response->assertStatus(201)
+        ->assertJsonStructure([
+            'data' => [
+                'id',
+                'invoice_number',
+                'status',
+                'original_invoice_id',
+            ]
+        ]);
+        
+    expect($response->json('data.status'))->toBe(\App\Models\Enums\DocumentStatusEnum::RefundCreated->value);
+    expect($response->json('data.original_invoice_id'))->toBe($invoice->id);
 });

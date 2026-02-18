@@ -4,101 +4,109 @@ import { XIcon, CheckCircleIcon, CogIcon, InfoIcon } from "~/components/ui/icons
 export type ToastType = "success" | "error" | "info" | "warning";
 
 interface ToastProps {
-  message: string;
-  type: ToastType;
-  isVisible: boolean;
-  onClose: () => void;
-  duration?: number;
+    message: string;
+    type: ToastType;
+    isVisible: boolean;
+    onClose: () => void;
+    duration?: number;
 }
 
-// Koristi se na: vecina ruta (notifikacije nakon akcija)
 export function Toast({ message, type, isVisible, onClose, duration = 5000 }: ToastProps) {
-  useEffect(() => {
-    if (isVisible && duration > 0) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, duration);
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible, duration, onClose]);
+    useEffect(() => {
+        if (isVisible && duration > 0) {
+            const timer = setTimeout(() => {
+                onClose();
+            }, duration);
+            return () => clearTimeout(timer);
+        }
+    }, [isVisible, duration, onClose]);
 
-  const config = {
-    success: {
-      bg: "bg-green-500/10",
-      border: "border-green-500/20",
-      shadow: "shadow-green-500/20",
-      iconBg: "bg-green-500",
-      icon: <CheckCircleIcon className="h-4 w-4" />,
-      label: "Uspjeh",
-      textColor: "text-green-400"
-    },
-    error: {
-      bg: "bg-red-500/10",
-      border: "border-red-500/20",
-      shadow: "shadow-red-500/20",
-      iconBg: "bg-red-500",
-      icon: <XIcon className="h-4 w-4" />,
-      label: "Greška",
-      textColor: "text-red-400"
-    },
-    info: {
-      bg: "bg-blue-500/10",
-      border: "border-blue-500/20",
-      shadow: "shadow-blue-500/20",
-      iconBg: "bg-blue-500",
-      icon: <InfoIcon className="h-4 w-4" />,
-      label: "Informacija",
-      textColor: "text-blue-400"
-    },
-    warning: {
-      bg: "bg-amber-500/10",
-      border: "border-amber-500/20",
-      shadow: "shadow-amber-500/20",
-      iconBg: "bg-amber-500",
-      icon: <CogIcon className="h-4 w-4" />,
-      label: "Upozorenje",
-      textColor: "text-amber-400"
-    }
-  };
+    const config = {
+        success: {
+            bg: "bg-emerald-500/10",
+            border: "border-emerald-500/20",
+            iconBg: "bg-emerald-500",
+            icon: <CheckCircleIcon className="h-4 w-4 text-white" />,
+            label: "Uspjeh",
+            accent: "bg-emerald-500"
+        },
+        error: {
+            bg: "bg-rose-500/10",
+            border: "border-rose-500/20",
+            iconBg: "bg-rose-500",
+            icon: <XIcon className="h-4 w-4 text-white" />,
+            label: "Greška",
+            accent: "bg-rose-500"
+        },
+        info: {
+            bg: "bg-sky-500/10",
+            border: "border-sky-500/20",
+            iconBg: "bg-sky-500",
+            icon: <InfoIcon className="h-4 w-4 text-white" />,
+            label: "Informacija",
+            accent: "bg-sky-500"
+        },
+        warning: {
+            bg: "bg-amber-500/10",
+            border: "border-amber-500/20",
+            iconBg: "bg-amber-500",
+            icon: <CogIcon className="h-4 w-4 text-white" />,
+            label: "Upozorenje",
+            accent: "bg-amber-500"
+        }
+    };
 
-  const current = config[type];
+    const current = config[type];
 
-  return (
-    <div className={`fixed top-[76px] left-1/2 -translate-x-1/2 z-[1200] transition-all duration-500 transform 
-      w-[calc(100%-2.5rem)] max-w-[360px]
-      ${isVisible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-8 opacity-0 scale-95 pointer-events-none"}`}
-    >
-      <div className={`backdrop-blur-2xl border p-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3
-        ${current.bg} ${current.border} ${current.shadow}`}
-      >
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className={`h-8 w-8 min-w-[2rem] rounded-xl flex items-center justify-center text-white shadow-lg shrink-0 ${current.iconBg}`}>
-            {current.icon}
-          </div>
-
-          <div className="min-w-0">
-            <p className="text-white font-black text-[9px] leading-tight uppercase tracking-widest italic opacity-80">
-              {current.label}
-            </p>
-            <p className={`text-[11px] font-bold truncate leading-tight mt-0.5 ${current.textColor}`}>
-              {message}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={onClose}
-          className="p-1.5 h-8 w-8 flex items-center justify-center bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all hover:bg-white/10 shrink-0"
-          aria-label="Zatvori"
+    return (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[1200] transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] transform 
+      w-[calc(100%-2.5rem)] max-w-[420px]
+      ${isVisible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-6 opacity-0 scale-95 pointer-events-none"}`}
         >
-          <XIcon className="h-3.5 w-3.5" />
-        </button>
-      </div>
+            {/* Glavni kontejner mora imati overflow-hidden da progress bar ne izlazi van rounded ivica */}
+            <div className={`relative overflow-hidden backdrop-blur-2xl bg-zinc-900/80 border rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.4)]
+        ${current.bg} ${current.border} transition-colors hover:bg-zinc-900/90`}
+            >
+                <div className="flex items-start justify-between gap-4 p-4">
+                    <div className="flex items-start gap-4 min-w-0">
+                        {/* Ikona */}
+                        <div className={`h-10 w-10 min-w-[2.5rem] rounded-xl flex items-center justify-center shadow-lg shrink-0 ${current.iconBg} ring-4 ring-black/10`}>
+                            {current.icon}
+                        </div>
 
-      {/* Dynamic line at bottom for progress feel */}
-      {isVisible && (
-        <div className="absolute bottom-0 left-4 right-4 h-[1px] bg-white/10 opacity-50 blur-[0.5px]"></div>
-      )}
-    </div>
-  );
+                        <div className="min-w-0 pt-0.5">
+              <span className="block text-white/40 font-bold text-[10px] uppercase tracking-[0.2em] mb-1">
+                {current.label}
+              </span>
+                            <p className="text-[14px] font-medium leading-relaxed text-zinc-100 break-words">
+                                {message}
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={onClose}
+                        className="p-2 -mr-1 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 transition-all shrink-0"
+                        aria-label="Zatvori"
+                    >
+                        <XIcon className="h-4 w-4" />
+                    </button>
+                </div>
+
+                {/* Ispravljen Progress Bar: Bez lijevih/desnih margina, puni širinu dna */}
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/5">
+                    <div
+                        className={`h-full ${current.accent} opacity-60 transition-all ease-linear`}
+                        style={{
+                            width: isVisible ? '0%' : '100%',
+                            transitionDuration: isVisible ? `${duration}ms` : '0ms'
+                        }}
+                    />
+                </div>
+            </div>
+
+            {/* Glow efekt u pozadini */}
+            <div className={`absolute -inset-1 blur-2xl opacity-10 -z-10 ${current.accent}`} />
+        </div>
+    );
 }

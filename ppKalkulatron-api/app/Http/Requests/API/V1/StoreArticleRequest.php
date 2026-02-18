@@ -29,7 +29,7 @@ class StoreArticleRequest extends FormRequest
             'prices_meta' => 'nullable|array',
             'prices_meta.*' => 'numeric|min:0',
             'unit' => 'nullable|string|max:10',
-            'tax_rate' => 'nullable|string|in:' . implode(',', array_column(TaxRateEnum::cases(), 'value')),
+            'tax_rate' => 'required|string|in:' . implode(',', array_column(TaxRateEnum::cases(), 'value')),
             'is_active' => 'boolean',
             'type' => 'nullable|in:' . implode(',', array_column(ArticleTypeEnum::cases(), 'value')),
         ];

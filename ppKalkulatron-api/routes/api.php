@@ -20,6 +20,29 @@ use App\Models\Company;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+
+    // Test invoice templates
+    ///api/v1/{company:slug}/test-invoice/classic
+    ///api/v1/{company:slug}/test-invoice/modern
+    ///api/v1/{company:slug}/test-invoice/minimal
+    ///api/v1/{company:slug}/test-invoice/standard
+    Route::get('{company:slug}/test-invoice/{template}', function (Company $company, string $template) {
+        $templateEnum = \App\Models\Enums\DocumentTemplateEnum::tryFrom($template);
+        if ($templateEnum === null) {
+            abort(404, 'Template not found');
+        }
+
+        $invoice = $company->invoices()
+            ->with(['client', 'items', 'fiscalRecords', 'currency', 'bankAccount'])
+//            ->whereStatus('fiscalized')
+            ->firstOrFail();
+
+        return view($templateEnum->getViewName(), [
+            'invoice' => $invoice,
+            'company' => $company,
+        ]);
+    });
+
     Route::post('/login', [AuthController::class, 'login']);
 
     Route::middleware(['auth:sanctum', 'throttle:90,1'])->group(function () {
@@ -44,9 +67,10 @@ Route::prefix('v1')->group(function () {
 
                 Route::apiResource('clients', ClientController::class);
                 Route::apiResource('articles', ArticleController::class);
-                Route::apiResource('currencies', CurrencyController::class);
+                Route::apiResource('currencies', CurrencyController::class)->except(['destroy']);
                 Route::apiResource('bank-accounts', BankAccountController::class)
-                    ->parameters(['bank-accounts' => 'bankAccount']);
+                    ->parameters(['bank-accounts' => 'bankAccount'])
+                    ->except(['destroy']);
 
                 Route::get('settings', [CompanySettingController::class, 'show']);
                 Route::patch('settings', [CompanySettingController::class, 'update']);
@@ -65,43 +89,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('invoices/{invoice}/fiscalize-refund', [FiscalController::class, 'fiscalizeRefund']);
                 Route::get('invoices/{invoice}/fiscal-receipt-image', [FiscalController::class, 'fiscalReceiptImage']);
 
-                // Test invoice templates
 
-                ///api/v1/{company:slug}/test-invoice/classic
-                ///api/v1/{company:slug}/test-invoice/modern
-                ///api/v1/{company:slug}/test-invoice/minimal
-                ///api/v1/{company:slug}/test-invoice/standard
-                Route::get('test-invoice/{template}', function (Company $company, string $template) {
-                    $templateEnum = \App\Models\Enums\DocumentTemplateEnum::tryFrom($template);
-                    if ($templateEnum === null) {
-                        abort(404, 'Template not found');
-                    }
-
-                    // Find first fiscalized invoice
-                    $invoice = $company->invoices()
-                        ->with(['client', 'items', 'fiscalRecords', 'currencyRelation', 'bankAccount'])
-                        ->where('status', 'fiscalized')
-                        ->first();
-
-                    if (!$invoice) {
-                        abort(404, 'No fiscalized invoice found for testing');
-                    }
-
-                    // Temporarily override template
-                    $originalTemplate = $invoice->invoice_template;
-                    $invoice->invoice_template = $templateEnum;
-
-                    // Get view name from template enum
-                    $viewName = $invoice->invoice_template->getViewName();
-
-                    // Return HTML view instead of PDF
-                    $response = view($viewName, ['invoice' => $invoice]);
-
-                    // Restore original template
-                    $invoice->invoice_template = $originalTemplate;
-
-                    return $response;
-                });
 
                 // Fiscal (OFS ESIR)
                 Route::get('fiscal/test-attention', [FiscalController::class, 'testAttention']);

@@ -27,7 +27,6 @@ class ProformaFactory extends Factory
             'notes' => fake()->optional()->sentence(),
             'source_type' => null,
             'source_id' => null,
-            'currency' => 'BAM',
             'proforma_template' => DocumentTemplateEnum::Classic,
             'subtotal' => fake()->numberBetween(10000, 100000),
             'tax_total' => fake()->numberBetween(1000, 10000),

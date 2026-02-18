@@ -39,6 +39,8 @@ export interface Proforma {
     source_id: number | null;
     source?: Quote | null;
     currency: string;
+    currency_id: number | null;
+    currency_relation?: { id: number; code: string; name: string; symbol: string } | null;
     bank_account_id: number | null;
     bank_account?: { id: number; bank_name: string; account_number: string } | null;
     proforma_template: string;
@@ -60,7 +62,7 @@ export interface ProformaInput {
     date: string;
     due_date?: string | null;
     notes?: string | null;
-    currency: string;
+    currency_id?: number | null;
     bank_account_id?: number | null;
     proforma_template?: string;
     subtotal: number;

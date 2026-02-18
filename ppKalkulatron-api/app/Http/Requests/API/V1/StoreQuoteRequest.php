@@ -24,7 +24,7 @@ class StoreQuoteRequest extends FormRequest
             'date' => 'required|date',
             'valid_until' => 'required|date|after_or_equal:date',
             'notes' => 'nullable|string',
-            'currency' => 'required|string|size:3',
+            'currency_id' => 'nullable|exists:currencies,id',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'quote_template' => 'required|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'subtotal' => 'required|integer|min:0',

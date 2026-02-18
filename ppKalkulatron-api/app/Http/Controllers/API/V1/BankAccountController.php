@@ -55,11 +55,4 @@ class BankAccountController extends Controller
         return new BankAccountResource($bankAccount);
     }
 
-    #[Endpoint(operationId: 'destroyCompanyBankAccount', title: 'Destroy bank account', description: 'Remove bank account')]
-    public function destroy(Company $company, BankAccount $bankAccount): \Illuminate\Http\JsonResponse
-    {
-        $bankAccount->delete();
-
-        return response()->json(['message' => 'Bank account deleted successfully']);
-    }
 }

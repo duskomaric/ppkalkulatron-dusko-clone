@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('type', 16); // original, copy, refund
             $table->string('fiscal_invoice_number')->nullable();
             $table->string('fiscal_counter', 64)->nullable();
+            $table->string('request_id', 64)->nullable();
             $table->text('verification_url')->nullable();
             $table->timestamp('fiscalized_at')->nullable();
             $table->string('fiscal_receipt_image_path')->nullable();

@@ -12,7 +12,6 @@ import { updateCompany } from "~/api/companies";
 import { FormInput } from "~/components/ui/Input";
 import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
-import { PageHeader } from "~/components/ui/PageHeader";
 import { useToast } from "~/hooks/useToast";
 
 export default function CompanyProfilePage() {
@@ -93,11 +92,17 @@ export default function CompanyProfilePage() {
                 onClose={hideToast}
             />
 
-            <PageHeader
-                title="Profil kompanije"
-                description="Osnovni podaci o vašoj firmi koji se koriste na dokumentima."
-                onBack={() => navigate(-1)}
-            />
+            <div className="mb-6">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-text-dim)] hover:text-primary transition-colors mb-4 cursor-pointer"
+                >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Nazad
+                </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <SectionBlock variant="card" className="sm:p-8 space-y-6">

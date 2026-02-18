@@ -126,7 +126,7 @@ export default function QuotesPage() {
     client_id: 0,
     date: new Date().toISOString().split("T")[0],
     valid_until: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    currency: "BAM",
+    currency_id: null,
     language: "",
     quote_template: "classic",
     notes: "",
@@ -136,6 +136,13 @@ export default function QuotesPage() {
     total: 0,
     items: [{ ...emptyQuoteItem }]
   });
+
+  // Helper to get currency code from currency_id
+  const getCurrencyCode = (currencyId: number | null | undefined): string => {
+    if (!currencyId) return "BAM";
+    const curr = currencies.find(c => c.id === currencyId);
+    return curr?.code || "BAM";
+  };
 
   // Selected client for form
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -191,12 +198,9 @@ export default function QuotesPage() {
       setTemplates(meRes.data.templates);
       setCompanySettings(meRes.data.company_settings || null);
 
-      const settings = meRes.data.company_settings;
-      const defaultCurrency = settings?.default_document_currency
-        ? currenciesRes.data.find(c => c.code === settings.default_document_currency) || currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0]
-        : currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0];
+      const defaultCurrency = currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0];
       if (defaultCurrency) {
-        setFormData(prev => ({ ...prev, currency: defaultCurrency.code }));
+        setFormData(prev => ({ ...prev, currency_id: defaultCurrency.id }));
       }
     } catch (error: any) {
       showToast(error.message || "Greška pri učitavanju podataka", "error");
@@ -226,9 +230,7 @@ export default function QuotesPage() {
   const openCreateForm = () => {
     const settings = companySettings;
     const dueDays = settings?.default_document_due_days ?? 14;
-    const defaultCurrency = settings?.default_document_currency
-      ? currencies.find(c => c.code === settings.default_document_currency) || currencies.find(c => c.is_default) || currencies[0]
-      : currencies.find(c => c.is_default) || currencies[0];
+    const defaultCurrency = currencies.find(c => c.is_default) || currencies[0];
     const defaultBank = bankAccounts.find(b => b.is_default) || bankAccounts[0];
     setFormMode("create");
     setSelectedClient(null);
@@ -236,7 +238,7 @@ export default function QuotesPage() {
       client_id: 0,
       date: new Date().toISOString().split("T")[0],
       valid_until: new Date(Date.now() + dueDays * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      currency: defaultCurrency?.code || "BAM",
+      currency_id: defaultCurrency?.id ?? null,
       bank_account_id: defaultBank?.id ?? null,
       language: (settings?.default_document_language || languages[0]?.value) ?? "",
       quote_template: settings?.default_document_template || "classic",
@@ -272,7 +274,7 @@ export default function QuotesPage() {
       client_id: activeQuote.client_id ?? 0,
       date: parseDateForInput(activeQuote.date),
       valid_until: parseDateForInput(activeQuote.valid_until),
-      currency: activeQuote.currency,
+      currency_id: activeQuote.currency_id ?? null,
       bank_account_id: activeQuote.bank_account_id ?? null,
       language: activeQuote.language,
       quote_template: activeQuote.quote_template,
@@ -633,7 +635,7 @@ export default function QuotesPage() {
                 />
               </div>
               <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
-                {formatPrice(quote.total)} {quote.currency}
+                {formatPrice(quote.total)} {quote.currency || "BAM"}
               </p>
             </div>
           </EntityCard>
@@ -687,7 +689,7 @@ export default function QuotesPage() {
                 <span>{quote.valid_until || "—"}</span>
               </div>
               <p className="text-right text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
-                {formatPrice(quote.total)} {quote.currency}
+                {formatPrice(quote.total)} {quote.currency || "BAM"}
               </p>
             </div>
           </EntityCard>
@@ -760,7 +762,7 @@ export default function QuotesPage() {
                 <DetailsItem
                   icon={CreditCardIcon}
                   label="Valuta"
-                  value={activeQuote.currency}
+                  value={activeQuote.currency || "BAM"}
                   color="bg-amber-500/10 text-amber-500"
                 />
                 {activeQuote.bank_account && (
@@ -817,12 +819,12 @@ export default function QuotesPage() {
                             )}
                           </div>
                           <p className="text-sm font-black text-primary">
-                            {formatPrice(item.total)} {activeQuote.currency}
+                            {formatPrice(item.total)} {activeQuote.currency || "BAM"}
                           </p>
                         </div>
                         <div className="flex gap-4 text-[10px] text-[var(--color-text-dim)]">
                           <span>Kol: <strong className="text-[var(--color-text-muted)]">{item.quantity}</strong></span>
-                          <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(unitPrice)} {activeQuote.currency}</strong></span>
+                          <span>Cijena: <strong className="text-[var(--color-text-muted)]">{formatPrice(unitPrice)} {activeQuote.currency || "BAM"}</strong></span>
                           <span>PDV: <strong className="text-[var(--color-text-muted)]">{item.tax_rate / 100}%</strong></span>
                         </div>
                       </div>
@@ -837,7 +839,7 @@ export default function QuotesPage() {
                           {item.quantity}
                         </div>
                         <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">
-                          {formatPrice(unitPrice)} {activeQuote.currency}
+                          {formatPrice(unitPrice)} {activeQuote.currency || "BAM"}
                         </div>
                         <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">
                           {item.tax_rate / 100}%
@@ -1065,12 +1067,15 @@ export default function QuotesPage() {
                         <CreditCardIcon className="h-4 w-4" />
                       </div>
                       <select
-                        value={formData.currency}
-                        onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                        value={formData.currency_id ?? ""}
+                        onChange={(e) => {
+                          const currencyId = e.target.value ? parseInt(e.target.value) : null;
+                          setFormData(prev => ({ ...prev, currency_id: currencyId }));
+                        }}
                         className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
                       >
                         {currencies.map(c => (
-                          <option key={c.id} value={c.code}>{c.code}</option>
+                          <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                         ))}
                       </select>
                     </div>
@@ -1159,7 +1164,7 @@ export default function QuotesPage() {
                   item={item}
                   index={index}
                   articles={articles}
-                  currency={formData.currency}
+                  currency={getCurrencyCode(formData.currency_id)}
                   onChange={handleItemChange}
                   onRemove={handleItemRemove}
                 />
@@ -1183,16 +1188,16 @@ export default function QuotesPage() {
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--color-text-dim)]">Osnovica:</span>
-                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {formData.currency}</span>
+                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {getCurrencyCode(formData.currency_id)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--color-text-dim)]">PDV:</span>
-                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {formData.currency}</span>
+                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {getCurrencyCode(formData.currency_id)}</span>
               </div>
               <div className="h-[1px] bg-primary/20" />
               <div className="flex justify-between items-center">
                 <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno</span>
-                <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {formData.currency}</span>
+                <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {getCurrencyCode(formData.currency_id)}</span>
               </div>
             </div>
           </div>

@@ -7,6 +7,9 @@ enum TaxRateEnum: string
     case A = 'А';
     case E = 'Е';
     case K = 'К';
+    case F = 'F';
+    case P = 'P';
+
 
     public function rate(): int
     {
@@ -14,6 +17,8 @@ enum TaxRateEnum: string
             self::A => 0,
             self::E => 17,
             self::K => 0,
+            self::F => 11,
+            self::P => 40,
         };
     }
 

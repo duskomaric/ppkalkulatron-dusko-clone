@@ -40,7 +40,6 @@ class Invoice extends Model
         'source_type',
         'source_id',
 
-        'currency',
         'currency_id',
         'bank_account_id',
         'invoice_template',
@@ -82,7 +81,7 @@ class Invoice extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function currencyRelation(): BelongsTo
+    public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class, 'currency_id');
     }
@@ -145,34 +144,6 @@ class Invoice extends Model
         return $this->fiscalRecords()->where('type', FiscalRecordTypeEnum::Original)->first();
     }
 
-    public function getFiscalInvoiceNumberAttribute(): ?string
-    {
-        return $this->originalFiscalRecord()?->fiscal_invoice_number;
-    }
 
-    public function getFiscalCounterAttribute(): ?string
-    {
-        return $this->originalFiscalRecord()?->fiscal_counter;
-    }
-
-    public function getFiscalVerificationUrlAttribute(): ?string
-    {
-        return $this->originalFiscalRecord()?->verification_url;
-    }
-
-    public function getFiscalizedAtAttribute(): ?\Carbon\CarbonInterface
-    {
-        return $this->originalFiscalRecord()?->fiscalized_at;
-    }
-
-    public function getFiscalReceiptImagePathAttribute(): ?string
-    {
-        return $this->originalFiscalRecord()?->fiscal_receipt_image_path;
-    }
-
-    public function getFiscalMetaAttribute(): ?array
-    {
-        return $this->originalFiscalRecord()?->fiscal_meta;
-    }
 
 }

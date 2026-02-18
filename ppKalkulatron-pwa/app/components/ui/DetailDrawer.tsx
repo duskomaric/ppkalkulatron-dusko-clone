@@ -46,7 +46,7 @@ export function DetailDrawer({
                         <EntityIcon className="h-16 w-16 text-[var(--color-text-main)]" />
                     </div>
                     <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20 bg-primary z-10 shrink-0`}>
-                        {entityName.substring(0, 2).toUpperCase()}
+                        <EntityIcon className="h-8 w-8 primary/20" />
                     </div>
                     <div className="z-10 min-w-0">
                         <p className="font-black text-lg text-[var(--color-text-main)] tracking-tighter italic leading-tight truncate">{entityName}</p>

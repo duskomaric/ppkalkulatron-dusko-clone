@@ -11,6 +11,7 @@ use App\Http\Resources\API\V1\ProformaResource;
 use App\Mail\QuoteMail;
 use App\Models\Company;
 use App\Models\CompanySetting;
+use App\Models\Currency;
 use App\Models\Quote;
 use App\Services\DocumentConversionService;
 use App\Services\DocumentNumberService;
@@ -39,7 +40,7 @@ class QuoteController extends Controller
     public function index(Request $request, Company $company): AnonymousResourceCollection
     {
         $query = $company->quotes()
-            ->with(['items', 'client', 'bankAccount'])
+            ->with(['items', 'client', 'bankAccount', 'currency'])
             ->latest();
 
         $search = trim((string) $request->query('search', ''));
@@ -86,6 +87,25 @@ class QuoteController extends Controller
         $items = $data['items'] ?? [];
         unset($data['items']);
 
+        // Resolve currency_id - use provided currency_id or default currency
+        if (!isset($data['currency_id'])) {
+            // Use default currency
+            $currency = Currency::where('company_id', $company->id)->where('is_default', true)->first();
+            if (!$currency) {
+                $currency = $company->currencies()->first();
+            }
+            if (!$currency) {
+                return response()->json(['message' => 'Nema konfigurisane valute za ovu kompaniju.'], 422);
+            }
+            $data['currency_id'] = $currency->id;
+        } else {
+            // Validate currency_id belongs to company
+            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
+            if (!$currency) {
+                return response()->json(['message' => 'Currency not found'], 422);
+            }
+        }
+
         if (empty($data['quote_number'])) {
             $numberData = $this->numberService->reserveNumber($company, 'quote');
             $data['quote_number'] = $numberData['formatted'];
@@ -97,13 +117,13 @@ class QuoteController extends Controller
             $quote->items()->create($itemData);
         }
 
-        return new QuoteResource($quote->load(['items', 'client', 'bankAccount']));
+        return new QuoteResource($quote->load(['items', 'client', 'bankAccount', 'currency']));
     }
 
     #[Endpoint(operationId: 'showQuote', title: 'Show quote', description: 'Get quote')]
     public function show(Company $company, Quote $quote): QuoteResource
     {
-        return new QuoteResource($quote->load(['items', 'client', 'bankAccount']));
+        return new QuoteResource($quote->load(['items', 'client', 'bankAccount', 'currency']));
     }
 
     #[Endpoint(operationId: 'downloadQuotePdf', title: 'Download quote PDF', description: 'Export quote as PDF')]
@@ -174,7 +194,17 @@ class QuoteController extends Controller
     #[Endpoint(operationId: 'updateQuote', title: 'Update quote', description: 'Update quote')]
     public function update(UpdateQuoteRequest $request, Company $company, Quote $quote): QuoteResource
     {
-        $quote->update($request->validated());
+        $data = $request->validated();
+
+        // Validate currency_id if provided
+        if (isset($data['currency_id'])) {
+            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
+            if (!$currency) {
+                return response()->json(['message' => 'Currency not found'], 422);
+            }
+        }
+
+        $quote->update($data);
 
         if ($request->has('items')) {
             $quote->items()->delete();
@@ -183,7 +213,7 @@ class QuoteController extends Controller
             }
         }
 
-        return new QuoteResource($quote->load(['items', 'client', 'bankAccount']));
+        return new QuoteResource($quote->load(['items', 'client', 'bankAccount', 'currency']));
     }
 
     #[Endpoint(operationId: 'destroyQuote', title: 'Destroy quote', description: 'Remove quote')]

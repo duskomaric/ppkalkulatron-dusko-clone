@@ -12,6 +12,7 @@ use App\Http\Resources\API\V1\InvoiceResource;
 use App\Mail\ProformaMail;
 use App\Models\Company;
 use App\Models\CompanySetting;
+use App\Models\Currency;
 use App\Models\Proforma;
 use App\Models\Quote;
 use App\Services\DocumentConversionService;
@@ -41,7 +42,7 @@ class ProformaController extends Controller
     public function index(Request $request, Company $company): AnonymousResourceCollection
     {
         $query = $company->proformas()
-            ->with(['items', 'client', 'source', 'bankAccount'])
+            ->with(['items', 'client', 'source', 'bankAccount', 'currency'])
             ->latest();
 
         $search = trim((string) $request->query('search', ''));
@@ -88,6 +89,25 @@ class ProformaController extends Controller
         $items = $data['items'] ?? [];
         unset($data['items']);
 
+        // Resolve currency_id - use provided currency_id or default currency
+        if (!isset($data['currency_id'])) {
+            // Use default currency
+            $currency = Currency::where('company_id', $company->id)->where('is_default', true)->first();
+            if (!$currency) {
+                $currency = $company->currencies()->first();
+            }
+            if (!$currency) {
+                return response()->json(['message' => 'Nema konfigurisane valute za ovu kompaniju.'], 422);
+            }
+            $data['currency_id'] = $currency->id;
+        } else {
+            // Validate currency_id belongs to company
+            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
+            if (!$currency) {
+                return response()->json(['message' => 'Currency not found'], 422);
+            }
+        }
+
         // Reserve proforma number if not provided
         if (empty($data['proforma_number'])) {
             $numberData = $this->numberService->reserveNumber($company, 'proforma');
@@ -100,13 +120,13 @@ class ProformaController extends Controller
             $proforma->items()->create($itemData);
         }
 
-        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount']));
+        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));
     }
 
     #[Endpoint(operationId: 'showProforma', title: 'Show proforma', description: 'Get proforma')]
     public function show(Company $company, Proforma $proforma): ProformaResource
     {
-        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount']));
+        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));
     }
 
     #[Endpoint(operationId: 'downloadProformaPdf', title: 'Download proforma PDF', description: 'Export proforma as PDF')]
@@ -177,7 +197,17 @@ class ProformaController extends Controller
     #[Endpoint(operationId: 'updateProforma', title: 'Update proforma', description: 'Update proforma')]
     public function update(UpdateProformaRequest $request, Company $company, Proforma $proforma): ProformaResource
     {
-        $proforma->update($request->validated());
+        $data = $request->validated();
+
+        // Validate currency_id if provided
+        if (isset($data['currency_id'])) {
+            $currency = Currency::where('company_id', $company->id)->where('id', $data['currency_id'])->first();
+            if (!$currency) {
+                return response()->json(['message' => 'Currency not found'], 422);
+            }
+        }
+
+        $proforma->update($data);
 
         // Update items if provided
         if ($request->has('items')) {
@@ -187,7 +217,7 @@ class ProformaController extends Controller
             }
         }
 
-        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount']));
+        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));
     }
 
     #[Endpoint(operationId: 'destroyProforma', title: 'Destroy proforma', description: 'Remove proforma')]
@@ -207,7 +237,7 @@ class ProformaController extends Controller
         $proforma->proforma_number = $numberData['formatted'];
         $proforma->save();
 
-        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount']));
+        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));
     }
 
     #[Endpoint(operationId: 'convertProformaToInvoice', title: 'Convert proforma to invoice', description: 'Convert proforma to invoice')]

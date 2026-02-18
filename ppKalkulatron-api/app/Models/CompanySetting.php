@@ -30,7 +30,6 @@ class CompanySetting extends Model
         'default_document_template' => 'string',
         'default_document_due_days' => 'integer',
         'default_document_language' => 'string',
-        'default_document_currency' => 'string',
         'default_document_notes' => 'string',
         'default_invoice_notes' => 'string',
         'default_proforma_notes' => 'string',

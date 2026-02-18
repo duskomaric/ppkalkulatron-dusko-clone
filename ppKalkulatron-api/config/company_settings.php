@@ -4,7 +4,6 @@ return [
     'default_document_template' => 'classic',
     'default_document_due_days' => 14,
     'default_document_language' => 'bs',
-    'default_document_currency' => 'BAM',
     'default_document_notes' => '',
     'default_invoice_notes' => '',
     'default_proforma_notes' => '',

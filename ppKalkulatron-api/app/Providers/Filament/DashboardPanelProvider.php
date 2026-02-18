@@ -32,6 +32,7 @@ class DashboardPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->favicon(asset('images/favicon.ico'))
             ->maxContentWidth(Width::Full)
 
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

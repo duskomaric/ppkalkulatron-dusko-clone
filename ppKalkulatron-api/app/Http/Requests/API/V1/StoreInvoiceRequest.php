@@ -29,7 +29,6 @@ class StoreInvoiceRequest extends FormRequest
             'is_recurring' => 'nullable|boolean',
             'frequency' => 'nullable|in:' . implode(',', array_column(DocumentFrequencyEnum::cases(), 'value')),
             'next_invoice_date' => 'nullable|date|required_if:is_recurring,true',
-            'currency' => 'required|string|size:3',
             'currency_id' => 'nullable|exists:currencies,id',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'invoice_template' => 'required|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),

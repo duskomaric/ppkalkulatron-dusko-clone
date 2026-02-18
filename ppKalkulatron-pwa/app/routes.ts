@@ -9,6 +9,7 @@ export default [
   route("articles", "routes/articles.tsx"),
   route("profile", "routes/profile.tsx"),
   route("protocol", "routes/protocol.tsx"),
+  route("help", "routes/help.tsx"),
   // Settings Routes
   route("settings/company", "routes/settings/company.tsx"),
   route("settings/general", "routes/settings/general.tsx"),

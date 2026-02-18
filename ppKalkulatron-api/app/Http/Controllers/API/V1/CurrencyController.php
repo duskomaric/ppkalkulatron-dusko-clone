@@ -60,11 +60,4 @@ class CurrencyController extends Controller
         return new CurrencyResource($currency);
     }
 
-    #[Endpoint(operationId: 'destroyCurrency', title: 'Destroy currency', description: 'Remove currency')]
-    public function destroy(Company $company, Currency $currency): \Illuminate\Http\JsonResponse
-    {
-        $currency->delete();
-
-        return response()->json(['message' => 'Currency deleted successfully']);
-    }
 }

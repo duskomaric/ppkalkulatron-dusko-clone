@@ -1,6 +1,6 @@
 @php
     $formatAmount = fn ($pfening) => number_format($pfening / 100, 2, ',', '.');
-    $currency = $proforma->currency ?? 'BAM';
+    $currency = $proforma->currency?->code ?? 'BAM';
 @endphp
 <!DOCTYPE html>
 <html>

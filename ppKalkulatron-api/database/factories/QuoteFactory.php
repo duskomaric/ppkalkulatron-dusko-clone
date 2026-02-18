@@ -25,7 +25,6 @@ class QuoteFactory extends Factory
             'date' => fake()->date(),
             'valid_until' => fake()->dateTimeBetween('now', '+30 days')->format('Y-m-d'),
             'notes' => fake()->optional()->sentence(),
-            'currency' => 'BAM',
             'quote_template' => DocumentTemplateEnum::Classic,
             'subtotal' => fake()->numberBetween(10000, 100000),
             'tax_total' => fake()->numberBetween(1000, 10000),

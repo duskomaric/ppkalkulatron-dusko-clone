@@ -11,8 +11,7 @@ class SyncExchangeRatesCommandTest extends TestCase
 {
     public function test_sync_exchange_rates_fetches_fixer_and_updates_exchange_rates(): void
     {
-        putenv('FIXER_API_KEY=test-key');
-        $_ENV['FIXER_API_KEY'] = 'test-key';
+        config(['services.fixer.key' => 'test-key']);
 
         Currency::factory()->bam()->create();
         Currency::factory()->usd()->create();

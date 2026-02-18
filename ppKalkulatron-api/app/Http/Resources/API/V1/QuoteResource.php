@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\API\V1\ClientResource;
 use App\Http\Resources\API\V1\BankAccountResource;
+use App\Http\Resources\API\V1\CurrencyResource;
 
 class QuoteResource extends JsonResource
 {
@@ -25,7 +26,9 @@ class QuoteResource extends JsonResource
             'date' => $this->date->timezone('Europe/Sarajevo')->format('d.m.Y'),
             'valid_until' => $this->valid_until->timezone('Europe/Sarajevo')->format('d.m.Y'),
             'notes' => $this->notes,
-            'currency' => $this->currency,
+            'currency_id' => $this->currency_id,
+            'currency' => $this->currency?->code ?? null,
+            'currency_relation' => $this->whenLoaded('currency', fn () => CurrencyResource::make($this->currency)),
             'bank_account_id' => $this->bank_account_id,
             'bank_account' => $this->whenLoaded('bankAccount', fn () => BankAccountResource::make($this->bankAccount)),
             'quote_template' => $this->quote_template,
