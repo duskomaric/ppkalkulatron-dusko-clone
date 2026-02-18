@@ -51,8 +51,9 @@ class InvoiceMail extends Mailable
         $atts = [];
 
         if ($this->pdfPath && file_exists($this->pdfPath)) {
+            $invoiceNumber = $this->invoice->invoice_number;
             $atts[] = Attachment::fromPath($this->pdfPath)
-                ->as('faktura-' . \Str::slug($this->invoice->invoice_number) . '.pdf')
+                ->as('racun_' . $invoiceNumber . '.pdf')
                 ->withMime('application/pdf');
         }
 
@@ -61,9 +62,14 @@ class InvoiceMail extends Mailable
             if ($record?->fiscal_receipt_image_path) {
                 $fullPath = Storage::disk('fiscal_receipts')->path($record->fiscal_receipt_image_path);
                 if (file_exists($fullPath)) {
-                    $suffix = $record->type->value === 'original' ? '' : '-' . $record->type->value;
+                    $invoiceNumber = $this->invoice->invoice_number;
+                    $suffix = match ($record->type->value) {
+                        'copy' => '-kopija',
+                        'refund' => '-refundacija',
+                        default => '',
+                    };
                     $atts[] = Attachment::fromPath($fullPath)
-                        ->as('fiskalni-racun-' . $this->invoice->invoice_number . $suffix . '.png')
+                        ->as('fiskalni-racun_' . $invoiceNumber . $suffix . '.png')
                         ->withMime('image/png');
                 }
             }

@@ -11,8 +11,8 @@ use App\Http\Resources\API\V1\QuoteResource;
 use App\Http\Resources\API\V1\ProformaResource;
 use App\Mail\QuoteMail;
 use App\Models\Company;
-use App\Models\CompanySetting;
 use App\Models\Quote;
+use App\Services\CompanyMailService;
 use App\Services\DocumentConversionService;
 use App\Services\DocumentNumberService;
 use App\Services\QuotePdfService;
@@ -22,19 +22,10 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 #[Group('Quotes', weight: 8)]
 class QuoteController extends Controller
 {
-    public function __construct(
-        private DocumentNumberService $numberService,
-        private DocumentConversionService $conversionService,
-        private QuotePdfService $pdfService
-    ) {
-    }
-
     #[Endpoint(operationId: 'getQuotes', title: 'Get quotes', description: 'Get all quotes')]
     public function index(IndexQuoteRequest $request, Company $company): AnonymousResourceCollection
     {
@@ -65,13 +56,13 @@ class QuoteController extends Controller
     }
 
     #[Endpoint(operationId: 'storeQuote', title: 'Store quote', description: 'Create a new quote')]
-    public function store(StoreQuoteRequest $request, Company $company): QuoteResource
+    public function store(StoreQuoteRequest $request, Company $company, DocumentNumberService $numberService): QuoteResource
     {
         $quote = $company->quotes()->create(
             $request->safe()
                 ->merge([
                     'quote_number' => $request->validated('quote_number')
-                        ?: $this->numberService->reserveNumber($company, 'quote')['formatted'],
+                        ?: $numberService->reserveNumber($company, 'quote')['formatted'],
                 ])
                 ->except('items')
         );
@@ -88,44 +79,24 @@ class QuoteController extends Controller
     }
 
     #[Endpoint(operationId: 'downloadQuotePdf', title: 'Download quote PDF', description: 'Export quote as PDF')]
-    public function downloadPdf(Company $company, Quote $quote): Response
+    public function downloadPdf(Company $company, Quote $quote, QuotePdfService $pdfService): Response
     {
-        return $this->pdfService->download($quote)->toResponse(request());
+        return $pdfService->download($quote)->toResponse(request());
     }
 
     #[Endpoint(operationId: 'sendQuoteEmail', title: 'Send quote email', description: 'Send quote via email')]
-    public function sendEmail(SendQuoteEmailRequest $request, Company $company, Quote $quote): JsonResponse
+    public function sendEmail(SendQuoteEmailRequest $request, Company $company, Quote $quote, CompanyMailService $mailService, QuotePdfService $pdfService): JsonResponse
     {
         $quote->load(['client', 'company']);
-
         $pdfPath = null;
         if ($request->boolean('attach_pdf')) {
-            $pdfPath = storage_path('app/private/temp-' . Str::random(16) . '.pdf');
-            $this->pdfService->save($quote, $pdfPath);
-        }
-
-        $fromAddress = CompanySetting::get('mail_from_address', null, $company->id) ?: config('mail.from.address');
-        $fromName = CompanySetting::get('mail_from_name', null, $company->id) ?: config('mail.from.name');
-
-        $mailHost = CompanySetting::get('mail_host', null, $company->id);
-        $mailer = null;
-        if ($mailHost) {
-            $mailerName = 'company_smtp_' . $company->id;
-            config([
-                'mail.mailers.' . $mailerName => [
-                    'transport' => 'smtp',
-                    'host' => $mailHost,
-                    'port' => (int) (CompanySetting::get('mail_port', 587, $company->id) ?: 587),
-                    'encryption' => CompanySetting::get('mail_encryption', null, $company->id) ?: null,
-                    'username' => CompanySetting::get('mail_username', null, $company->id) ?: null,
-                    'password' => CompanySetting::get('mail_password', null, $company->id) ?: null,
-                    'timeout' => null,
-                ],
-            ]);
-            $mailer = Mail::mailer($mailerName);
+            $pdfPath = $mailService->createTempPdfPath();
+            $pdfService->save($quote, $pdfPath);
         }
 
         try {
+            [$fromAddress, $fromName] = $mailService->resolveFrom($company);
+
             $mailable = new QuoteMail(
                 quote: $quote,
                 emailSubject: $request->validated('subject'),
@@ -135,20 +106,14 @@ class QuoteController extends Controller
                 fromName: $fromName,
             );
 
-            if ($mailer) {
-                $mailer->to($request->validated('to'))->send($mailable);
-            } else {
-                Mail::to($request->validated('to'))->send($mailable);
-            }
+            $mailService->send($company, $request->validated('to'), $mailable);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Ponuda uspješno poslata na email.',
             ]);
         } finally {
-            if ($pdfPath && file_exists($pdfPath)) {
-                @unlink($pdfPath);
-            }
+            $mailService->cleanupTempFile($pdfPath);
         }
     }
 
@@ -173,12 +138,12 @@ class QuoteController extends Controller
     }
 
     #[Endpoint(operationId: 'convertQuoteToProforma', title: 'Convert quote to proforma', description: 'Convert quote to proforma')]
-    public function convertToProforma(Company $company, Quote $quote): ProformaResource
+    public function convertToProforma(Company $company, Quote $quote, DocumentConversionService $conversionService, DocumentNumberService $numberService): ProformaResource
     {
-        $proforma = $this->conversionService->convertQuoteToProforma($quote);
+        $proforma = $conversionService->convertQuoteToProforma($quote);
 
         // Reserve proforma number
-        $numberData = $this->numberService->reserveNumber($company, 'proforma');
+        $numberData = $numberService->reserveNumber($company, 'proforma');
         $proforma->proforma_number = $numberData['formatted'];
         $proforma->save();
 

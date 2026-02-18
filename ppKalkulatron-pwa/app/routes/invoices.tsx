@@ -671,8 +671,8 @@ export default function InvoicesPage() {
         const clientEmail = activeInvoice?.client?.email || "";
         setEmailForm({
             to: clientEmail,
-            subject: `Faktura ${activeInvoice?.invoice_number || ""}`,
-            body: `Poštovani,\n\nU prilogu vam šaljemo fakturu ${activeInvoice?.invoice_number || ""}.\n\nS poštovanjem`,
+            subject: `Račun ${activeInvoice?.invoice_number || ""}`,
+            body: `Poštovani,\n\nU prilogu vam šaljemo račun ${activeInvoice?.invoice_number || ""}.\n\nS poštovanjem`,
             attach_pdf: true,
             attach_fiscal_record_ids: (activeInvoice?.fiscal_records ?? [])
                 .filter((r) => r.fiscal_receipt_image_path)

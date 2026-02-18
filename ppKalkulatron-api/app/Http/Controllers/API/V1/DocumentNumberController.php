@@ -13,29 +13,24 @@ use Illuminate\Http\JsonResponse;
 #[Group('Document Numbers', weight: 9)]
 class DocumentNumberController extends Controller
 {
-    public function __construct(
-        private DocumentNumberService $numberService
-    ) {
-    }
-
     #[Endpoint(operationId: 'getNextNumber', title: 'Get next number', description: 'Preview next document number without reserving')]
-    public function getNextNumber(Company $company, ReserveNumberRequest $request): JsonResponse
+    public function getNextNumber(Company $company, ReserveNumberRequest $request, DocumentNumberService $numberService): JsonResponse
     {
         $type = $request->query('type') ?? $request->input('type');
         $year = $request->query('year') ?? $request->input('year');
 
-        $result = $this->numberService->getNextNumber($company, $type, $year);
+        $result = $numberService->getNextNumber($company, $type, $year);
 
         return response()->json($result);
     }
 
     #[Endpoint(operationId: 'reserveNumber', title: 'Reserve number', description: 'Reserve and return next document number')]
-    public function reserveNumber(Company $company, ReserveNumberRequest $request): JsonResponse
+    public function reserveNumber(Company $company, ReserveNumberRequest $request, DocumentNumberService $numberService): JsonResponse
     {
         $type = $request->input('type');
         $year = $request->input('year');
 
-        $result = $this->numberService->reserveNumber($company, $type, $year);
+        $result = $numberService->reserveNumber($company, $type, $year);
 
         return response()->json($result);
     }

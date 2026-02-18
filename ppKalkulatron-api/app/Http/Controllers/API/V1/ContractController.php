@@ -22,12 +22,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 #[Group('Contracts', weight: 7)]
 class ContractController extends Controller
 {
-    public function __construct(
-        private DocumentNumberService $numberService,
-        private DocumentConversionService $conversionService
-    ) {
-    }
-
     #[Endpoint(operationId: 'getContracts', title: 'Get contracts', description: 'Get all contracts')]
     public function index(Company $company): AnonymousResourceCollection
     {
@@ -35,13 +29,13 @@ class ContractController extends Controller
     }
 
     #[Endpoint(operationId: 'storeContract', title: 'Store contract', description: 'Create a new contract')]
-    public function store(StoreContractRequest $request, Company $company): ContractResource
+    public function store(StoreContractRequest $request, Company $company, DocumentNumberService $numberService): ContractResource
     {
         $data = $request->validated();
         
         // Reserve contract number if not provided
         if (empty($data['contract_number'])) {
-            $numberData = $this->numberService->reserveNumber($company, 'contract');
+            $numberData = $numberService->reserveNumber($company, 'contract');
             $data['contract_number'] = $numberData['formatted'];
         }
 
@@ -142,14 +136,14 @@ class ContractController extends Controller
     }
 
     #[Endpoint(operationId: 'convertContractToInvoice', title: 'Convert contract to invoice', description: 'Convert contract to invoice')]
-    public function convertToInvoice(Company $company, Contract $contract): InvoiceResource
+    public function convertToInvoice(Company $company, Contract $contract, DocumentConversionService $conversionService, DocumentNumberService $numberService): InvoiceResource
     {
         abort_if($contract->company_id !== $company->id, 404);
 
-        $invoice = $this->conversionService->convertContractToInvoice($contract);
+        $invoice = $conversionService->convertContractToInvoice($contract);
 
         // Reserve invoice number
-        $numberData = $this->numberService->reserveNumber($company, 'invoice');
+        $numberData = $numberService->reserveNumber($company, 'invoice');
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 

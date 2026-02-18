@@ -12,9 +12,9 @@ use App\Http\Resources\API\V1\ProformaResource;
 use App\Http\Resources\API\V1\InvoiceResource;
 use App\Mail\ProformaMail;
 use App\Models\Company;
-use App\Models\CompanySetting;
 use App\Models\Proforma;
 use App\Models\Quote;
+use App\Services\CompanyMailService;
 use App\Services\DocumentConversionService;
 use App\Services\DocumentNumberService;
 use App\Services\ProformaPdfService;
@@ -24,19 +24,10 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 #[Group('Proformas', weight: 6)]
 class ProformaController extends Controller
 {
-    public function __construct(
-        private DocumentNumberService $numberService,
-        private DocumentConversionService $conversionService,
-        private ProformaPdfService $pdfService
-    ) {
-    }
-
     #[Endpoint(operationId: 'getProformas', title: 'Get proformas', description: 'Get all proformas')]
     public function index(IndexProformaRequest $request, Company $company): AnonymousResourceCollection
     {
@@ -67,13 +58,13 @@ class ProformaController extends Controller
     }
 
     #[Endpoint(operationId: 'storeProforma', title: 'Store proforma', description: 'Create a new proforma')]
-    public function store(StoreProformaRequest $request, Company $company): ProformaResource
+    public function store(StoreProformaRequest $request, Company $company, DocumentNumberService $numberService): ProformaResource
     {
         $proforma = $company->proformas()->create(
             $request->safe()
                 ->merge([
                     'proforma_number' => $request->validated('proforma_number')
-                        ?: $this->numberService->reserveNumber($company, 'proforma')['formatted'],
+                        ?: $numberService->reserveNumber($company, 'proforma')['formatted'],
                 ])
                 ->except('items')
         );
@@ -90,44 +81,24 @@ class ProformaController extends Controller
     }
 
     #[Endpoint(operationId: 'downloadProformaPdf', title: 'Download proforma PDF', description: 'Export proforma as PDF')]
-    public function downloadPdf(Company $company, Proforma $proforma): Response
+    public function downloadPdf(Company $company, Proforma $proforma, ProformaPdfService $pdfService): Response
     {
-        return $this->pdfService->download($proforma)->toResponse(request());
+        return $pdfService->download($proforma)->toResponse(request());
     }
 
     #[Endpoint(operationId: 'sendProformaEmail', title: 'Send proforma email', description: 'Send proforma via email')]
-    public function sendEmail(SendProformaEmailRequest $request, Company $company, Proforma $proforma): JsonResponse
+    public function sendEmail(SendProformaEmailRequest $request, Company $company, Proforma $proforma, CompanyMailService $mailService, ProformaPdfService $pdfService): JsonResponse
     {
         $proforma->load(['client', 'company']);
-
         $pdfPath = null;
         if ($request->boolean('attach_pdf')) {
-            $pdfPath = storage_path('app/private/temp-' . Str::random(16) . '.pdf');
-            $this->pdfService->save($proforma, $pdfPath);
-        }
-
-        $fromAddress = CompanySetting::get('mail_from_address', null, $company->id) ?: config('mail.from.address');
-        $fromName = CompanySetting::get('mail_from_name', null, $company->id) ?: config('mail.from.name');
-
-        $mailHost = CompanySetting::get('mail_host', null, $company->id);
-        $mailer = null;
-        if ($mailHost) {
-            $mailerName = 'company_smtp_' . $company->id;
-            config([
-                'mail.mailers.' . $mailerName => [
-                    'transport' => 'smtp',
-                    'host' => $mailHost,
-                    'port' => (int) (CompanySetting::get('mail_port', 587, $company->id) ?: 587),
-                    'encryption' => CompanySetting::get('mail_encryption', null, $company->id) ?: null,
-                    'username' => CompanySetting::get('mail_username', null, $company->id) ?: null,
-                    'password' => CompanySetting::get('mail_password', null, $company->id) ?: null,
-                    'timeout' => null,
-                ],
-            ]);
-            $mailer = Mail::mailer($mailerName);
+            $pdfPath = $mailService->createTempPdfPath();
+            $pdfService->save($proforma, $pdfPath);
         }
 
         try {
+            [$fromAddress, $fromName] = $mailService->resolveFrom($company);
+
             $mailable = new ProformaMail(
                 proforma: $proforma,
                 emailSubject: $request->validated('subject'),
@@ -137,20 +108,14 @@ class ProformaController extends Controller
                 fromName: $fromName,
             );
 
-            if ($mailer) {
-                $mailer->to($request->validated('to'))->send($mailable);
-            } else {
-                Mail::to($request->validated('to'))->send($mailable);
-            }
+            $mailService->send($company, $request->validated('to'), $mailable);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Predračun uspješno poslat na email.',
             ]);
         } finally {
-            if ($pdfPath && file_exists($pdfPath)) {
-                @unlink($pdfPath);
-            }
+            $mailService->cleanupTempFile($pdfPath);
         }
     }
 
@@ -176,12 +141,12 @@ class ProformaController extends Controller
     }
 
     #[Endpoint(operationId: 'createProformaFromQuote', title: 'Create proforma from quote', description: 'Create proforma from quote')]
-    public function createFromQuote(CreateFromQuoteRequest $request, Company $company, Quote $quote): ProformaResource
+    public function createFromQuote(CreateFromQuoteRequest $request, Company $company, Quote $quote, DocumentConversionService $conversionService, DocumentNumberService $numberService): ProformaResource
     {
-        $proforma = $this->conversionService->convertQuoteToProforma($quote);
+        $proforma = $conversionService->convertQuoteToProforma($quote);
 
         // Reserve proforma number
-        $numberData = $this->numberService->reserveNumber($company, 'proforma');
+        $numberData = $numberService->reserveNumber($company, 'proforma');
         $proforma->proforma_number = $numberData['formatted'];
         $proforma->save();
 
@@ -189,12 +154,12 @@ class ProformaController extends Controller
     }
 
     #[Endpoint(operationId: 'convertProformaToInvoice', title: 'Convert proforma to invoice', description: 'Convert proforma to invoice')]
-    public function convertToInvoice(Company $company, Proforma $proforma): InvoiceResource
+    public function convertToInvoice(Company $company, Proforma $proforma, DocumentConversionService $conversionService, DocumentNumberService $numberService): InvoiceResource
     {
-        $invoice = $this->conversionService->convertProformaToInvoice($proforma);
+        $invoice = $conversionService->convertProformaToInvoice($proforma);
 
         // Reserve invoice number
-        $numberData = $this->numberService->reserveNumber($company, 'invoice');
+        $numberData = $numberService->reserveNumber($company, 'invoice');
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 

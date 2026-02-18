@@ -4,17 +4,19 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\V1\IndexInvoiceRequest;
+use App\Http\Requests\API\V1\SendInvoiceEmailRequest;
 use App\Http\Requests\API\V1\StoreInvoiceRequest;
 use App\Http\Requests\API\V1\UpdateInvoiceRequest;
+use App\Http\Requests\API\V1\StoreRefundInvoiceRequest;
 use App\Http\Requests\API\V1\CreateFromProformaRequest;
 use App\Http\Requests\API\V1\CreateFromContractRequest;
 use App\Http\Resources\API\V1\InvoiceResource;
 use App\Models\Company;
-use App\Models\CompanySetting;
 use App\Models\Contract;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Invoice;
 use App\Models\Proforma;
+use App\Services\CompanyMailService;
 use App\Services\DocumentConversionService;
 use App\Services\DocumentNumberService;
 use App\Services\InvoicePdfService;
@@ -24,19 +26,10 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 #[Group('Invoices', weight: 5)]
 class InvoiceController extends Controller
 {
-    public function __construct(
-        private DocumentNumberService $numberService,
-        private DocumentConversionService $conversionService,
-        private InvoicePdfService $pdfService
-    ) {
-    }
-
     #[Endpoint(operationId: 'getInvoices', title: 'Get invoices', description: 'Get all invoices')]
     public function index(IndexInvoiceRequest $request, Company $company): AnonymousResourceCollection
     {
@@ -68,14 +61,15 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'storeInvoice', title: 'Store invoice', description: 'Create a new invoice')]
-    public function store(StoreInvoiceRequest $request, Company $company): InvoiceResource
-    {logger('Store: ' . print_r($request->validated(), true));
+    public function store(StoreInvoiceRequest $request, Company $company, DocumentNumberService $numberService): InvoiceResource
+    {
+        logger('Store: ' . print_r($request->validated(), true));
         // Reserve invoice number if not provided
         $invoice = $company->invoices()->create(
             $request->safe()
                 ->merge([
                     'invoice_number' => $request->validated('invoice_number')
-                        ?: $this->numberService->reserveNumber($company, 'invoice')['formatted'],
+                        ?: $numberService->reserveNumber($company, 'invoice')['formatted'],
                 ])
                 ->except('items')
         );
@@ -93,54 +87,32 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'downloadInvoicePdf', title: 'Download invoice PDF', description: 'Export invoice as PDF')]
-    public function downloadPdf(Company $company, Invoice $invoice): Response
+    public function downloadPdf(Company $company, Invoice $invoice, InvoicePdfService $pdfService): Response
     {
-        return $this->pdfService->download($invoice)->toResponse(request());
+        return $pdfService->download($invoice)->toResponse(request());
     }
 
     #[Endpoint(operationId: 'sendInvoiceEmail', title: 'Send invoice email', description: 'Send invoice and fiscal receipt via email')]
-    public function sendEmail(\App\Http\Requests\API\V1\SendInvoiceEmailRequest $request, Company $company, Invoice $invoice): JsonResponse
+    public function sendEmail(SendInvoiceEmailRequest $request, Company $company, Invoice $invoice, CompanyMailService $mailService, InvoicePdfService $pdfService): JsonResponse
     {
+        logger('Send email: ' . print_r($request->validated(), true));
         $invoice->load(['client', 'company', 'fiscalRecords']);
         $verificationUrl = $invoice->fiscal_verification_url;
-
-        $pdfPath = null;
-        if ($request->boolean('attach_pdf')) {
-            $pdfPath = storage_path('app/private/temp-' . Str::random(16) . '.pdf');
-            $this->pdfService->save($invoice, $pdfPath);
-        }
-
-        // From: CompanySetting ako je podešeno, inače default iz .env
-        $fromAddress = CompanySetting::get('mail_from_address', null, $company->id)
-            ?: config('mail.from.address');
-        $fromName = CompanySetting::get('mail_from_name', null, $company->id)
-            ?: config('mail.from.name');
-
-        // Ako je mail_host podešeno, koristi custom SMTP mailer
-        $mailHost = CompanySetting::get('mail_host', null, $company->id);
-        $mailer = null;
-        if ($mailHost) {
-            $mailerName = 'company_smtp_' . $company->id;
-            config([
-                'mail.mailers.' . $mailerName => [
-                    'transport' => 'smtp',
-                    'host' => $mailHost,
-                    'port' => (int) (CompanySetting::get('mail_port', 587, $company->id) ?: 587),
-                    'encryption' => CompanySetting::get('mail_encryption', null, $company->id) ?: null,
-                    'username' => CompanySetting::get('mail_username', null, $company->id) ?: null,
-                    'password' => CompanySetting::get('mail_password', null, $company->id) ?: null,
-                    'timeout' => null,
-                ],
-            ]);
-            $mailer = Mail::mailer($mailerName);
-        }
 
         $attachFiscalRecordIds = collect($request->validated('attach_fiscal_record_ids') ?? [])
             ->filter(fn ($id) => $invoice->fiscalRecords->contains('id', $id))
             ->values()
             ->all();
 
+        $pdfPath = null;
+        if ($request->boolean('attach_pdf')) {
+            $pdfPath = $mailService->createTempPdfPath();
+            $pdfService->save($invoice, $pdfPath);
+        }
+
         try {
+            [$fromAddress, $fromName] = $mailService->resolveFrom($company);
+
             $mailable = new \App\Mail\InvoiceMail(
                 invoice: $invoice,
                 emailSubject: $request->validated('subject'),
@@ -152,20 +124,14 @@ class InvoiceController extends Controller
                 fromName: $fromName,
             );
 
-            if ($mailer) {
-                $mailer->to($request->validated('to'))->send($mailable);
-            } else {
-                Mail::to($request->validated('to'))->send($mailable);
-            }
+            $mailService->send($company, $request->validated('to'), $mailable);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Faktura uspješno poslata na email.',
             ]);
         } finally {
-            if ($pdfPath && file_exists($pdfPath)) {
-                @unlink($pdfPath);
-            }
+            $mailService->cleanupTempFile($pdfPath);
         }
     }
 
@@ -199,13 +165,13 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'createInvoiceFromProforma', title: 'Create invoice from proforma', description: 'Create invoice from proforma')]
-    public function createFromProforma(CreateFromProformaRequest $request, Company $company, Proforma $proforma): InvoiceResource
+    public function createFromProforma(CreateFromProformaRequest $request, Company $company, Proforma $proforma, DocumentConversionService $conversionService, DocumentNumberService $numberService): InvoiceResource
     {
         $proforma->load(['items.article']);
-        $invoice = $this->conversionService->convertProformaToInvoice($proforma);
+        $invoice = $conversionService->convertProformaToInvoice($proforma);
 
         // Reserve invoice number
-        $numberData = $this->numberService->reserveNumber($company, 'invoice');
+        $numberData = $numberService->reserveNumber($company, 'invoice');
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 
@@ -213,13 +179,13 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'createInvoiceFromContract', title: 'Create invoice from contract', description: 'Create invoice from contract')]
-    public function createFromContract(CreateFromContractRequest $request, Company $company, Contract $contract): InvoiceResource
+    public function createFromContract(CreateFromContractRequest $request, Company $company, Contract $contract, DocumentConversionService $conversionService, DocumentNumberService $numberService): InvoiceResource
     {
         $contract->load(['items.article']);
-        $invoice = $this->conversionService->convertContractToInvoice($contract);
+        $invoice = $conversionService->convertContractToInvoice($contract);
 
         // Reserve invoice number
-        $numberData = $this->numberService->reserveNumber($company, 'invoice');
+        $numberData = $numberService->reserveNumber($company, 'invoice');
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 
@@ -227,34 +193,13 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'createRefundInvoice', title: 'Create refund invoice', description: 'Create refund/storno invoice from original')]
-    public function createRefund(Company $company, Invoice $invoice): InvoiceResource|JsonResponse
+    public function createRefund(StoreRefundInvoiceRequest $request, Company $company, Invoice $invoice, DocumentNumberService $numberService): InvoiceResource|JsonResponse
     {
-        if ($invoice->status === DocumentStatusEnum::RefundCreated || $invoice->status === DocumentStatusEnum::Refunded) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Storno fakturu nije moguće kreirati iz storno računa.',
-            ], 422);
-        }
-
-        if (! $invoice->originalFiscalRecord()?->fiscal_invoice_number) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Račun mora biti fiskalizovan prije kreiranja storno fakture.',
-            ], 422);
-        }
-
-        if ($invoice->refund_invoice_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Storno faktura je već kreirana.',
-            ], 422);
-        }
-
         $invoice->load(['items']);
 
-        $refundInvoice = Invoice::create([
-            'invoice_number' => '',
-            'company_id' => $invoice->company_id,
+        $numberData = $numberService->reserveNumber($company, 'invoice');
+        $refundInvoice = $company->invoices()->create([
+            'invoice_number' => $numberData['formatted'],
             'client_id' => $invoice->client_id,
             'status' => DocumentStatusEnum::RefundCreated,
             'language' => $invoice->language,
@@ -275,12 +220,8 @@ class InvoiceController extends Controller
             'total' => abs($invoice->total),
         ]);
 
-        $numberData = $this->numberService->reserveNumber($company, 'invoice');
-        $refundInvoice->invoice_number = $numberData['formatted'];
-        $refundInvoice->save();
-
-        foreach ($invoice->items as $item) {
-            $refundInvoice->items()->create([
+        $refundInvoice->items()->createMany(
+            $invoice->items->map(fn ($item) => [
                 'article_id' => $item->article_id,
                 'name' => $item->name,
                 'description' => $item->description,
@@ -288,11 +229,11 @@ class InvoiceController extends Controller
                 'unit_price' => abs($item->unit_price),
                 'subtotal' => abs($item->subtotal),
                 'tax_rate' => $item->tax_rate,
-                'tax_label' => $item->tax_label ?? 'A',
+                'tax_label' => $item->tax_label,
                 'tax_amount' => abs($item->tax_amount),
                 'total' => abs($item->total),
-            ]);
-        }
+            ])->all()
+        );
 
         $invoice->update(['refund_invoice_id' => $refundInvoice->id]);
 
