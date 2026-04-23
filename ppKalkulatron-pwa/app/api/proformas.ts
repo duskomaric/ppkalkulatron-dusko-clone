@@ -90,7 +90,7 @@ export async function downloadProformaPdf(
     proformaNumber: string,
     token: string
 ): Promise<void> {
-    const url = `${window.location.origin}${API_URL}/${companySlug}/proformas/${proformaId}/pdf`;
+    const url = `${API_URL}/${companySlug}/proformas/${proformaId}/pdf`;
     const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
     });

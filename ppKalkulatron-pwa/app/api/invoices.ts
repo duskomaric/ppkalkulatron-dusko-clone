@@ -147,7 +147,7 @@ export async function downloadInvoicePdf(
     invoiceNumber: string,
     token: string
 ): Promise<void> {
-    const url = `${window.location.origin}${API_URL}/${companySlug}/invoices/${invoiceId}/pdf`;
+    const url = `${API_URL}/${companySlug}/invoices/${invoiceId}/pdf`;
     const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
     });

@@ -90,7 +90,7 @@ export async function downloadQuotePdf(
     quoteNumber: string,
     token: string
 ): Promise<void> {
-    const url = `${window.location.origin}${API_URL}/${companySlug}/quotes/${quoteId}/pdf`;
+    const url = `${API_URL}/${companySlug}/quotes/${quoteId}/pdf`;
     const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
     });
