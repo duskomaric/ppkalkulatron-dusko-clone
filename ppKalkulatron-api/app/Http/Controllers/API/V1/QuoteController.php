@@ -90,9 +90,9 @@ class QuoteController extends Controller
     }
 
     #[Endpoint(operationId: 'downloadQuotePdf', title: 'Download quote PDF', description: 'Export quote as PDF')]
-    public function downloadPdf(Company $company, Quote $quote, QuotePdfService $pdfService): Response
+    public function downloadPdf(Company $company, Quote $quote, QuotePdfService $pdfService): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
-        return $pdfService->download($quote)->toResponse(request());
+        return $pdfService->streamDownload($quote);
     }
 
     #[Endpoint(operationId: 'sendQuoteEmail', title: 'Send quote email', description: 'Send quote via email')]

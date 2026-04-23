@@ -117,11 +117,11 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'downloadInvoicePdf', title: 'Download invoice PDF', description: 'Export invoice as PDF')]
-    public function downloadPdf(Company $company, Invoice $invoice, InvoicePdfService $pdfService): Response
+    public function downloadPdf(Company $company, Invoice $invoice, InvoicePdfService $pdfService): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $invoice->loadMissing(['items.article']);
 
-        return $pdfService->download($invoice)->toResponse(request());
+        return $pdfService->streamDownload($invoice);
     }
 
     #[Endpoint(operationId: 'sendInvoiceEmail', title: 'Send invoice email', description: 'Send invoice and fiscal receipt via email')]

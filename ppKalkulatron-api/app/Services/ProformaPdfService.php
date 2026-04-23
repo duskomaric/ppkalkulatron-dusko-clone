@@ -41,6 +41,17 @@ class ProformaPdfService
         return $this->generate($proforma, $template)->name($filename);
     }
 
+    public function streamDownload(Proforma $proforma, ?DocumentTemplateEnum $template = null): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $filename = 'predracun-' . \Str::slug($proforma->proforma_number) . '.pdf';
+        $path = storage_path('app/private/pdf-' . \Str::random(16) . '.pdf');
+        $this->save($proforma, $path, $template);
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/pdf',
+        ])->deleteFileAfterSend(true);
+    }
+
     public function save(Proforma $proforma, string $path, ?DocumentTemplateEnum $template = null): string
     {
         $this->generate($proforma, $template)->save($path);

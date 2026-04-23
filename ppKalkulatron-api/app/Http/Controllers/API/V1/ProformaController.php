@@ -94,9 +94,9 @@ class ProformaController extends Controller
     }
 
     #[Endpoint(operationId: 'downloadProformaPdf', title: 'Download proforma PDF', description: 'Export proforma as PDF')]
-    public function downloadPdf(Company $company, Proforma $proforma, ProformaPdfService $pdfService): Response
+    public function downloadPdf(Company $company, Proforma $proforma, ProformaPdfService $pdfService): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
-        return $pdfService->download($proforma)->toResponse(request());
+        return $pdfService->streamDownload($proforma);
     }
 
     #[Endpoint(operationId: 'sendProformaEmail', title: 'Send proforma email', description: 'Send proforma via email')]

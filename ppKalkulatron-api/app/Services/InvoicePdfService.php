@@ -36,6 +36,17 @@ class InvoicePdfService
         return $this->generate($invoice, $template)->name($filename);
     }
 
+    public function streamDownload(Invoice $invoice, ?DocumentTemplateEnum $template = null): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $filename = 'faktura-' . \Str::slug($invoice->invoice_number) . '.pdf';
+        $path = storage_path('app/private/pdf-' . \Str::random(16) . '.pdf');
+        $this->save($invoice, $path, $template);
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/pdf',
+        ])->deleteFileAfterSend(true);
+    }
+
     public function save(Invoice $invoice, string $path, ?DocumentTemplateEnum $template = null): string
     {
         $this->generate($invoice, $template)->save($path);
