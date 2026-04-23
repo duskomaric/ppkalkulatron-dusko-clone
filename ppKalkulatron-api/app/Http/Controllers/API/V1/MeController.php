@@ -72,7 +72,7 @@ class MeController extends Controller
         $years = collect();
         foreach ([Quote::class, Proforma::class, Invoice::class] as $model) {
             $years = $years->merge(
-                $model::where('company_id', $company->id)->selectRaw('YEAR(date) as y')->distinct()->pluck('y')
+                $model::where('company_id', $company->id)->selectRaw('EXTRACT(YEAR FROM date) as y')->distinct()->pluck('y')
             );
         }
         $years = $years->push((int) date('Y'))->unique()->map(fn ($y) => (int) $y)->sort()->values()->all();
