@@ -25,10 +25,12 @@ class ProformaPdfService
         $proforma->load(['client', 'items', 'company', 'source']);
 
         $viewName = $this->resolveView($template ?? $proforma->proforma_template);
+        $bankAccounts = $proforma->company->bankAccounts()->where('show_on_documents', true)->orderBy('id')->get();
 
         return Pdf::view($viewName, [
             'proforma' => $proforma,
             'company' => $proforma->company,
+            'bankAccounts' => $bankAccounts,
         ])->format('a4');
     }
 

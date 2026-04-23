@@ -11,13 +11,15 @@ import type { BankAccount } from "~/types/config";
 import { Toast } from "~/components/ui/Toast";
 import { Toggle } from "~/components/ui/Toggle";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
-import { PencilIcon } from "~/components/ui/icons";
+import { PencilIcon, InfoIcon, CreditCardIcon } from "~/components/ui/icons";
 import { CreateButton } from "~/components/ui/CreateButton";
-import { useNavigate } from "react-router";
-import { FormInput } from "~/components/ui/Input";
+import { useNavigate, Link } from "react-router";
+import { FormInput } from "~/components/ui/FormInput";
 import { ModalForm } from "~/components/ui/ModalForm";
 import { CardGrid } from "~/components/ui/CardGrid";
 import { LoadingState } from "~/components/ui/LoadingState";
+import { SectionHeader } from "~/components/ui/SectionHeader";
+import { SectionBlock } from "~/components/ui/SectionBlock";
 import { useToast } from "~/hooks/useToast";
 
 export default function BankAccountsPage() {
@@ -39,8 +41,7 @@ export default function BankAccountsPage() {
         try {
             const res = await getBankAccounts(selectedCompany.slug, token);
             setAccounts(res.data);
-        } catch (error) {
-            console.error(error);
+        } catch {
             showToast("Greška pri učitavanju", "error");
         } finally {
             setLoading(false);
@@ -63,12 +64,10 @@ export default function BankAccountsPage() {
             }
             setEditingItem(null);
             loadAccounts();
-        } catch (error) {
-            console.error(error);
+        } catch {
             showToast("Greška", "error");
         }
     };
-
 
     if (!selectedCompany) return null;
 
@@ -101,7 +100,7 @@ export default function BankAccountsPage() {
                     <CreateButton
                         label="Novi račun"
                         onClick={() => setEditingItem({
-                            bank_name: "", account_number: "", currency: "EUR", is_default: false
+                            bank_name: "", account_number: "", show_on_documents: true
                         })}
                     />
                 </div>
@@ -112,47 +111,64 @@ export default function BankAccountsPage() {
             )}
 
             {!loading && (
-                <CardGrid
-                    gridClassName="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
-                    isEmpty={accounts.length === 0}
-                    empty={
-                        <div className="col-span-1 md:col-span-2 text-center py-12 text-[var(--color-text-muted)] italic">
-                            Nema dodatih računa.
-                        </div>
-                    }
-                >
-                    {accounts.map(acc => (
-                        <div key={acc.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl relative group shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-2 pr-12">
-                                <div>
-                                    <h4 className="font-bold text-[var(--color-text-main)] text-lg">{acc.bank_name}</h4>
-                                    <p className="text-sm text-[var(--color-text-dim)] font-mono mt-1 tracking-wide">{acc.account_number}</p>
+                <SectionBlock variant="card">
+                    <SectionHeader
+                        icon={CreditCardIcon}
+                        title="Pregled računa"
+                        rightElement={
+                            <Link
+                                to="/help#bank-accounts"
+                                className="h-8 w-8 rounded-lg border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:border-primary/30 transition-all cursor-pointer"
+                                title="Pomoć: Bankovni računi"
+                            >
+                                <InfoIcon className="h-4 w-4" />
+                            </Link>
+                        }
+                    />
+                    <CardGrid
+                        gridClassName="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
+                        isEmpty={accounts.length === 0}
+                        empty={
+                            <div className="col-span-1 md:col-span-2 text-center py-12 text-[var(--color-text-muted)] italic">
+                                Nema dodatih računa.
+                            </div>
+                        }
+                    >
+                        {accounts.map(acc => (
+                            <div key={acc.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl relative group shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-start mb-2 pr-12">
+                                    <div>
+                                        <h4 className="font-bold text-[var(--color-text-main)] text-lg">{acc.bank_name}</h4>
+                                        <p className="text-sm text-[var(--color-text-dim)] font-mono mt-1 tracking-wide">{acc.account_number}</p>
+                                    </div>
+                                    {acc.show_on_documents && (
+                                        <span className="text-primary text-xs font-medium shrink-0" title="Prikazuje se na PDF dokumentima">Na dokumentima</span>
+                                    )}
                                 </div>
-                                {acc.is_default && (
-                                    <span className="text-primary text-lg shrink-0" title="Podrazumijevani račun">★</span>
+                                {acc.swift && (
+                                    <div className="flex gap-4 text-xs font-bold text-[var(--color-text-muted)] mt-4 pt-4 border-t border-[var(--color-border)]">
+                                        <span>SWIFT: {acc.swift}</span>
+                                    </div>
                                 )}
-                            </div>
-                            <div className="flex gap-4 text-xs font-bold text-[var(--color-text-muted)] mt-4 pt-4 border-t border-[var(--color-border)]">
-                                <span>{acc.currency}</span>
-                                {acc.swift && <span>SWIFT: {acc.swift}</span>}
-                            </div>
 
-                            <div className="absolute top-5 right-5 flex gap-2">
-                                <button
-                                    onClick={() => setEditingItem(acc)}
-                                    className="h-8 w-8 bg-[var(--color-surface-hover)] hover:text-primary rounded-lg flex items-center justify-center transition-colors"
-                                >
-                                    <PencilIcon className="h-4 w-4" />
-                                </button>
+                                <div className="absolute top-5 right-5 flex gap-2">
+                                    <button
+                                        onClick={() => setEditingItem(acc)}
+                                        className="h-8 w-8 bg-[var(--color-surface-hover)] hover:text-primary rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+                                    >
+                                        <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </CardGrid>
+                        ))}
+                    </CardGrid>
+                </SectionBlock>
             )}
 
             {editingItem && (
                 <ModalForm
                     title={editingItem.id ? "Izmjeni Račun" : "Novi Račun"}
+                    isOpen
                     onSubmit={handleSave}
                     onClose={() => setEditingItem(null)}
                     sizeClassName="max-w-md md:max-w-lg"
@@ -176,10 +192,10 @@ export default function BankAccountsPage() {
                     />
                     <div className="pt-2">
                         <Toggle
-                            id="is_default_acc"
-                            checked={editingItem.is_default || false}
-                            onChange={(v) => setEditingItem({ ...editingItem, is_default: v })}
-                            label="Postavi kao podrazumijevani"
+                            id="show_on_documents_acc"
+                            checked={editingItem.show_on_documents ?? true}
+                            onChange={(v) => setEditingItem({ ...editingItem, show_on_documents: v })}
+                            label="Prikaz na dokumentima (PDF)"
                         />
                     </div>
                 </ModalForm>

@@ -25,10 +25,12 @@ class QuotePdfService
         $quote->load(['client', 'items', 'company']);
 
         $viewName = $this->resolveView($template ?? $quote->quote_template);
+        $bankAccounts = $quote->company->bankAccounts()->where('show_on_documents', true)->orderBy('id')->get();
 
         return Pdf::view($viewName, [
             'quote' => $quote,
             'company' => $quote->company,
+            'bankAccounts' => $bankAccounts,
         ])->format('a4');
     }
 

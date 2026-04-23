@@ -5,19 +5,22 @@ import { useAuth } from "~/hooks/useAuth";
 import { AppLayout } from "~/components/layout/AppLayout";
 import {
     CheckCircleIcon,
-    Building2Icon
+    Building2Icon,
+    InfoIcon
 } from "~/components/ui/icons";
 import { Toast } from "~/components/ui/Toast";
+import { Link } from "react-router";
 import { updateCompany } from "~/api/companies";
-import { FormInput } from "~/components/ui/Input";
+import { FormInput } from "~/components/ui/FormInput";
 import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
+import { Toggle } from "~/components/ui/Toggle";
 import { useToast } from "~/hooks/useToast";
 
 export default function CompanyProfilePage() {
     const { user, token, selectedCompany, updateSelectedCompany, updateUserAction } = useAuth();
     const navigate = useNavigate();
-    
+
     const { toast, showToast, hideToast } = useToast();
 
     const [loading, setLoading] = useState(false);
@@ -32,6 +35,8 @@ export default function CompanyProfilePage() {
         website: "",
         identification_number: "",
         vat_number: "",
+        is_small_business: false,
+        is_vat_obligor: true,
     });
 
     // Init company handled by useAuth
@@ -49,6 +54,8 @@ export default function CompanyProfilePage() {
                 website: selectedCompany.website || "",
                 identification_number: selectedCompany.identification_number || "",
                 vat_number: selectedCompany.vat_number || "",
+                is_small_business: selectedCompany.is_small_business ?? false,
+                is_vat_obligor: selectedCompany.is_vat_obligor ?? true,
             });
         }
     }, [selectedCompany]);
@@ -59,16 +66,16 @@ export default function CompanyProfilePage() {
 
         setLoading(true);
         try {
-            const response = await updateCompany(selectedCompany.id, token, formData);
+            const response = await updateCompany(selectedCompany.slug, token, formData);
             updateSelectedCompany(response.data);
-            
+
             if (user) {
-                const updatedCompanies = user.companies.map(c => 
+                const updatedCompanies = user.companies.map(c =>
                     c.id === response.data.id ? response.data : c
                 );
                 updateUserAction({ ...user, companies: updatedCompanies });
             }
-            
+
             showToast("Podaci o kompaniji uspješno ažurirani", "success");
         } catch (error) {
             showToast("Greška pri ažuriranju podataka kompanije", "error");
@@ -106,7 +113,19 @@ export default function CompanyProfilePage() {
 
             <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <SectionBlock variant="card" className="sm:p-8 space-y-6">
-                    <SectionHeader icon={Building2Icon} title="Osnovni podaci" />
+                    <SectionHeader
+                        icon={Building2Icon}
+                        title="Osnovni podaci"
+                        rightElement={
+                            <Link
+                                to="/help#company-profile"
+                                className="h-8 w-8 rounded-lg border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:border-primary/30 transition-all cursor-pointer"
+                                title="Pomoć: Profil kompanije"
+                            >
+                                <InfoIcon className="h-4 w-4" />
+                            </Link>
+                        }
+                    />
                     <FormInput
                         label="Naziv kompanije"
                         value={formData.name}
@@ -173,6 +192,22 @@ export default function CompanyProfilePage() {
                             value={formData.vat_number}
                             onChange={(val: string) => setFormData({ ...formData, vat_number: val })}
                             placeholder="PIB"
+                        />
+                    </div>
+                    <div className="space-y-3 pt-2">
+                        <Toggle
+                            id="is_small_business"
+                            name="is_small_business"
+                            checked={formData.is_small_business}
+                            onChange={(v) => setFormData({ ...formData, is_small_business: v })}
+                            label="Mali Preduzetnik"
+                        />
+                        <Toggle
+                            id="is_vat_obligor"
+                            name="is_vat_obligor"
+                            checked={formData.is_vat_obligor}
+                            onChange={(v) => setFormData({ ...formData, is_vat_obligor: v })}
+                            label="PDV obveznik"
                         />
                     </div>
                 </SectionBlock>

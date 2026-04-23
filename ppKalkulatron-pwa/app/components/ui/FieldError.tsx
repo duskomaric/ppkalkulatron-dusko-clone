@@ -5,7 +5,6 @@ interface FieldErrorProps {
   className?: string;
 }
 
-// Koristi se na: Input/SearchSelect (validacione greske u formama)
 export function FieldError({ children, className = "" }: FieldErrorProps) {
   return (
     <p className={`text-[10px] font-bold text-red-500 ml-1 uppercase tracking-tight ${className}`}>

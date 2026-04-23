@@ -12,7 +12,6 @@ interface ModalShellProps {
   closeOnBackdrop?: boolean;
 }
 
-// Koristi se na: ConfirmModal i ImageModal (shared modal overlay/backdrop)
 export function ModalShell({
   isOpen,
   onClose,

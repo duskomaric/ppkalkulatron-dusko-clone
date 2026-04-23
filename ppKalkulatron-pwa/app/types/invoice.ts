@@ -1,6 +1,6 @@
 import type { PaginatedResponse } from "./api";
 
-interface InvoiceItem {
+export interface InvoiceItem {
     id: number;
     invoice_id: number;
     article_id: number | null;
@@ -13,6 +13,10 @@ interface InvoiceItem {
     tax_label: string | null;
     tax_amount: number;
     total: number;
+    unit_price_bam?: number | null;
+    subtotal_bam?: number | null;
+    tax_amount_bam?: number | null;
+    total_bam?: number | null;
     created_at: string;
     updated_at: string;
     article?: import("./article").Article | null;
@@ -33,7 +37,7 @@ export interface InvoiceItemInput {
     total: number;
 }
 
-type StatusColor = 'green' | 'gray' | 'red' | 'amber' | 'blue';
+import type { StatusColor } from "./api";
 
 /** Jedan fiskalni zapis (original / kopija / refund). fiscalized_at dolazi iz backenda (npr. dd.MM.yyyy HH:mm). */
 interface FiscalRecord {
@@ -78,12 +82,12 @@ export interface Invoice {
     // Source
     source_type: string | null;
     source_id: number | null;
+    /** Broj izvornog dokumenta (predračun/ugovor) kada je učitana relacija source */
+    source_document_number?: string | null;
 
     // Currency & Template
     currency: string | null; // From currencyRelation->code
     currency_id: number | null;
-    bank_account_id: number | null;
-    bank_account?: { id: number; bank_name: string; account_number: string } | null;
     invoice_template: string;
     invoice_template_label: string;
     payment_type?: string;
@@ -103,6 +107,10 @@ export interface Invoice {
     tax_total: number;
     discount_total: number;
     total: number;
+    subtotal_bam?: number | null;
+    tax_total_bam?: number | null;
+    discount_total_bam?: number | null;
+    total_bam?: number | null;
 
     items: InvoiceItem[];
     created_at: string;
@@ -122,13 +130,16 @@ export interface InvoiceInput {
     frequency?: string | null;
     next_invoice_date?: string | null;
     currency_id?: number | null;
-    bank_account_id?: number | null;
     invoice_template?: string;
     payment_type?: string;
     subtotal: number;
     tax_total: number;
     discount_total: number;
     total: number;
+    /** BAM equivalents (from API when editing); shown in parentheses when currency !== BAM */
+    subtotal_bam?: number | null;
+    tax_total_bam?: number | null;
+    total_bam?: number | null;
     items: InvoiceItemInput[];
 }
 

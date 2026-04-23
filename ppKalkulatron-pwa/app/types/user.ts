@@ -16,6 +16,8 @@ export interface User {
   first_name: string;
   last_name: string;
   email: string;
+  language: string | null;
+  language_label?: string | null;
   role: Role;
   is_active: boolean;
   last_seen_at: string;

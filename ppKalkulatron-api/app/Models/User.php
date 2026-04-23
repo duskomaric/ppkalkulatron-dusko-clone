@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Enums\LanguageEnum;
 use App\Models\Enums\UserRoleEnum;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
@@ -24,6 +25,7 @@ class User extends Authenticatable implements FilamentUser, HasName
         'email_verified_at',
         'password',
         'role',
+        'language',
         'is_active',
         'last_seen_at',
     ];
@@ -39,6 +41,7 @@ class User extends Authenticatable implements FilamentUser, HasName
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRoleEnum::class,
+            'language' => LanguageEnum::class,
             'is_active' => 'boolean',
             'last_seen_at' => 'datetime',
         ];

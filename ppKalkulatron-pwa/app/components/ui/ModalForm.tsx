@@ -1,7 +1,9 @@
 import type { FormEvent, ReactNode } from "react";
+import { ModalShell } from "./ModalShell";
 
 interface ModalFormProps {
   title: string;
+  isOpen: boolean;
   onClose: () => void;
   onSubmit: (e: FormEvent) => void;
   children: ReactNode;
@@ -10,9 +12,9 @@ interface ModalFormProps {
   sizeClassName?: string;
 }
 
-// Koristi se na: settings/bank-accounts i settings/currencies (modal za kreiranje/uredjivanje)
 export function ModalForm({
   title,
+  isOpen,
   onClose,
   onSubmit,
   children,
@@ -21,10 +23,15 @@ export function ModalForm({
   sizeClassName = "max-w-md md:max-w-lg",
 }: ModalFormProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      backdropClassName="bg-black/50 backdrop-blur-sm"
+      contentClassName={`w-full ${sizeClassName}`}
+    >
       <form
         onSubmit={onSubmit}
-        className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 w-full ${sizeClassName} shadow-2xl`}
+        className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 w-full shadow-2xl"
       >
         <h3 className="text-xl font-black mb-6 border-b border-[var(--color-border)] pb-4">
           {title}
@@ -34,18 +41,18 @@ export function ModalForm({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 text-sm font-bold text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] transition-colors"
+            className="px-5 py-2.5 text-sm font-bold text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] transition-colors cursor-pointer"
           >
             {cancelLabel}
           </button>
           <button
             type="submit"
-            className="bg-primary hover:bg-primary-hover text-white font-bold py-2.5 px-6 rounded-xl shadow-glow-primary transition-all text-sm"
+            className="bg-primary hover:bg-primary-hover text-white font-bold py-2.5 px-6 rounded-xl shadow-glow-primary transition-all text-sm cursor-pointer"
           >
             {submitLabel}
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
 }

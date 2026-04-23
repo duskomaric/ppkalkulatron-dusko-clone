@@ -5,7 +5,6 @@ namespace App\Http\Resources\API\V1;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\API\V1\ClientResource;
-use App\Http\Resources\API\V1\BankAccountResource;
 use App\Http\Resources\API\V1\CurrencyResource;
 
 class ProformaResource extends JsonResource
@@ -28,11 +27,10 @@ class ProformaResource extends JsonResource
             'notes' => $this->notes,
             'source_type' => $this->source_type,
             'source_id' => $this->source_id,
+            'source_document_number' => $this->whenLoaded('source', fn () => $this->source?->quote_number),
             'currency_id' => $this->currency_id,
             'currency' => $this->currency?->code ?? null,
             'currency_relation' => $this->whenLoaded('currency', fn () => CurrencyResource::make($this->currency)),
-            'bank_account_id' => $this->bank_account_id,
-            'bank_account' => $this->whenLoaded('bankAccount', fn () => BankAccountResource::make($this->bankAccount)),
             'proforma_template' => $this->proforma_template,
             'proforma_template_label' => $this->proforma_template?->getLabel(),
             'subtotal' => $this->subtotal,

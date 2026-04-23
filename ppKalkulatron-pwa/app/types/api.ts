@@ -1,3 +1,5 @@
+export type StatusColor = "green" | "gray" | "red" | "amber" | "blue";
+
 export interface PaginationMeta {
   current_page: number;
   from: number;

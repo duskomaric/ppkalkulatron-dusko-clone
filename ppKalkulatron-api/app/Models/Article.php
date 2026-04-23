@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Currency;
 use App\Models\Enums\ArticleTypeEnum;
 use App\Models\Enums\TaxRateEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,9 @@ class Article extends Model
         'tax_rate',
         'is_active',
         'type',
+
+        'last_unit_price',
+        'last_currency_id',
     ];
 
     protected $casts = [
@@ -33,11 +37,18 @@ class Article extends Model
         'tax_rate' => 'string',
         'is_active' => 'boolean',
         'type' => ArticleTypeEnum::class,
+
+        'last_unit_price' => 'integer',
     ];
 
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function lastCurrency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class, 'last_currency_id');
     }
 
     public function invoiceItems(): HasMany

@@ -12,6 +12,7 @@ use App\Http\Controllers\API\V1\ArticleController;
 use App\Http\Controllers\API\V1\InvoiceController;
 use App\Http\Controllers\API\V1\ProformaController;
 use App\Http\Controllers\API\V1\ContractController;
+use App\Http\Controllers\API\V1\IncomeBookEntryController;
 use App\Http\Controllers\API\V1\QuoteController;
 use App\Http\Controllers\API\V1\DocumentNumberController;
 use App\Http\Controllers\API\V1\FiscalController;
@@ -33,7 +34,7 @@ Route::prefix('v1')->group(function () {
         }
 
         $invoice = $company->invoices()
-            ->with(['client', 'items', 'fiscalRecords', 'currency', 'bankAccount'])
+            ->with(['client', 'items', 'fiscalRecords', 'currency', 'items.article'])
 //            ->whereStatus('fiscalized')
             ->firstOrFail();
 
@@ -84,6 +85,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf']);
                 Route::post('invoices/{invoice}/send-email', [InvoiceController::class, 'sendEmail']);
                 Route::post('invoices/{invoice}/create-refund', [InvoiceController::class, 'createRefund']);
+                Route::get('invoices/{invoice}/fiscal-payload', [FiscalController::class, 'fiscalPayload']);
                 Route::post('invoices/{invoice}/fiscalize', [FiscalController::class, 'fiscalize']);
                 Route::post('invoices/{invoice}/fiscalize-copy', [FiscalController::class, 'fiscalizeCopy']);
                 Route::post('invoices/{invoice}/fiscalize-refund', [FiscalController::class, 'fiscalizeRefund']);
@@ -112,7 +114,9 @@ Route::prefix('v1')->group(function () {
                 Route::get('contracts/{contract}/download-file/{fileIndex}', [ContractController::class, 'downloadFile']);
                 Route::delete('contracts/{contract}/delete-file/{fileIndex}', [ContractController::class, 'deleteFile']);
                 Route::apiResource('contracts', ContractController::class);
+                Route::get('income-book-entries/pdf', [IncomeBookEntryController::class, 'downloadPdf']);
+                Route::post('income-book-entries/calculate-allocation', [IncomeBookEntryController::class, 'calculateAllocation']);
+                Route::apiResource('income-book-entries', IncomeBookEntryController::class);
             });
     });
 });
-

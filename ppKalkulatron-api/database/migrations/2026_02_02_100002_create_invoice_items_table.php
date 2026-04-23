@@ -29,6 +29,12 @@ return new class extends Migration
             $table->integer('tax_amount')->default(0);
             $table->integer('total')->default(0);
 
+            // BAM equivalent (pfening) for fiscal and income book
+            $table->integer('unit_price_bam')->nullable();
+            $table->integer('subtotal_bam')->nullable();
+            $table->integer('tax_amount_bam')->nullable();
+            $table->integer('total_bam')->nullable();
+
             $table->timestamps();
         });
     }

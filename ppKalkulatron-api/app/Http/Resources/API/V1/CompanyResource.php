@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\API\V1;
 
+use App\Models\CompanySetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,6 +30,10 @@ class CompanyResource extends JsonResource
             'vat_number' => $this->vat_number,
             'is_active' => $this->is_active,
             'subscription_ends_at' => $this->subscription_ends_at,
+            'enabled_modules' => $this->enabled_modules,
+            'company_settings' => CompanySetting::resolved($this->id),
+            'is_small_business' => $this->is_small_business,
+            'is_vat_obligor' => $this->is_vat_obligor,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'users' => $this->whenLoaded('users', function () {

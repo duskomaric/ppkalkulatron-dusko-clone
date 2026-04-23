@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\API\V1\UserResource;
 use App\Models\Company;
 use App\Models\CompanySetting;
+use App\Models\Invoice;
+use App\Models\Proforma;
+use App\Models\Quote;
 use App\Models\Enums\ArticleTypeEnum;
 use App\Models\Enums\DocumentFrequencyEnum;
 use App\Models\Enums\DocumentTemplateEnum;
@@ -31,10 +34,13 @@ class MeController extends Controller
             $user->setRelation('companies', Company::query()->get());
         }
 
+        $availableYears = $this->availableYearsForCompany($company);
+
         return response()->json([
             'data' => [
                 'user' => UserResource::make($user),
                 'company_settings' => CompanySetting::resolved($company->id),
+                'available_years' => $availableYears,
                 'languages' => collect(LanguageEnum::cases())->map(fn($lang) => [
                     'value' => $lang->value,
                     'label' => $lang->getLabel(),
@@ -56,5 +62,20 @@ class MeController extends Controller
                 'tax_rates' => TaxRateEnum::options(),
             ],
         ]);
+    }
+
+    /**
+     * Years that have documents (quotes, proformas, invoices) for this company, plus current year. Sorted descending.
+     */
+    private function availableYearsForCompany(Company $company): array
+    {
+        $years = collect();
+        foreach ([Quote::class, Proforma::class, Invoice::class] as $model) {
+            $years = $years->merge(
+                $model::where('company_id', $company->id)->selectRaw('YEAR(date) as y')->distinct()->pluck('y')
+            );
+        }
+        $years = $years->push((int) date('Y'))->unique()->map(fn ($y) => (int) $y)->sort()->values()->all();
+        return array_values(array_reverse($years));
     }
 }

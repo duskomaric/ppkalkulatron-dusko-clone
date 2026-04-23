@@ -2,21 +2,23 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { useAuth } from "~/hooks/useAuth";
-import { getMe } from "~/api/config";
-import { updateCompanySettings, getCurrencies } from "~/api/settings";
+import { getMe, getCurrencies } from "~/api/config";
+import { updateCompanySettings } from "~/api/settings";
 import type { CompanySettings, AppConfigData, Currency } from "~/types/config";
 import { Toast } from "~/components/ui/Toast";
 import { Toggle } from "~/components/ui/Toggle";
-import { CheckCircleIcon, MailIcon, FileTextIcon, HashIcon, StickyNoteIcon } from "~/components/ui/icons";
-import { useNavigate } from "react-router";
-import { FormInput, FormSelect, FormTextarea } from "~/components/ui/Input";
+import { CheckCircleIcon, FileTextIcon, HashIcon, StickyNoteIcon, InfoIcon } from "~/components/ui/icons";
+import { useNavigate, Link } from "react-router";
+import { FormInput } from "~/components/ui/FormInput";
+import { FormSelect } from "~/components/ui/FormSelect";
+import { FormTextarea } from "~/components/ui/FormTextarea";
 import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
 import { LoadingState } from "~/components/ui/LoadingState";
 import { useToast } from "~/hooks/useToast";
 
 export default function GeneralSettingsPage() {
-    const { selectedCompany, updateSelectedCompany, token } = useAuth();
+    const { selectedCompany, updateSelectedCompany, token, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [configData, setConfigData] = useState<AppConfigData | null>(null);
     const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -38,12 +40,11 @@ export default function GeneralSettingsPage() {
                     getMe(token, selectedCompany.slug),
                     getCurrencies(selectedCompany.slug, token)
                 ]);
-                
+
                 setConfigData(meRes.data);
                 setFormData(meRes.data.company_settings);
                 setCurrencies(currenciesRes.data);
-            } catch (error) {
-                console.error("Failed to load settings", error);
+            } catch {
                 showToast("Failed to load settings", "error");
             } finally {
                 setLoading(false);
@@ -60,9 +61,9 @@ export default function GeneralSettingsPage() {
         setSaving(true);
         try {
             await updateCompanySettings(selectedCompany.slug, token, formData);
+            await refreshUser();
             showToast("Podešavanja sačuvana", "success");
-        } catch (error) {
-            console.error("Failed to save settings", error);
+        } catch {
             showToast("Greška pri čuvanju", "error");
         } finally {
             setSaving(false);
@@ -104,22 +105,46 @@ export default function GeneralSettingsPage() {
                 <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Invoice Configuration */}
                     <SectionBlock variant="card">
-                        <SectionHeader icon={FileTextIcon} title="Faktura Defaults" />
+                        <SectionHeader
+                            icon={FileTextIcon}
+                            title="Štampa računa"
+                            rightElement={
+                                <Link
+                                    to="/help#stampa-racuna"
+                                    className="h-8 w-8 rounded-lg border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:border-primary/30 transition-all cursor-pointer"
+                                    title="Pomoć: Štampa računa"
+                                >
+                                    <InfoIcon className="h-4 w-4" />
+                                </Link>
+                            }
+                        />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormSelect
-                                label="Dizajn Fakture"
+                                label="Dizajn Dokumenata"
                                 value={formData.default_document_template || ""}
                                 onChange={(val: string) => setFormData({ ...formData, default_document_template: val })}
                                 options={configData.templates}
                             />
                             <FormInput
-                                label="Rok plaćanja (dana)"
+                                label="Rok plaćanja računa (dana)"
                                 type="number"
-                                value={formData.default_document_due_days || ""}
-                                onChange={(val: string) => setFormData({ ...formData, default_document_due_days: parseInt(val) || null })}
+                                value={formData.default_invoice_due_days || ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_invoice_due_days: parseInt(val) || null })}
+                            />
+                            <FormInput
+                                label="Rok plaćanja predračuna (dana)"
+                                type="number"
+                                value={formData.default_proforma_due_days || ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_proforma_due_days: parseInt(val) || null })}
+                            />
+                            <FormInput
+                                label="Rok važenja ponude (dana)"
+                                type="number"
+                                value={formData.default_quote_due_days || ""}
+                                onChange={(val: string) => setFormData({ ...formData, default_quote_due_days: parseInt(val) || null })}
                             />
                             <FormSelect
-                                label="Jezik"
+                                label="Jezik dokumenata"
                                 value={formData.default_document_language || ""}
                                 onChange={(val: string) => setFormData({ ...formData, default_document_language: val })}
                                 options={configData.languages}
@@ -129,7 +154,19 @@ export default function GeneralSettingsPage() {
 
                     {/* Numbering */}
                     <SectionBlock variant="card">
-                        <SectionHeader icon={HashIcon} title="Numeracija" />
+                        <SectionHeader
+                            icon={HashIcon}
+                            title="Numeracija"
+                            rightElement={
+                                <Link
+                                    to="/help#numeration"
+                                    className="h-8 w-8 rounded-lg border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:border-primary/30 transition-all cursor-pointer"
+                                    title="Pomoć: Numeracija"
+                                >
+                                    <InfoIcon className="h-4 w-4" />
+                                </Link>
+                            }
+                        />
                         <p className="text-[11px] text-[var(--color-text-dim)] mb-3 pl-1">
                             Format: PREFIX-broj/godina (npr. INV-1/2025). Ako prefiks nije unesen: broj/godina (npr. 1/2025).
                         </p>
@@ -149,7 +186,7 @@ export default function GeneralSettingsPage() {
                             />
                             <FormInput
                                 label="Prefiks računa"
-                                value={formData.invoice_numbering_prefix ?? formData.document_numbering_prefix ?? ""}
+                                value={formData.invoice_numbering_prefix ?? ""}
                                 onChange={(val: string) => setFormData({ ...formData, invoice_numbering_prefix: val })}
                                 placeholder="npr. INV"
                             />
@@ -168,27 +205,39 @@ export default function GeneralSettingsPage() {
                             <FormInput
                                 label="Početni broj računa"
                                 type="number"
-                                value={formData.invoice_numbering_starting_number ?? formData.document_numbering_starting_number ?? 1}
-                                onChange={(val: string) => setFormData({ ...formData, invoice_numbering_starting_number: parseInt(val) || 1 })}
+                                value={formData.invoice_numbering_starting_number ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, invoice_numbering_starting_number: val === "" ? 1 : parseInt(val, 10) })}
                             />
                             <FormInput
                                 label="Početni broj predračuna"
                                 type="number"
-                                value={formData.proforma_numbering_starting_number ?? 1}
-                                onChange={(val: string) => setFormData({ ...formData, proforma_numbering_starting_number: parseInt(val) || 1 })}
+                                value={formData.proforma_numbering_starting_number ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, proforma_numbering_starting_number: val === "" ? 1 : parseInt(val, 10) })}
                             />
                             <FormInput
                                 label="Početni broj ponude"
                                 type="number"
-                                value={formData.quote_numbering_starting_number ?? 1}
-                                onChange={(val: string) => setFormData({ ...formData, quote_numbering_starting_number: parseInt(val) || 1 })}
+                                value={formData.quote_numbering_starting_number ?? ""}
+                                onChange={(val: string) => setFormData({ ...formData, quote_numbering_starting_number: val === "" ? 1 : parseInt(val, 10) })}
                             />
                         </div>
                     </SectionBlock>
 
                     {/* Notes */}
                     <SectionBlock variant="card">
-                        <SectionHeader icon={StickyNoteIcon} title="Napomene" />
+                        <SectionHeader
+                            icon={StickyNoteIcon}
+                            title="Napomene"
+                            rightElement={
+                                <Link
+                                    to="/help#notes"
+                                    className="h-8 w-8 rounded-lg border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:border-primary/30 transition-all cursor-pointer"
+                                    title="Pomoć: Napomene"
+                                >
+                                    <InfoIcon className="h-4 w-4" />
+                                </Link>
+                            }
+                        />
                         <p className="text-[10px] text-[var(--color-text-dim)] font-medium mb-3 pl-1">
                             Prikazuju se na novim dokumentima kada korisnik ne unese napomenu.
                         </p>
@@ -217,81 +266,11 @@ export default function GeneralSettingsPage() {
                         </div>
                     </SectionBlock>
 
-                    {/* Mail */}
-                    <SectionBlock variant="card">
-                        <SectionHeader icon={MailIcon} title="Slanje maila" />
-                        <p className="text-sm text-[var(--color-text-dim)] mb-4">
-                            Podešavanja za slanje faktura i fiskalnih računa. Možete koristiti vlastiti SMTP server (Gmail, Outlook, itd.) da šaljete kao iz svog inboxa. Ako SMTP nije podešen, koristi se sistemska konfiguracija.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <FormInput
-                                label="Email adresa (from)"
-                                type="email"
-                                value={formData.mail_from_address || ""}
-                                onChange={(val: string) => setFormData({ ...formData, mail_from_address: val || null })}
-                                placeholder="npr. fakture@firma.ba"
-                            />
-                            <FormInput
-                                label="Ime pošiljaoca"
-                                type="text"
-                                value={formData.mail_from_name || ""}
-                                onChange={(val: string) => setFormData({ ...formData, mail_from_name: val || null })}
-                                placeholder="npr. Firma d.o.o."
-                            />
-                        </div>
-                        <h4 className="text-sm font-black text-[var(--color-text-muted)] uppercase tracking-wider mb-3">SMTP server (opciono)</h4>
-                        <p className="text-xs text-[var(--color-text-dim)] mb-4">
-                            Za Gmail: host smtp.gmail.com, port 587, encryption TLS. Za Outlook: smtp.office365.com. Uključite „manje sigurne aplikacije“ ili koristite App Password.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormInput
-                                label="SMTP host"
-                                type="text"
-                                value={formData.mail_host || ""}
-                                onChange={(val: string) => setFormData({ ...formData, mail_host: val || null })}
-                                placeholder="npr. smtp.gmail.com"
-                            />
-                            <FormInput
-                                label="SMTP port"
-                                type="number"
-                                value={formData.mail_port ?? ""}
-                                onChange={(val: string) => setFormData({ ...formData, mail_port: val ? parseInt(val, 10) : null })}
-                                placeholder="587"
-                            />
-                            <FormSelect
-                                label="Enkripcija"
-                                value={formData.mail_encryption || ""}
-                                onChange={(val: string) => setFormData({ ...formData, mail_encryption: val || null })}
-                                options={[
-                                    { value: "", label: "—" },
-                                    { value: "tls", label: "TLS" },
-                                    { value: "ssl", label: "SSL" },
-                                ]}
-                            />
-                            <FormInput
-                                label="SMTP korisničko ime"
-                                type="text"
-                                value={formData.mail_username || ""}
-                                onChange={(val: string) => setFormData({ ...formData, mail_username: val || null })}
-                                placeholder="npr. vas@email.com"
-                            />
-                            <div className="md:col-span-2">
-                                <FormInput
-                                    label="SMTP lozinka"
-                                    type="password"
-                                    value={formData.mail_password || ""}
-                                    onChange={(val: string) => setFormData({ ...formData, mail_password: val || null })}
-                                    placeholder="••••••••"
-                                />
-                            </div>
-                        </div>
-                    </SectionBlock>
-
                     <div className="flex justify-end pt-4">
                         <button
                             disabled={saving}
                             type="submit"
-                            className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-8 rounded-xl shadow-glow-primary transition-all disabled:opacity-50 flex items-center gap-2"
+                            className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-8 rounded-xl shadow-glow-primary transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                         >
                             {saving ? "Čuvanje..." : "Sačuvaj Promjene"}
                             {!saving && <CheckCircleIcon className="h-5 w-5" />}

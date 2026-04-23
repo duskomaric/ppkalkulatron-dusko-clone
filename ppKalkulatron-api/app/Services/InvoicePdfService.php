@@ -10,14 +10,16 @@ class InvoicePdfService
 {
     public function generate(Invoice $invoice, ?DocumentTemplateEnum $template = null): \Spatie\LaravelPdf\PdfBuilder
     {
-        $invoice->load(['client', 'items', 'company', 'bankAccount', 'currency', 'fiscalRecords']);
+        $invoice->load(['client', 'items.article', 'company', 'currency', 'fiscalRecords']);
 
         $template = $template ?? $invoice->invoice_template ?? DocumentTemplateEnum::Classic;
         $viewName = $template->getViewName();
+        $bankAccounts = $invoice->company->bankAccounts()->where('show_on_documents', true)->orderBy('id')->get();
 
         return Pdf::view($viewName, [
             'invoice' => $invoice,
             'company' => $invoice->company,
+            'bankAccounts' => $bankAccounts,
         ])
             ->format('a4')
             ->withBrowsershot(function ($browsershot) {

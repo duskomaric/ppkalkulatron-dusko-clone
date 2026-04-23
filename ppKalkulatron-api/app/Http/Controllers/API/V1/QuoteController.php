@@ -30,8 +30,22 @@ class QuoteController extends Controller
     public function index(IndexQuoteRequest $request, Company $company): AnonymousResourceCollection
     {
         $query = $company->quotes()
-            ->with(['items', 'client', 'bankAccount', 'currency'])
+            ->with(['client', 'currency'])
             ->latest();
+
+        $dateRange = null;
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            $from = $request->filled('date_from')
+                ? Carbon::parse($request->date_from)->toDateString()
+                : Carbon::parse($request->date_to)->toDateString();
+            $to = $request->filled('date_to')
+                ? Carbon::parse($request->date_to)->toDateString()
+                : $from;
+            $dateRange = ['from' => $from, 'to' => $to];
+        } elseif ($request->filled('year')) {
+            $y = (int) $request->year;
+            $dateRange = ['from' => "{$y}-01-01", 'to' => "{$y}-12-31"];
+        }
 
         $query
             ->when($request->validated('search'), function ($q, $search) {
@@ -43,13 +57,8 @@ class QuoteController extends Controller
                 });
             })
             ->when($request->validated('status'), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->validated('date_from'), function ($q, $dateFrom) {
-                $from = Carbon::parse($dateFrom)->toDateString();
-                $q->whereDate('date', '>=', $from);
-            })
-            ->when($request->validated('date_to'), function ($q, $dateTo) {
-                $to = Carbon::parse($dateTo)->toDateString();
-                $q->whereDate('date', '<=', $to);
+            ->when($dateRange, function ($q, $range) {
+                $q->whereBetween('date', [$range['from'], $range['to']]);
             });
 
         return QuoteResource::collection($query->paginate(20));
@@ -58,24 +67,26 @@ class QuoteController extends Controller
     #[Endpoint(operationId: 'storeQuote', title: 'Store quote', description: 'Create a new quote')]
     public function store(StoreQuoteRequest $request, Company $company, DocumentNumberService $numberService): QuoteResource
     {
+        $year = DocumentNumberService::yearFromDate($request->validated('date'));
+
         $quote = $company->quotes()->create(
             $request->safe()
                 ->merge([
                     'quote_number' => $request->validated('quote_number')
-                        ?: $numberService->reserveNumber($company, 'quote')['formatted'],
+                        ?: $numberService->reserveNumber($company, 'quote', $year)['formatted'],
                 ])
                 ->except('items')
         );
 
         $quote->items()->createMany($request->validated('items') ?? []);
 
-        return new QuoteResource($quote->load(['items', 'client', 'bankAccount', 'currency']));
+        return new QuoteResource($quote->load(['items', 'client', 'currency']));
     }
 
     #[Endpoint(operationId: 'showQuote', title: 'Show quote', description: 'Get quote')]
     public function show(Company $company, Quote $quote): QuoteResource
     {
-        return new QuoteResource($quote->load(['items', 'client', 'bankAccount', 'currency']));
+        return new QuoteResource($quote->load(['items', 'client', 'currency']));
     }
 
     #[Endpoint(operationId: 'downloadQuotePdf', title: 'Download quote PDF', description: 'Export quote as PDF')]
@@ -127,12 +138,13 @@ class QuoteController extends Controller
             $quote->items()->createMany($request->validated('items') ?? []);
         }
 
-        return new QuoteResource($quote->load(['items', 'client', 'bankAccount', 'currency']));
+        return new QuoteResource($quote->load(['items', 'client', 'currency']));
     }
 
     #[Endpoint(operationId: 'destroyQuote', title: 'Destroy quote', description: 'Remove quote')]
-    public function destroy(Company $company, Quote $quote): JsonResponse
+    public function destroy(Company $company, Quote $quote, DocumentNumberService $numberService): JsonResponse
     {
+        $numberService->releaseNumber($company, 'quote', $quote->quote_number);
         $quote->delete();
         return response()->json(['message' => 'Quote deleted successfully']);
     }
@@ -142,8 +154,8 @@ class QuoteController extends Controller
     {
         $proforma = $conversionService->convertQuoteToProforma($quote);
 
-        // Reserve proforma number
-        $numberData = $numberService->reserveNumber($company, 'proforma');
+        $year = DocumentNumberService::yearFromDate($proforma->date);
+        $numberData = $numberService->reserveNumber($company, 'proforma', $year);
         $proforma->proforma_number = $numberData['formatted'];
         $proforma->save();
 

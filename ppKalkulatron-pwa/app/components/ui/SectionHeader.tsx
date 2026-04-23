@@ -6,18 +6,19 @@ interface SectionHeaderProps {
   subtitle?: ReactNode;
   className?: string;
   iconClassName?: string;
+  rightElement?: ReactNode;
 }
 
-// Koristi se na: invoices/clients/articles (naslovi sekcija u drawerima), profile i settings/*
 export function SectionHeader({
   icon: Icon,
   title,
   subtitle,
   className = "",
   iconClassName = "",
+  rightElement,
 }: SectionHeaderProps) {
   return (
-    <div className={`flex items-center gap-2 ${className}`.trim()}>
+    <div className={`flex items-center justify-between gap-2 ${className}`.trim()}>
       <div className="flex items-center gap-2">
         {Icon && (
           <div className={`h-7 w-7 bg-primary/10 text-primary rounded-lg flex items-center justify-center shrink-0 ${iconClassName}`.trim()}>
@@ -35,6 +36,11 @@ export function SectionHeader({
           )}
         </div>
       </div>
+      {rightElement && (
+        <div className="shrink-0">
+          {rightElement}
+        </div>
+      )}
     </div>
   );
 }

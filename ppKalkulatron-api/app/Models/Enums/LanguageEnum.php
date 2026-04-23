@@ -7,8 +7,8 @@ enum LanguageEnum: string
     case English = 'en';
     case Bosnian = 'bs';
     case Croatian = 'hr';
-    case SerbianLatin = 'sr-Latn';
-    case SerbianCyrillic = 'sr-Cyrl';
+    case SerbianLatin = 'sr_Latn';
+    case SerbianCyrillic = 'sr_Cyrl';
     case French = 'fr';
     case German = 'de';
     case Italian = 'it';
@@ -20,8 +20,8 @@ enum LanguageEnum: string
             self::English => 'English',
             self::Bosnian => 'Bosanski',
             self::Croatian => 'Hrvatski',
-            self::SerbianLatin => 'Srpski (Latinica)',
-            self::SerbianCyrillic => 'Srpski (Ćirilica)',
+            self::SerbianLatin => 'Srpski',
+            self::SerbianCyrillic => 'Српски',
             self::French => 'French',
             self::German => 'German',
             self::Italian => 'Italian',

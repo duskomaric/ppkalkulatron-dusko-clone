@@ -7,7 +7,6 @@ interface FilterSearchInputProps {
     placeholder?: string;
 }
 
-// Koristi se na: articles/clients/invoices/quotes/proformas (search pored filtera)
 export function FilterSearchInput({ value, onChange, placeholder = "Pretraži..." }: FilterSearchInputProps) {
     return (
         <div className="relative">

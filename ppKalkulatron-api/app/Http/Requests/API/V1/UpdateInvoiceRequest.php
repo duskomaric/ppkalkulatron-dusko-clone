@@ -38,7 +38,6 @@ class UpdateInvoiceRequest extends FormRequest
             'next_invoice_date' => 'sometimes|nullable|date',
             'currency' => 'sometimes|string|size:3',
             'currency_id' => ['sometimes', 'nullable', $currencyRule],
-            'bank_account_id' => 'sometimes|nullable|exists:bank_accounts,id',
             'invoice_template' => 'sometimes|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'payment_type' => 'sometimes|in:' . implode(',', array_column(FiscalPaymentTypeEnum::cases(), 'value')),
             'subtotal' => 'sometimes|integer|min:0',

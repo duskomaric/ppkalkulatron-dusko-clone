@@ -16,7 +16,7 @@ it('tenant: company settings returns defaults with correct types', function () {
 
     $settings = $response->json('data.settings');
 
-    expect($settings['default_document_due_days'])->toBeInt()
+    expect($settings['default_invoice_due_days'])->toBeInt()
         ->and($settings['document_numbering_reset_yearly'])->toBeBool()
         ->and($settings['default_document_template'])->toBeString();
 });
@@ -29,15 +29,15 @@ it('tenant: company settings can be updated and values are typed', function () {
     $response = $this->withHeaders(authHeaders($user))
         ->patchJson("/api/v1/{$company->slug}/settings", [
             'settings' => [
-                'default_document_due_days' => '30',
+                'default_invoice_due_days' => '30',
                 'document_numbering_reset_yearly' => 'false',
-                'document_numbering_prefix' => 'INV-',
+                'invoice_numbering_prefix' => 'INV-',
             ],
         ]);
 
     $response->assertStatus(200);
 
-    expect(CompanySetting::get('default_document_due_days', null, $company->id))->toBe(30)
+    expect(CompanySetting::get('default_invoice_due_days', null, $company->id))->toBe(30)
         ->and(CompanySetting::get('document_numbering_reset_yearly', null, $company->id))->toBeFalse();
 });
 
@@ -74,7 +74,7 @@ it('tenant: cannot update company setting with invalid type', function () {
     $response = $this->withHeaders(authHeaders($user))
         ->patchJson("/api/v1/{$company->slug}/settings", [
             'settings' => [
-                'default_document_due_days' => 'not-an-int',
+                'default_invoice_due_days' => 'not-an-int',
             ],
         ]);
 

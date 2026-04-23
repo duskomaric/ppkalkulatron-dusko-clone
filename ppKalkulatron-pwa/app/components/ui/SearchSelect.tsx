@@ -23,7 +23,6 @@ interface SearchSelectProps<T> {
     icon?: ElementType;
 }
 
-// Koristi se na: app/routes/invoices.tsx (kreiranje/uredjivanje -> izbor klijenta i artikla)
 export function SearchSelect<T>({
     items,
     value,
@@ -125,11 +124,10 @@ export function SearchSelect<T>({
                 {/* Dropdown */}
                 {isOpen && (
                     <div
-                        className="fixed z-[1100] left-3 right-3 bottom-3 top-24 md:absolute md:z-50 md:top-full md:left-0 md:right-0 md:bottom-auto md:mt-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
+                        className="fixed z-[1100] left-3 right-3 bottom-3 top-24 md:absolute md:z-50 md:top-full md:left-0 md:right-0 md:bottom-auto md:mt-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl overflow-hidden animate-fade-in flex flex-col"
                     >
-                        {/* Search Input */}
-                        <div className="p-2 border-b border-[var(--color-border)]">
-                            <div className="relative">
+                        <div className="p-2 border-b border-[var(--color-border)] flex items-center gap-2">
+                            <div className="relative flex-1">
                                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-dim)]" />
                                 <input
                                     ref={inputRef}
@@ -140,6 +138,13 @@ export function SearchSelect<T>({
                                     className="w-full bg-[var(--color-border)] border-none rounded-xl text-sm font-bold text-[var(--color-text-main)] placeholder:text-[var(--color-text-dim)] pl-9 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-primary/20"
                                 />
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => { setIsOpen(false); setSearch(""); }}
+                                className="md:hidden shrink-0 h-9 w-9 rounded-xl bg-[var(--color-border)] hover:bg-red-500/20 hover:text-red-500 flex items-center justify-center transition-all cursor-pointer text-[var(--color-text-dim)]"
+                            >
+                                <XIcon className="h-4 w-4" />
+                            </button>
                         </div>
 
                         {/* Items List */}

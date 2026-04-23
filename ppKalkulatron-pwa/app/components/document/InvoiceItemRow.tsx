@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { TrashIcon, BoxesIcon, CurrencyEuroIcon } from "~/components/ui/icons";
 import { SearchSelect } from "~/components/ui/SearchSelect";
-import { CurrencyInput } from "~/components/ui/CurrencyInput";
+import { CurrencyInput } from "./CurrencyInput";
 import type { Article } from "~/types/article";
 import type { InvoiceItemInput } from "~/types/invoice";
 
@@ -15,7 +15,6 @@ interface InvoiceItemRowProps {
     disabled?: boolean;
 }
 
-// Koristi se na: app/routes/invoices.tsx, app/routes/quotes.tsx, app/routes/proformas.tsx (kreiranje/uredjivanje -> sekcija Stavke)
 export function InvoiceItemRow({
     item,
     index,
@@ -200,7 +199,7 @@ export function InvoiceItemRow({
                 </div>
 
                 <div className="flex flex-row gap-2 md:flex-shrink-0 items-end">
-                    <div className="w-20 md:w-24 flex flex-col gap-1 group">
+                    <div className="w-24 md:w-24 flex flex-col gap-1 group">
                         <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 shrink-0">
                             Kol.
                         </label>

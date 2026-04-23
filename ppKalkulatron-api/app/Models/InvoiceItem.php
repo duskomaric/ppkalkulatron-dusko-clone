@@ -20,12 +20,18 @@ class InvoiceItem extends Model
         'quantity',
 
         // monetary snapshot (pfening)
-        'unit_price',     // cijena sa porezom (inclusive) - ono što kupac plaća po jedinici
-        'subtotal',       // quantity * unit_price
+        'unit_price',     // cijena sa porezom (inclusive) po jedinici
+        'subtotal',       // iznos bez poreza za red (quantity * cijena bez poreza)
         'tax_rate',       // basis points, npr. 1700 = 17%
         'tax_label',      // OFS label: F, N, A, ...
-        'tax_amount',     // iznos poreza
-        'total',          // subtotal + tax_amount
+        'tax_amount',     // iznos poreza za red
+        'total',          // iznos sa porezom za red (subtotal + tax_amount)
+
+        // BAM equivalent (pfening)
+        'unit_price_bam',
+        'subtotal_bam',
+        'tax_amount_bam',
+        'total_bam',
     ];
 
     protected $casts = [
@@ -35,6 +41,11 @@ class InvoiceItem extends Model
         'tax_rate' => 'integer',
         'tax_amount' => 'integer',
         'total' => 'integer',
+
+        'unit_price_bam' => 'integer',
+        'subtotal_bam' => 'integer',
+        'tax_amount_bam' => 'integer',
+        'total_bam' => 'integer',
     ];
 
     public function invoice(): BelongsTo

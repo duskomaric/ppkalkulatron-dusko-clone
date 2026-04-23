@@ -25,7 +25,7 @@ class StoreBankAccountRequest extends FormRequest
             'bank_name' => 'required|string|max:255',
             'account_number' => 'required|string|max:255',
             'swift' => 'nullable|string|max:20',
-            'is_default' => 'boolean',
+            'show_on_documents' => 'boolean',
         ];
     }
 

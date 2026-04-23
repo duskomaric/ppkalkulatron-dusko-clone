@@ -1,6 +1,7 @@
 @php
     $formatAmount = fn ($pfening) => number_format($pfening / 100, 2, ',', '.');
     $currency = $invoice->currency?->code ?? 'BAM';
+    $showVat = $company->is_vat_obligor ?? true;
 @endphp
 <!DOCTYPE html>
 <html lang="sr">
@@ -230,19 +231,19 @@
         }
         .signature-left { width: 50%; }
         .signature-right { width: 50%; }
-        
+
         .signature-label {
             font-size: 7pt;
             margin-bottom: 18px;
             display: block;
         }
-        
+
         .signature-line {
             border-bottom: 1px solid #000;
             width: 175px;
             margin: 0 auto 2px auto;
         }
-        
+
         .signature-note {
             font-size: 6pt;
             color: #666;
@@ -348,7 +349,7 @@
             <th style="width:45%">Opis</th>
             <th class="text-right" style="width:10%">Količina</th>
             <th class="text-right" style="width:15%">Cijena</th>
-            <th class="text-right" style="width:10%">PDV</th>
+            @if($showVat)<th class="text-right" style="width:10%">PDV</th>@endif
             <th class="text-right" style="width:20%">Ukupno</th>
         </tr>
         </thead>
@@ -365,7 +366,7 @@
                 <td class="text-right" style="font-family: DejaVu Sans, sans-serif;">
                     {{ $formatAmount($item->quantity > 0 ? $item->total / $item->quantity : 0) }} {{ $currency }}
                 </td>
-                <td class="text-right" style="font-family: DejaVu Sans, sans-serif;">{{ $item->tax_rate / 100 }}%</td>
+                @if($showVat)<td class="text-right" style="font-family: DejaVu Sans, sans-serif;">{{ $item->tax_rate / 100 }}%</td>@endif
                 <td class="text-right" style="font-family: DejaVu Sans, sans-serif;">
                     {{ $formatAmount($item->total) }} {{ $currency }}
                 </td>
@@ -383,10 +384,12 @@
                         <td style="font-family: DejaVu Sans, sans-serif;">Osnovica</td>
                         <td class="totals-value" style="font-family: DejaVu Sans, sans-serif;">{{ $formatAmount($invoice->subtotal) }} {{ $currency }}</td>
                     </tr>
+                    @if($showVat)
                     <tr>
                         <td style="font-family: DejaVu Sans, sans-serif;">PDV</td>
                         <td class="totals-value" style="font-family: DejaVu Sans, sans-serif;">{{ $formatAmount($invoice->tax_total) }} {{ $currency }}</td>
                     </tr>
+                    @endif
                     <tr class="total-row">
                         <td>UKUPNO ZA PLAĆANJE</td>
                         <td class="totals-value">{{ $formatAmount($invoice->total) }} {{ $currency }}</td>

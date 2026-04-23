@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\LanguageEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -29,6 +30,7 @@ class UpdateUserRequest extends FormRequest
             'last_name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|max:255|unique:users,email,' . $userId,
             'password' => ['sometimes', Password::defaults()],
+            'language' => 'sometimes|nullable|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
             'is_active' => 'sometimes|boolean',
         ];
     }

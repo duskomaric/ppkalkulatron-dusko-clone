@@ -1,22 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { useNavigate, Link, useLocation } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
+import { useYear } from "~/contexts/YearContext";
+import { getMe } from "~/api/config";
 import {
-    CalculatorIcon,
-    CogIcon,
-    UserIcon,
-    ChevronUpIcon,
-    ChevronRightIcon,
-    BoxesIcon,
-    CreditCardIcon,
-    CurrencyEuroIcon,
-    Building2Icon,
-    FileTextIcon, ChevronDownIcon,
-    InfoIcon
+  CalculatorIcon,
+  CogIcon,
+  UserIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  HashIcon,
+  GripIcon,
 } from "~/components/ui/icons";
 import { Drawer } from "./Drawer";
-import { DrawerNavItem } from "~/components/ui/DrawerNavItem";
+import { BottomNavigation } from "./BottomNavigation";
+import { SettingsDrawer } from "./SettingsDrawer";
+import { UserDrawer } from "./UserDrawer";
+import { CompanyDrawer } from "./CompanyDrawer";
+import { DocumentsDrawer } from "./DocumentsDrawer";
 import type { Company } from "~/types/company";
 import { getThemeByPath } from "~/utils/theme";
 import { NAV_ITEMS } from "~/config/navigation";
@@ -30,7 +32,6 @@ export interface AppLayoutProps {
   actions?: ReactNode;
 }
 
-// Koristi se na: app/routes/* (glavni layout: header + navigacija + draweri kompanija/korisnik/podesavanja)
 export function AppLayout({
   children,
   title,
@@ -39,17 +40,93 @@ export function AppLayout({
   actions
 }: AppLayoutProps) {
   const { user, token, logoutAction, loading, refreshUser } = useAuth();
+  const { selectedYear, setSelectedYear, availableYears, setAvailableYears, yearDrawerOpen, closeYearDrawer } = useYear();
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeDrawer, setActiveDrawer] = useState<"company" | "user" | "settings" | null>(null);
+  const [activeDrawer, setActiveDrawer] = useState<"company" | "user" | "settings" | "documents" | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const companyCount = user?.companies?.length ?? 0;
   const canSwitchCompany = companyCount > 1;
+  const isCompanyInactive = Boolean(selectedCompany && !selectedCompany.is_active);
 
-  // Get dynamic color based on path from central utility
+  const companySettings = selectedCompany?.company_settings ?? (user as any)?.company_settings ?? {};
+
+  const enabledModules = useMemo(() => {
+    if (!selectedCompany || !selectedCompany.is_active) return [];
+    const modules = selectedCompany?.enabled_modules;
+    return Array.isArray(modules) ? modules : [];
+  }, [selectedCompany]);
+
+  const { visibleNavItems, drawerNavItems } = useMemo(() => {
+    const allVisible = NAV_ITEMS.filter((item) => enabledModules.includes(item.id));
+
+    // Aggressive check for configured IDs
+    const menuModuleIds = Array.isArray(companySettings.menu_modules)
+      ? companySettings.menu_modules
+      : (typeof companySettings.menu_modules === 'string' ? JSON.parse(companySettings.menu_modules) : null);
+
+    const drawerModuleIds = Array.isArray(companySettings.drawer_modules)
+      ? companySettings.drawer_modules
+      : (typeof companySettings.drawer_modules === 'string' ? JSON.parse(companySettings.drawer_modules) : null);
+
+    let mainMenu: any[] = [];
+    let drawerMenu: any[] = [];
+
+    if (Array.isArray(menuModuleIds) || Array.isArray(drawerModuleIds)) {
+      // Respect user configuration
+      const configuredMenuIds = Array.isArray(menuModuleIds) ? menuModuleIds : [];
+      const configuredDrawerIds = Array.isArray(drawerModuleIds) ? drawerModuleIds : [];
+
+      // Filter and order menu items
+      mainMenu = configuredMenuIds
+        .map(id => allVisible.find(item => item.id === id))
+        .filter(Boolean) as any[];
+
+      // Filter and order drawer items
+      drawerMenu = configuredDrawerIds
+        .map(id => allVisible.find(item => item.id === id))
+        .filter(Boolean) as any[];
+
+      // Final constraint: main menu max 4 before adding "Documents"
+      if (mainMenu.length > 4) {
+        const extra = mainMenu.splice(4);
+        drawerMenu = [...extra, ...drawerMenu];
+      }
+    } else {
+      // Default: first 4 in menu, rest in drawer if > 5 total
+      if (allVisible.length > 5) {
+        mainMenu = allVisible.slice(0, 4);
+        drawerMenu = allVisible.slice(4);
+      } else {
+        mainMenu = [...allVisible];
+        drawerMenu = [];
+      }
+    }
+
+    // Add Documents item if drawer items exist
+    if (drawerMenu.length > 0) {
+      const docsItem = {
+        id: 'documents' as any,
+        icon: GripIcon,
+        label: 'Dokumenti',
+        title: 'Dokumenti',
+        isDrawerTrigger: true,
+      };
+
+      // Place it first: [DOCS, item, item, item, item]
+      mainMenu.unshift(docsItem);
+    }
+
+    return { visibleNavItems: mainMenu, drawerNavItems: drawerMenu };
+  }, [enabledModules, companySettings.menu_modules, companySettings.drawer_modules]);
+
+  const homePath = useMemo(() => {
+    const enabled = NAV_ITEMS.filter((item) => enabledModules.includes(item.id));
+    if (enabled.some(i => i.id === 'invoices')) return "/invoices";
+    return enabled[0]?.path ?? "/profile";
+  }, [enabledModules]);
   const currentRGB = getThemeByPath(location.pathname);
 
-  // Refresh user data (companies + subscription) once when settings drawer opens
   const settingsRefreshedRef = useRef(false);
   useEffect(() => {
     if (activeDrawer === "settings" && !settingsRefreshedRef.current) {
@@ -62,54 +139,50 @@ export function AppLayout({
   }, [activeDrawer, refreshUser]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 300);
-    };
+    if (!selectedCompany || !token) return;
+    const currentYear = new Date().getFullYear();
+    getMe(token, selectedCompany.slug).then((res) => {
+      const years = res.data.available_years ?? [currentYear];
+      setAvailableYears(years.length ? years : [currentYear]);
+      setSelectedYear(currentYear);
+    }).catch(() => { });
+  }, [selectedCompany?.slug, token, setAvailableYears, setSelectedYear]);
+
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 300);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Route protection
   useEffect(() => {
-    if (!loading && !token) {
-      navigate("/");
-    }
+    if (!loading && !token) navigate("/");
   }, [loading, token, navigate]);
 
-  // Document Title
   useEffect(() => {
-    if (title) {
-      document.title = getPageTitle(title);
-    }
-  }, [title]);
+    if (loading || !token) return;
+    const isModuleRoute = NAV_ITEMS.some((item) => item.path === location.pathname);
+    if (!isModuleRoute) return;
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+    const allVisible = NAV_ITEMS.filter((item) => enabledModules.includes(item.id));
+    const isVisible = allVisible.some((item) => item.path === location.pathname);
+    if (!isVisible) navigate(homePath);
+  }, [loading, token, location.pathname, enabledModules, homePath, navigate]);
+
+  useEffect(() => {
+    if (title) document.title = getPageTitle(title);
+  }, [title]);
 
   const handleLogout = () => {
     logoutAction();
     navigate("/");
   };
 
-  // Subscription logic
-  const getSubscriptionInfo = () => {
-    if (!selectedCompany?.subscription_ends_at) {
-      return { isLifetime: true, daysLeft: null, label: "Lifetime" };
-    }
+  const hasSubNotification = (() => {
+    if (!selectedCompany?.subscription_ends_at) return false;
     const endDate = new Date(selectedCompany.subscription_ends_at);
-    const now = new Date();
-    const diffTime = endDate.getTime() - now.getTime();
-    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return {
-      isLifetime: false,
-      daysLeft,
-      label: endDate.toLocaleDateString("bs-BA", { day: "2-digit", month: "2-digit", year: "numeric" }),
-    };
-  };
-
-  const subInfo = getSubscriptionInfo();
-  const hasSubNotification = !subInfo.isLifetime && subInfo.daysLeft !== null && subInfo.daysLeft < 30;
+    const daysLeft = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return daysLeft < 30;
+  })();
 
   if (loading || !token) return null;
 
@@ -126,7 +199,6 @@ export function AppLayout({
         "--color-page-bg-hover": `rgba(${currentRGB}, 0.15)`,
         "--color-page-border": `rgba(${currentRGB}, 0.4)`,
         "--color-page-border-subtle": `rgba(${currentRGB}, 0.3)`,
-        // Glow efekt radijalnim gradijentima
         backgroundImage: [
           `radial-gradient(ellipse 320px 320px at -80px -80px, rgba(${currentRGB}, 0.4), transparent 70%)`,
           `radial-gradient(ellipse 280px 280px at calc(100% + 30px) calc(100% + 30px), rgba(${currentRGB}, 0.35), transparent 70%)`,
@@ -135,84 +207,105 @@ export function AppLayout({
       } as CSSProperties}
     >
       {/* Header */}
-      <header className="sticky top-0 z-40 h-[60px] flex items-center bg-[var(--color-bg)]/20 backdrop-blur-lg border-b border-[var(--color-border)]">
-        <div className="max-w-[1200px] w-full mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-40 h-[56px] flex items-center bg-[var(--color-bg)]/20 backdrop-blur-lg border-b border-[var(--color-border)]">
+        <div className="max-w-[1200px] w-full mx-auto px-4 sm:px-6 flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <Link
-              to="/invoices"
-              className="h-9 w-9 bg-primary rounded-xl flex items-center justify-center text-white shadow-glow-primary cursor-pointer transition-all duration-500"
+              to={homePath}
+              className="h-8 w-8 shrink-0 bg-primary rounded-xl flex items-center justify-center text-white shadow-glow-primary cursor-pointer transition-all duration-500"
             >
-              <CalculatorIcon className="h-5 w-5" />
+              <CalculatorIcon className="h-4 w-4" />
             </Link>
 
-            {/* Desktop nav - visible from 1024px */}
-            <nav className="hidden lg:flex items-center gap-2">
-              {NAV_ITEMS.map((item) => {
-                const isActive = location.pathname === item.path;
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.id}
-                    to={item.path}
-                    className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest ${
-                      isActive
-                        ? "bg-primary/20 text-primary shadow-glow-primary ring-1 ring-primary/30"
-                        : "text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]"
-                    }`}
-                  >
-                    <span className={`h-6 w-6 rounded-lg flex items-center justify-center transition-colors ${
-                      isActive ? "bg-primary/20 text-primary" : "bg-[var(--color-border)] text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]"
-                    }`}>
-                      <Icon className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="leading-none">{item.title}</span>
-                    {isActive && (
-                      <span className="absolute -bottom-1 left-3 right-3 h-[2px] bg-primary/60 rounded-full" />
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
+            {visibleNavItems.length > 0 && (
+              <nav className="hidden lg:flex items-center gap-1.5 shrink-0">
+                {visibleNavItems.map((item, index) => {
+                  const isActive = !item.isDrawerTrigger && location.pathname === item.path;
+                  const Icon = item.icon;
+                  const itemContent = (
+                    <>
+                      <span className={`h-5 w-5 rounded-lg flex items-center justify-center transition-colors ${isActive ? "bg-primary/20 text-primary" : "bg-[var(--color-border)] text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]"
+                        }`}>
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="leading-none">{item.title}</span>
+                      {isActive && (
+                        <span className="absolute -bottom-1 left-3 right-3 h-[2px] bg-primary/60 rounded-full" />
+                      )}
+                    </>
+                  );
+
+                  let element;
+                  if (item.isDrawerTrigger) {
+                    element = (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveDrawer("documents")}
+                        className={`group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest cursor-pointer text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]`}
+                      >
+                        {itemContent}
+                      </button>
+                    );
+                  } else {
+                    element = (
+                      <Link
+                        key={item.id}
+                        to={item.path}
+                        className={`group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest cursor-pointer ${isActive
+                          ? "bg-primary/20 text-primary shadow-glow-primary ring-1 ring-primary/30"
+                          : "text-[var(--color-text-dim)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]"
+                          }`}
+                      >
+                        {itemContent}
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <div key={item.id} className="flex items-center gap-1.5">
+                      {element}
+                      {item.isDrawerTrigger && index === 0 && visibleNavItems.length > 1 && (
+                        <div className="h-5 w-[1px] bg-[var(--color-border)] mx-1 opacity-50" />
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
+            )}
 
             {selectedCompany && (
               canSwitchCompany ? (
                 <button
                   onClick={() => setActiveDrawer("company")}
-                  className="group cursor-pointer flex items-center gap-2 px-3 py-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 hover:bg-[var(--color-surface-hover)] transition-all max-w-[280px]"
+                  className="group cursor-pointer flex items-center gap-1 px-2 py-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 hover:bg-[var(--color-surface-hover)] transition-all min-w-0 max-w-[min(100%,180px)] sm:max-w-[220px] md:max-w-[260px]"
                 >
-                  <span className="min-w-0 flex flex-col items-start">
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--color-text-dim)]">Kompanija</span>
-                    <span className="text-xs font-black text-[var(--color-text-main)] truncate max-w-[170px] sm:max-w-[220px]">
+                  <span className="min-w-0 flex flex-col items-start overflow-hidden w-full">
+                    <span className="text-[8px] uppercase tracking-[0.2em] text-[var(--color-text-dim)] shrink-0">Kompanija</span>
+                    <span className="text-xs font-black text-[var(--color-text-main)] truncate w-full text-left">
                       {selectedCompany.name}
                     </span>
                   </span>
                   <ChevronDownIcon className="h-4 w-4 text-[var(--color-text-dim)] group-hover:text-primary transition-colors shrink-0" />
                 </button>
               ) : (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/40 max-w-[280px]">
-                  <span className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-[10px] shrink-0">
-                    {selectedCompany.name.substring(0, 2).toUpperCase()}
-                  </span>
-                  <span className="text-xs font-black text-[var(--color-text-main)] truncate max-w-[200px]">
-                    {selectedCompany.name}
+                <div className="flex items-center gap-2 px-3 py-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/40 min-w-0 max-w-[min(100%,180px)] sm:max-w-[220px] md:max-w-[260px]">
+                  <span className="min-w-0 flex flex-col items-start overflow-hidden w-full">
+                    <span className="text-[8px] uppercase tracking-[0.2em] text-[var(--color-text-dim)] shrink-0">Kompanija</span>
+                    <span className="text-xs font-black text-[var(--color-text-main)] truncate w-full text-left">
+                      {selectedCompany.name}
+                    </span>
                   </span>
                 </div>
               )
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              to="/help"
-              className="cursor-pointer h-9 w-9 flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:bg-[var(--color-surface-hover)] rounded-xl transition-all"
-            >
-              <InfoIcon className="h-5 w-5" />
-            </Link>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <button
               onClick={() => setActiveDrawer("settings")}
-              className="relative cursor-pointer h-9 w-9 flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:bg-[var(--color-surface-hover)] rounded-xl transition-all"
+              className="relative cursor-pointer h-8 w-8 rounded-lg border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:border-primary/30 transition-all"
             >
-              <CogIcon className="h-5 w-5" />
+              <CogIcon className="h-4 w-4" />
               {hasSubNotification && (
                 <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full border border-[var(--color-bg)] shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse" />
               )}
@@ -235,40 +328,48 @@ export function AppLayout({
           </h1>
           {actions}
         </div>
+        {selectedCompany && (
+          <div className="mb-6 space-y-3">
+            {isCompanyInactive && (
+              <div className="flex items-center gap-3 rounded-xl border-l-4 border-[var(--color-error)] bg-red-50 p-4 shadow-sm">
+                <div className="flex-shrink-0 text-[var(--color-error)]">
+                  <HashIcon size={20} />
+                </div>
+                <div className="text-sm text-slate-800">
+                  <span className="font-bold text-[var(--color-error)] uppercase tracking-tight text-xs block mb-0.5">
+                    Status: Neaktivna
+                  </span>
+                  Upozorenje za <strong>{selectedCompany.name}</strong>. Licenca je vjerovatno istekla.
+                </div>
+              </div>
+            )}
+            {!isCompanyInactive && (NAV_ITEMS.filter((item) => enabledModules.includes(item.id))).length === 0 && (
+              <div className="flex items-center gap-3 rounded-xl border-l-4 border-[var(--color-warning)] bg-amber-50 p-4 shadow-sm">
+                <div className="flex-shrink-0 text-[var(--color-warning)]">
+                  <HashIcon size={20} />
+                </div>
+                <div className="text-sm text-slate-800">
+                  <span className="font-bold text-[var(--color-warning)] uppercase tracking-tight text-xs block mb-0.5">
+                    Pristup ograničen
+                  </span>
+                  Nemate dodijeljene module za <strong>{selectedCompany.name}</strong>. Kontaktirajte admina.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {children}
       </main>
 
-      {/* Bottom Navigation - visible below 1024px */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-5 flex justify-center pointer-events-auto">
-        <nav className="bg-[var(--color-glass)] backdrop-blur-2xl border border-[var(--color-border-strong)] rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/20 px-5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-around gap-2 sm:gap-6 w-full max-w-md sm:max-w-lg">
-          {NAV_ITEMS.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.id}
-                to={item.path}
-                title={item.title}
-                className={`cursor-pointer group flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'scale-110 sm:scale-125 -translate-y-1' : 'hover:scale-110'}`}
-              >
-                <div className={`relative p-2.5 sm:p-3 rounded-2xl transition-all duration-300 ${isActive ? 'bg-primary/25 shadow-glow-primary ring-1 ring-primary/40' : 'bg-[var(--color-surface)] group-hover:bg-[var(--color-surface-hover)]'}`}>
-                  <Icon className={`h-6 w-6 sm:h-7 sm:w-7 ${isActive ? 'text-primary' : 'text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]'}`} />
-                  {isActive && <span className="absolute inset-0 rounded-2xl bg-primary/20 animate-pulse-slow pointer-events-none" />}
-                </div>
-                <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mt-1 hidden sm:block ${isActive ? 'text-primary' : 'text-[var(--color-text-dim)] group-hover:text-[var(--color-text-main)]'}`}>
-                  {item.title}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+      <BottomNavigation
+        items={visibleNavItems}
+        onDrawerOpen={() => setActiveDrawer("documents")}
+      />
 
       {/* Back to Top */}
       <button
-        onClick={scrollToTop}
-        className={`fixed right-6 bottom-32 lg:bottom-8 z-[60] h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white shadow-glow-primary transition-all duration-300 transform ${showBackToTop ? "scale-100 opacity-100 translate-y-0" : "scale-0 opacity-0 translate-y-10"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className={`fixed right-6 bottom-32 lg:bottom-8 z-[60] h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white shadow-glow-primary transition-all duration-300 transform cursor-pointer ${showBackToTop ? "scale-100 opacity-100 translate-y-0" : "scale-0 opacity-0 translate-y-10"
           } hover:scale-110 active:scale-95`}
         aria-label="Back to top"
       >
@@ -276,164 +377,49 @@ export function AppLayout({
       </button>
 
       {/* Drawers */}
-      <Drawer title="Izmjena kompanije" isOpen={activeDrawer === "company"} onClose={() => setActiveDrawer(null)}>
+      <Drawer title="Odabir godine" isOpen={yearDrawerOpen} onClose={closeYearDrawer}>
         <div className="space-y-2">
-          {user?.companies.map((company) => (
+          {availableYears.map((y) => (
             <button
-              key={company.id}
-              onClick={() => {
-                onCompanyChange(company);
-                setActiveDrawer(null);
-              }}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedCompany?.id === company.id ? "border-primary bg-primary/10 ring-1 ring-primary/20" : "border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)]"
-                }`}
+              key={y}
+              type="button"
+              onClick={() => { setSelectedYear(y); closeYearDrawer(); }}
+              className={`w-full flex items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${selectedYear === y ? "border-primary bg-primary/10 ring-1 ring-primary/20" : "border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)]"}`}
             >
-              <div className={`h-10 w-10 rounded-lg flex items-center justify-center font-black text-xs shadow-glow-primary shrink-0 ${selectedCompany?.id === company.id ? "bg-primary text-white" : "bg-[var(--color-border)] text-[var(--color-text-dim)]"}`}>
-                {company.name.substring(0, 2).toUpperCase()}
-              </div>
-              <div className="text-left min-w-0">
-                <p className="text-sm font-black text-[var(--color-text-main)] leading-none mb-1 truncate">{company.name}</p>
-                <p className="text-[10px] font-black text-[var(--color-text-dim)] uppercase tracking-widest">VAT: {company.vat_number}</p>
-              </div>
+              <span className={`text-lg font-black ${selectedYear === y ? "text-primary" : "text-[var(--color-text-main)]"}`}>
+                {y}
+              </span>
             </button>
           ))}
         </div>
       </Drawer>
 
-      <Drawer title="Moj nalog" isOpen={activeDrawer === 'user'} onClose={() => setActiveDrawer(null)}>
-        <div className="flex items-center gap-4 p-4 bg-[var(--color-surface)] rounded-2xl mb-4 border border-[var(--color-border)] relative overflow-hidden">
-          <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center text-white font-black text-lg shadow-glow-primary shrink-0 z-10">
-            {user?.first_name[0]}{user?.last_name[0]}
-          </div>
-          <div className="z-10">
-            <p className="font-black text-base text-[var(--color-text-main)] leading-tight italic tracking-tight">{user?.first_name} {user?.last_name}</p>
-            <p className="text-[10px] text-[var(--color-text-muted)] font-bold uppercase tracking-wider mt-0.5">{user?.email}</p>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <button
-            onClick={() => {
-              setActiveDrawer(null);
-              navigate("/profile");
-            }}
-            className="w-full text-left p-3.5 text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] rounded-xl transition-all flex items-center gap-3 border border-transparent hover:border-[var(--color-border)] group cursor-pointer"
-          >
-            <div className="h-7 w-7 bg-[var(--color-border)] rounded-lg flex items-center justify-center text-[var(--color-text-dim)] group-hover:text-primary transition-colors">
-              <UserIcon className="h-4 w-4" />
-            </div>
-            Moj Profil
-          </button>
-          <button
-            onClick={handleLogout}
-            className="w-full text-left p-3.5 text-xs font-black uppercase tracking-widest text-red-400/80 hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all flex items-center gap-3 border border-transparent hover:border-red-400/20 group cursor-pointer"
-          >
-            <div className="h-7 w-7 bg-red-400/10 rounded-lg flex items-center justify-center text-red-400 transition-colors">
-              <ChevronRightIcon className="h-4 w-4" />
-            </div>
-            Odjavi se
-          </button>
-        </div>
-      </Drawer>
+      <CompanyDrawer
+        isOpen={activeDrawer === "company"}
+        onClose={() => setActiveDrawer(null)}
+        companies={user?.companies ?? []}
+        selectedCompanyId={selectedCompany?.id ?? null}
+        onSelect={onCompanyChange}
+      />
 
-      <Drawer title="Podešavanja" isOpen={activeDrawer === 'settings'} onClose={() => setActiveDrawer(null)}>
-        <div className="flex flex-col gap-3">
-          {/* Subscription / License Status - horizontal bar dizajn */}
-          <div className={`relative overflow-hidden rounded-xl transition-all flex items-center gap-3 px-4 py-3 ${
-            hasSubNotification
-              ? 'bg-gradient-to-r from-red-500/15 via-red-500/10 to-transparent border-l-4 border-red-500'
-              : subInfo.isLifetime
-                ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-transparent border-l-4 border-emerald-500'
-                : 'bg-[var(--color-surface)] border-l-4 border-[var(--color-border)]'
-          }`}>
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-              hasSubNotification
-                ? 'bg-red-500/25 text-red-400'
-                : subInfo.isLifetime
-                  ? 'bg-emerald-500/25 text-emerald-400'
-                  : 'bg-primary/15 text-primary'
-            }`}>
-              <BoxesIcon className="h-4 w-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">Licenca</span>
-              <p className={`text-sm font-bold truncate ${
-                hasSubNotification
-                  ? 'text-red-400'
-                  : subInfo.isLifetime
-                    ? 'text-emerald-400'
-                    : 'text-[var(--color-text-main)]'
-              }`}>
-                {subInfo.isLifetime
-                  ? "Lifetime Plan"
-                  : hasSubNotification
-                    ? `Ističe za ${subInfo.daysLeft} dana`
-                    : `Važi do ${subInfo.label}`
-                }
-              </p>
-            </div>
-            {subInfo.isLifetime && (
-              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-md shrink-0">
-                ∞
-              </span>
-            )}
-            {hasSubNotification && (
-              <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse shrink-0" />
-            )}
-          </div>
+      <UserDrawer
+        isOpen={activeDrawer === "user"}
+        onClose={() => setActiveDrawer(null)}
+        user={user}
+        onLogout={handleLogout}
+      />
 
-          {/* Settings Navigation */}
-          <DrawerNavItem
-            onClick={() => {
-              setActiveDrawer(null);
-              navigate("/settings/company");
-            }}
-            icon={Building2Icon}
-            title="Profil kompanije"
-            description="Podaci o firmi, adresa i JIB/PIB"
-            className="shadow-glow-primary/5"
-          />
+      <SettingsDrawer
+        isOpen={activeDrawer === "settings"}
+        onClose={() => setActiveDrawer(null)}
+        selectedCompany={selectedCompany}
+      />
 
-          <DrawerNavItem
-            onClick={() => {
-              setActiveDrawer(null);
-              navigate("/settings/general");
-            }}
-            icon={CogIcon}
-            title="Generalno"
-            description="Postavke kompanije i faktura"
-          />
-
-          <DrawerNavItem
-            onClick={() => {
-              setActiveDrawer(null);
-              navigate("/settings/bank-accounts");
-            }}
-            icon={CreditCardIcon}
-            title="Bankovni Računi"
-            description="Upravljanje računima za isplatu"
-          />
-
-          <DrawerNavItem
-            onClick={() => {
-              setActiveDrawer(null);
-              navigate("/settings/currencies");
-            }}
-            icon={CurrencyEuroIcon}
-            title="Valute"
-            description="Konfiguracija valuta i formata"
-          />
-
-          <DrawerNavItem
-            onClick={() => {
-              setActiveDrawer(null);
-              navigate("/settings/fiscal");
-            }}
-            icon={FileTextIcon}
-            title="Fiskalizacija"
-            description="OFS ESIR – cloud ili lokalni uređaj"
-          />
-        </div>
-      </Drawer>
+      <DocumentsDrawer
+        isOpen={activeDrawer === "documents"}
+        onClose={() => setActiveDrawer(null)}
+        items={drawerNavItems}
+      />
     </div>
   );
 }

@@ -19,7 +19,7 @@ interface ProformaItem {
     updated_at: string;
 }
 
-type StatusColor = 'green' | 'gray' | 'red' | 'amber' | 'blue';
+import type { StatusColor } from "./api";
 
 export interface Proforma {
     id: number;
@@ -37,12 +37,12 @@ export interface Proforma {
     notes: string | null;
     source_type: string | null;
     source_id: number | null;
+    /** Broj ponude kada je učitana relacija source */
+    source_document_number?: string | null;
     source?: Quote | null;
     currency: string;
     currency_id: number | null;
     currency_relation?: { id: number; code: string; name: string; symbol: string } | null;
-    bank_account_id: number | null;
-    bank_account?: { id: number; bank_name: string; account_number: string } | null;
     proforma_template: string;
     proforma_template_label: string;
     subtotal: number;
@@ -63,7 +63,6 @@ export interface ProformaInput {
     due_date?: string | null;
     notes?: string | null;
     currency_id?: number | null;
-    bank_account_id?: number | null;
     proforma_template?: string;
     subtotal: number;
     tax_total: number;

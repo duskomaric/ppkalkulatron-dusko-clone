@@ -20,7 +20,7 @@ class BankAccountResource extends JsonResource
             'bank_name' => $this->bank_name,
             'account_number' => $this->account_number,
             'swift' => $this->swift,
-            'is_default' => $this->is_default,
+            'show_on_documents' => $this->show_on_documents,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

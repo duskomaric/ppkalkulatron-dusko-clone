@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { User } from "~/types/user";
 import type { Company } from "~/types/company";
 import { fetchApi } from "~/utils/api";
+import { invalidateMeCache } from "~/api/config";
 
 const STORAGE_KEYS = {
   token: "auth_token",
@@ -99,16 +100,17 @@ export function useAuth() {
     if (!token || !company) return;
     try {
       const res = await fetchApi<{ data: { user: User } }>(`/${company.slug}/me`, { token });
-      if (res?.data?.user) {
-        // Update user + companies from /me response
-        localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(res.data.user));
-        setUser(res.data.user);
 
-        // Sync selected company with fresh data
-        const fresh = res.data.user.companies?.find(c => c.id === company.id);
+      if (res?.data?.user) {
+        const updatedUser = res.data.user;
+        localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(updatedUser));
+        setUser(updatedUser);
+
+        const fresh = updatedUser.companies?.find((c: Company) => c.id === company.id);
         if (fresh) {
           localStorage.setItem(STORAGE_KEYS.company, JSON.stringify(fresh));
           setSelectedCompany(fresh);
+          invalidateMeCache(company.slug);
         }
       }
     } catch (e) {

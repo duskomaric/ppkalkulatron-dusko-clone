@@ -22,6 +22,9 @@ class IndexInvoiceRequest extends FormRequest
             'payment_type' => ['nullable', Rule::in(array_column(FiscalPaymentTypeEnum::cases(), 'value'))],
             'created_from' => ['nullable', 'date'],
             'created_to' => ['nullable', 'date'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\Enums\LanguageEnum;
 use App\Models\Enums\UserRoleEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
@@ -29,6 +30,7 @@ class StoreUserRequest extends FormRequest
             'email' => 'required|string|email|max:255|unique:users',
             'password' => ['required', Password::defaults()],
             'role' => 'sometimes|in:' . implode(',', array_column(UserRoleEnum::cases(), 'value')),
+            'language' => 'nullable|in:' . implode(',', array_column(LanguageEnum::cases(), 'value')),
             'is_active' => 'boolean',
         ];
     }

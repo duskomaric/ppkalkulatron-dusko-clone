@@ -22,7 +22,7 @@ it('tenant: user can list bank accounts for accessible company', function () {
                     'company_id',
                     'bank_name',
                     'account_number',
-                    'is_default',
+                    'show_on_documents',
                     'created_at',
                     'updated_at',
                 ]
@@ -46,19 +46,17 @@ it('tenant: user cannot list bank accounts for inaccessible company', function (
         ]);
 });
 
-it('tenant: user can create a default bank account and it unsets previous defaults', function () {
+it('tenant: user can create a bank account with show_on_documents', function () {
     $user = User::factory()->create();
     $company = Company::factory()->create();
     attachUserToCompany($user, $company);
-
-    $existingDefault = BankAccount::factory()->default()->create(['company_id' => $company->id]);
 
     $response = $this->withHeaders(authHeaders($user))
         ->postJson("/api/v1/{$company->slug}/bank-accounts", [
             'bank_name' => 'Test Bank',
             'account_number' => '1234567890',
             'swift' => 'AAAABBCCDDD',
-            'is_default' => true,
+            'show_on_documents' => true,
         ]);
 
     $response->assertStatus(201)
@@ -67,19 +65,14 @@ it('tenant: user can create a default bank account and it unsets previous defaul
                 'company_id' => $company->id,
                 'bank_name' => 'Test Bank',
                 'account_number' => '1234567890',
-                'is_default' => true,
+                'show_on_documents' => true,
             ]
         ]);
 
     $this->assertDatabaseHas('bank_accounts', [
         'company_id' => $company->id,
         'account_number' => '1234567890',
-        'is_default' => true,
-    ]);
-
-    $this->assertDatabaseHas('bank_accounts', [
-        'id' => $existingDefault->id,
-        'is_default' => false,
+        'show_on_documents' => true,
     ]);
 });
 

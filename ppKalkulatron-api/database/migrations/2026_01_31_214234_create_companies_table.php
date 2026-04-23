@@ -31,8 +31,9 @@ return new class extends Migration
 
             $table->boolean('is_active')->default(false);
             $table->timestamp('subscription_ends_at')->nullable();
-
-
+            $table->json('enabled_modules')->nullable();
+            $table->boolean('is_small_business')->default(false);
+            $table->boolean('is_vat_obligor')->default(true);
 
             $table->timestamps();
         });

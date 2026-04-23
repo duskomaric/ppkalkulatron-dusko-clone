@@ -13,14 +13,13 @@ interface FilterPillSelectProps {
     className?: string;
 }
 
-// Koristi se na: articles/clients/invoices/quotes/proformas (filter dropdown pill)
 export function FilterPillSelect({ value, options, onChange, className = "" }: FilterPillSelectProps) {
     return (
-        <div className={`relative ${className}`}>
+        <div className={`relative min-w-[140px] w-full ${className}`.trim()}>
             <select
                 value={value}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) => onChange(e.target.value)}
-                className="h-9 pl-4 pr-9 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[10px] font-black uppercase tracking-[0.18em] text-[var(--color-text-main)] appearance-none cursor-pointer focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10"
+                className="h-9 w-full min-w-0 pl-4 pr-9 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[10px] font-black uppercase tracking-[0.18em] text-[var(--color-text-main)] appearance-none cursor-pointer focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10"
             >
                 {options.map((opt) => (
                     <option key={opt.value || opt.label} value={opt.value}>

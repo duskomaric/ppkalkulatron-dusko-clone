@@ -86,7 +86,7 @@ export function Toast({ message, type, isVisible, onClose, duration = 5000 }: To
 
                     <button
                         onClick={onClose}
-                        className="p-2 -mr-1 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 transition-all shrink-0"
+                        className="p-2 -mr-1 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 transition-all shrink-0 cursor-pointer"
                         aria-label="Zatvori"
                     >
                         <XIcon className="h-4 w-4" />

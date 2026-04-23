@@ -3,7 +3,7 @@ import type { CSSProperties, SyntheticEvent } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { login } from "~/api/auth";
 import { useAuth } from "~/hooks/useAuth";
-import { CalculatorIcon, ChevronRightIcon, MailIcon, LockIcon } from "~/components/ui/icons";
+import { CalculatorIcon, LogInIcon, MailIcon, LockIcon } from "~/components/ui/icons";
 import { getThemeByPath } from "~/utils/theme";
 import { Toast } from "~/components/ui/Toast";
 import { Input } from "~/components/ui/Input";
@@ -167,7 +167,7 @@ export default function LoginPage() {
                                 ) : (
                                     <>
                                         <span>Prijavite se</span>
-                                        <ChevronRightIcon
+                                        <LogInIcon
                                             className="h-5 w-5 ml-3 transition-transform duration-500 group-hover:translate-x-3"
                                         />
                                     </>

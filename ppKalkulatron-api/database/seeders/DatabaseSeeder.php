@@ -211,23 +211,23 @@ class DatabaseSeeder extends Seeder
 //
 //        // Create bank accounts for each company (test data for leak detection)
 //        $duskoCompany->bankAccounts()->createMany([
-//            ['bank_name' => 'Dusko Bank 1', 'account_number' => 'DUSKO-0001', 'swift' => 'DUSKBA22XXX', 'is_default' => true],
-//            ['bank_name' => 'Dusko Bank 2', 'account_number' => 'DUSKO-0002', 'swift' => 'DUSKBA22YYY', 'is_default' => false],
+//            ['bank_name' => 'Dusko Bank 1', 'account_number' => 'DUSKO-0001', 'swift' => 'DUSKBA22XXX', 'show_on_documents' => true],
+//            ['bank_name' => 'Dusko Bank 2', 'account_number' => 'DUSKO-0002', 'swift' => 'DUSKBA22YYY', 'show_on_documents' => false],
 //        ]);
 //
 //        $sandroCompany->bankAccounts()->createMany([
-//            ['bank_name' => 'Sandro Bank 1', 'account_number' => 'SANDRO-0001', 'swift' => 'SANDRO22XXX', 'is_default' => true],
-//            ['bank_name' => 'Sandro Bank 2', 'account_number' => 'SANDRO-0002', 'swift' => 'SANDRO22YYY', 'is_default' => false],
+//            ['bank_name' => 'Sandro Bank 1', 'account_number' => 'SANDRO-0001', 'swift' => 'SANDRO22XXX', 'show_on_documents' => true],
+//            ['bank_name' => 'Sandro Bank 2', 'account_number' => 'SANDRO-0002', 'swift' => 'SANDRO22YYY', 'show_on_documents' => false],
 //        ]);
 //
 //        $borisCompany->bankAccounts()->createMany([
-//            ['bank_name' => 'Boris Bank 1', 'account_number' => 'BORIS-0001', 'swift' => 'BORISB22XXX', 'is_default' => true],
-//            ['bank_name' => 'Boris Bank 2', 'account_number' => 'BORIS-0002', 'swift' => 'BORISB22YYY', 'is_default' => false],
+//            ['bank_name' => 'Boris Bank 1', 'account_number' => 'BORIS-0001', 'swift' => 'BORISB22XXX', 'show_on_documents' => true],
+//            ['bank_name' => 'Boris Bank 2', 'account_number' => 'BORIS-0002', 'swift' => 'BORISB22YYY', 'show_on_documents' => false],
 //        ]);
 //
 //        $plusiCompany->bankAccounts()->createMany([
-//            ['bank_name' => '++i Bank 1', 'account_number' => 'PLUSA-0001', 'swift' => 'PLUSIB22XXX', 'is_default' => true],
-//            ['bank_name' => '++i Bank 2', 'account_number' => 'PLUSA-0002', 'swift' => 'PLUSIB22YYY', 'is_default' => false],
+//            ['bank_name' => '++i Bank 1', 'account_number' => 'PLUSA-0001', 'swift' => 'PLUSIB22XXX', 'show_on_documents' => true],
+//            ['bank_name' => '++i Bank 2', 'account_number' => 'PLUSA-0002', 'swift' => 'PLUSIB22YYY', 'show_on_documents' => false],
 //        ]);
 
 //        $seedDocumentsForCompany = function (Company $company, string $tenantTag) use ($makeItemData, $makeInvoiceItemData, $recalcTotals): void {

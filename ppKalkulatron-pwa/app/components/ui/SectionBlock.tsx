@@ -14,7 +14,6 @@ const variantClasses: Record<SectionVariant, string> = {
   accent: "rounded-2xl border-2 border-dashed border-[var(--color-page-border)] bg-[var(--color-page-bg)] p-3 space-y-3",
 };
 
-// Koristi se na: invoices/clients/articles (sekcije u drawerima) i settings/company/general/fiscal (sekcije formi)
 export function SectionBlock({
   variant = "plain",
   className = "",

@@ -31,7 +31,6 @@ class StoreProformaRequest extends FormRequest
             'due_date' => 'required|date|after_or_equal:date',
             'notes' => 'nullable|string',
             'currency_id' => ['nullable', $currencyRule],
-            'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'proforma_template' => 'required|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'subtotal' => 'required|integer|min:0',
             'tax_total' => 'required|integer|min:0',

@@ -25,7 +25,7 @@ class UpdateBankAccountRequest extends FormRequest
             'bank_name' => 'sometimes|string|max:255',
             'account_number' => 'sometimes|string|max:255',
             'swift' => 'sometimes|nullable|string|max:20',
-            'is_default' => 'sometimes|boolean',
+            'show_on_documents' => 'sometimes|boolean',
         ];
     }
 

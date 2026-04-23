@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\API\V1;
 
+use App\Exceptions\NoExchangeRateForDateException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\API\V1\StoreFiscalizationRequest;
 use App\Models\Company;
 use App\Models\CompanySetting;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Enums\FiscalRecordTypeEnum;
 use App\Models\FiscalRecord;
 use App\Models\Invoice;
+use App\Services\CurrencyConversionService;
 use App\Services\OFSService;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
@@ -127,10 +130,59 @@ class FiscalController extends Controller
     }
 
     /**
+     * Vrati OFS payload za lokalni uređaj (PWA ga šalje na ESIR, odgovor na fiscalize).
+     * Query: transaction_type (Sale | Refund), invoice_type (Normal | Copy).
+     */
+    #[Endpoint(operationId: 'getFiscalPayload', title: 'Get fiscal payload', description: 'Get OFS payload for local device')]
+    public function fiscalPayload(Company $company, Invoice $invoice, CurrencyConversionService $currencyConversionService): JsonResponse
+    {
+        abort_if($invoice->company_id !== $company->id, 404);
+
+        $invoice->load(['items.article', 'client', 'fiscalRecords', 'originalInvoice.fiscalRecords']);
+
+        try {
+            $this->ensureInvoiceBamAmounts($invoice, $currencyConversionService);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $transactionType = request()->query('transaction_type', 'Sale');
+        $invoiceType = request()->query('invoice_type', 'Normal');
+
+        $referentDocumentNumber = null;
+        $referentDocumentDT = null;
+
+        if ($invoiceType === 'Copy' || $transactionType === 'Refund') {
+            $originalRecord = $transactionType === 'Refund'
+                ? $invoice->originalInvoice?->originalFiscalRecord()
+                : $invoice->originalFiscalRecord();
+            if ($originalRecord) {
+                $referentDocumentNumber = $originalRecord->fiscal_invoice_number;
+                $referentDocumentDT = $originalRecord->fiscalized_at?->format('c');
+            }
+        }
+
+        $items = $this->buildInvoiceItems($invoice);
+        $paymentAmount = (float) array_sum(array_column($items, 'totalAmount'));
+        $payload = $this->buildInvoicePayload(
+            $company,
+            $invoice,
+            $items,
+            $paymentAmount,
+            $transactionType,
+            $invoiceType,
+            $referentDocumentNumber,
+            $referentDocumentDT
+        );
+
+        return response()->json($payload);
+    }
+
+    /**
      * Fiskalizuj i štampaj račun (Sale)
      */
     #[Endpoint(operationId: 'fiscalizeInvoice', title: 'Fiscalize invoice', description: 'Create and print fiscal invoice')]
-    public function fiscalize(Company $company, Invoice $invoice): JsonResponse
+    public function fiscalize(StoreFiscalizationRequest $request, Company $company, Invoice $invoice, CurrencyConversionService $currencyConversionService): JsonResponse
     {
         abort_if($invoice->company_id !== $company->id, 404);
 
@@ -147,6 +199,7 @@ class FiscalController extends Controller
 
         try {
             $invoice->load(['items.article', 'client']);
+            $this->ensureInvoiceBamAmounts($invoice, $currencyConversionService);
             $ofs = new OFSService($company);
 
             $items = $this->buildInvoiceItems($invoice);
@@ -155,7 +208,7 @@ class FiscalController extends Controller
 
             $payload = $this->buildInvoicePayload($company, $invoice, $items, $paymentAmount, 'Sale', 'Normal');
 
-            $requestId = 'inv-'.$invoice->id.'-'.Str::random(8);
+            $requestId = $request->validated('request_id') ?? 'inv-'.$invoice->id.'-'.Str::random(8);
             $deviceMode = CompanySetting::get('ofs_device_mode', 'cloud', $company->id);
 
             Log::info('Fiscalizing invoice', [
@@ -165,13 +218,7 @@ class FiscalController extends Controller
             ]);
 
             if ($deviceMode === 'local') {
-                $data = request('local_response') ?: request('localDeviceResponse');
-                if (!$data) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Nedostaje odgovor lokalnog uređaja.',
-                    ], 422);
-                }
+                $data = $request->validated('localDeviceResponse');
             } else {
                 $response = $ofs->createInvoice($payload, $requestId);
                 if (!$response->successful()) {
@@ -197,16 +244,7 @@ class FiscalController extends Controller
                     $fiscalCounter = (string) $fiscalCounter;
                 }
 
-                $receiptImagePath = null;
-                $base64Image = $data['invoiceImagePngBase64'] ?? null;
-                if ($base64Image) {
-                    $receiptImagePath = $this->saveFiscalReceiptImage(
-                        $company,
-                        $invoice,
-                        $base64Image,
-                        'original'
-                    );
-                }
+                $receiptImagePath = $this->extractAndSaveFiscalReceiptImage($company, $invoice, $data, 'original');
 
                 FiscalRecord::create([
                     'invoice_id' => $invoice->id,
@@ -237,6 +275,8 @@ class FiscalController extends Controller
                 'success' => false,
                 'message' => 'Neispravan odgovor fiskalnog uređaja',
             ], 502);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             Log::error('Exception during fiscalization', [
                 'invoice_id' => $invoice->id,
@@ -255,7 +295,7 @@ class FiscalController extends Controller
      * Štampaj kopiju fiskalnog računa (Copy)
      */
     #[Endpoint(operationId: 'fiscalizeCopy', title: 'Print fiscal copy', description: 'Print copy of fiscal invoice')]
-    public function fiscalizeCopy(Company $company, Invoice $invoice): JsonResponse
+    public function fiscalizeCopy(StoreFiscalizationRequest $request, Company $company, Invoice $invoice, CurrencyConversionService $currencyConversionService): JsonResponse
     {
         abort_if($invoice->company_id !== $company->id, 404);
 
@@ -269,6 +309,7 @@ class FiscalController extends Controller
 
         try {
             $invoice->load(['items.article', 'client']);
+            $this->ensureInvoiceBamAmounts($invoice, $currencyConversionService);
             $ofs = new OFSService($company);
 
             $items = $this->buildInvoiceItems($invoice);
@@ -287,7 +328,7 @@ class FiscalController extends Controller
                 $referentDT
             );
 
-            $requestId = 'copy-'.$invoice->id.'-'.Str::random(8);
+            $requestId = $request->validated('request_id') ?? 'copy-'.$invoice->id.'-'.Str::random(8);
             $deviceMode = CompanySetting::get('ofs_device_mode', 'cloud', $company->id);
 
             Log::info('Fiscalizing copy', [
@@ -297,13 +338,7 @@ class FiscalController extends Controller
             ]);
 
             if ($deviceMode === 'local') {
-                $data = request('local_response') ?: request('localDeviceResponse');
-                if (!$data) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Nedostaje odgovor lokalnog uređaja.',
-                    ], 422);
-                }
+                $data = $request->validated('localDeviceResponse');
             } else {
                 $response = $ofs->createInvoice($payload, $requestId);
                 if (!$response->successful()) {
@@ -324,16 +359,7 @@ class FiscalController extends Controller
             }
 
             if (isset($data['invoiceNumber'])) {
-                $receiptImagePath = null;
-                $base64Image = $data['invoiceImagePngBase64'] ?? null;
-                if ($base64Image) {
-                    $receiptImagePath = $this->saveFiscalReceiptImage(
-                        $company,
-                        $invoice,
-                        $base64Image,
-                        'copy'
-                    );
-                }
+                $receiptImagePath = $this->extractAndSaveFiscalReceiptImage($company, $invoice, $data, 'copy');
 
                 FiscalRecord::create([
                     'invoice_id' => $invoice->id,
@@ -360,6 +386,8 @@ class FiscalController extends Controller
                 'success' => false,
                 'message' => 'Neispravan odgovor fiskalnog uređaja',
             ], 502);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             Log::error('Exception during fiscal copy', [
                 'invoice_id' => $invoice->id,
@@ -377,7 +405,7 @@ class FiscalController extends Controller
      * Storniraj (Refund) fiskalni račun
      */
     #[Endpoint(operationId: 'fiscalizeRefund', title: 'Fiscalize refund', description: 'Create refund/storno fiscal invoice')]
-    public function fiscalizeRefund(Company $company, Invoice $invoice): JsonResponse
+    public function fiscalizeRefund(StoreFiscalizationRequest $request, Company $company, Invoice $invoice, CurrencyConversionService $currencyConversionService): JsonResponse
     {
         abort_if($invoice->company_id !== $company->id, 404);
 
@@ -406,6 +434,7 @@ class FiscalController extends Controller
 
         try {
             $invoice->load(['items.article', 'client']);
+            $this->ensureInvoiceBamAmounts($invoice, $currencyConversionService);
             $ofs = new OFSService($company);
 
             // OFS API: refund ima isti sadržaj kao original (pozitivni iznosi), transactionType: Refund + referent polja
@@ -425,7 +454,7 @@ class FiscalController extends Controller
                 $referentDT
             );
 
-            $requestId = 'refund-'.$invoice->id.'-'.Str::random(8);
+            $requestId = $request->validated('request_id') ?? 'refund-'.$invoice->id.'-'.Str::random(8);
             $deviceMode = CompanySetting::get('ofs_device_mode', 'cloud', $company->id);
 
             Log::info('Fiscalizing refund', [
@@ -435,13 +464,7 @@ class FiscalController extends Controller
             ]);
 
             if ($deviceMode === 'local') {
-                $data = request('local_response') ?: request('localDeviceResponse');
-                if (!$data) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Nedostaje odgovor lokalnog uređaja.',
-                    ], 422);
-                }
+                $data = $request->validated('localDeviceResponse');
             } else {
                 $response = $ofs->createInvoice($payload, $requestId);
                 if (!$response->successful()) {
@@ -462,16 +485,7 @@ class FiscalController extends Controller
             }
 
             if (isset($data['invoiceNumber'])) {
-                $receiptImagePath = null;
-                $base64Image = $data['invoiceImagePngBase64'] ?? null;
-                if ($base64Image) {
-                    $receiptImagePath = $this->saveFiscalReceiptImage(
-                        $company,
-                        $invoice,
-                        $base64Image,
-                        'refund'
-                    );
-                }
+                $receiptImagePath = $this->extractAndSaveFiscalReceiptImage($company, $invoice, $data, 'refund');
 
                 FiscalRecord::create([
                     'invoice_id' => $invoice->id,
@@ -502,6 +516,8 @@ class FiscalController extends Controller
                 'success' => false,
                 'message' => 'Neispravan odgovor fiskalnog uređaja',
             ], 502);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             Log::error('Exception during fiscal refund', [
                 'invoice_id' => $invoice->id,
@@ -516,12 +532,26 @@ class FiscalController extends Controller
     }
 
     /**
+     * Osiguraj da račun i stavke imaju BAM iznose (za OFS). Ako su u drugoj valuti a _bam je prazan, konvertuj.
+     *
+     * @throws NoExchangeRateForDateException
+     */
+    protected function ensureInvoiceBamAmounts(Invoice $invoice, CurrencyConversionService $currencyConversionService): void
+    {
+        $invoice->loadMissing(['items', 'currency']);
+        if ($invoice->total_bam !== null) {
+            return;
+        }
+        $currencyConversionService->fillInvoiceBam($invoice);
+    }
+
+    /**
      * Build OFS API invoice items from Invoice model.
      * Koristi se za Original (Sale), Copy i Refund - svi šalju iste iznose (sa porezom).
      * Za Refund: isti sadržaj kao original (pozitivni iznosi), transactionType: Refund označava refundaciju.
      *
-     * Prema dokumentaciji: unitPrice, totalAmount i payment su iznosi SA porezom (inkluzivno).
-     * OFS izračunava osnovicu i porez iz labels.
+     * Prema dokumentaciji OFS: name, gtin (8-14 znakova), labels, unitPrice, quantity, totalAmount obavezni;
+     * unitPrice, totalAmount i payment su iznosi SA porezom (inkluzivno). OFS izračunava osnovicu i porez iz labels.
      */
     protected function buildInvoiceItems(Invoice $invoice): array
     {
@@ -533,12 +563,19 @@ class FiscalController extends Controller
             $unit = $item->article?->unit ?? 'kom';
             $name = $item->name . ' / ' . $unit;
 
-            // unit_price i total su SA porezom (inclusive) - ono što kupac plaća
-            $unitPrice = (float) (abs($item->unit_price) / 100);
-            $totalAmount = (float) (abs($item->total) / 100);
+            // GTIN obavezan (dokumentacija: 8-14 znakova). Jedinstveni 8-znamenkasti broj (artikl nema barkod u modelu).
+            $gtin = str_pad((string) ($item->article_id ?? $item->id), 8, '0', STR_PAD_LEFT);
+            $gtin = substr($gtin, 0, 14);
+
+            // BAM iznosi za OFS (koristi spremljene _bam ili fallback na iznos u valuti)
+            $unitPriceBam = $item->unit_price_bam ?? $item->unit_price;
+            $totalBam = $item->total_bam ?? $item->total;
+            $unitPrice = (float) (abs($unitPriceBam) / 100);
+            $totalAmount = (float) (abs($totalBam) / 100);
 
             $items[] = [
                 'name' => $name,
+                'gtin' => $gtin,
                 'quantity' => $quantity,
                 'unitPrice' => $unitPrice,
                 'totalAmount' => $totalAmount,
@@ -567,8 +604,12 @@ class FiscalController extends Controller
         $imageFormat = CompanySetting::get('ofs_receipt_image_format', 'Png', $company->id);
         $layout = CompanySetting::get('ofs_receipt_layout', 'Slip', $company->id);
         $paymentType = $invoice->payment_type?->value ?? CompanySetting::get('ofs_default_payment_type', 'Cash', $company->id);
+        $printReceipt = CompanySetting::get('ofs_print_receipt', false, $company->id);
 
+        // Struktura prema OFS dokumentaciji: invoiceRequest + opciona polja print, renderReceiptImage, receiptLayout, ...
         $payload = [
+            'print' => $printReceipt,
+            'email' => 'duskomaric86@gmail.com',
             'renderReceiptImage' => $renderImage,
             'receiptImageFormat' => $imageFormat,
             'receiptLayout' => $layout,
@@ -580,7 +621,7 @@ class FiscalController extends Controller
                     ['amount' => $totalAmount, 'paymentType' => $paymentType],
                 ],
                 'items' => $items,
-                'cashier' => auth()->user()?->name ?? 'System',
+                'cashier' => auth()->user()?->first_name . ' ' . auth()->user()?->last_name ?? 'Prodavac',
             ],
         ];
 
@@ -602,18 +643,57 @@ class FiscalController extends Controller
         return $payload;
     }
 
+    protected function extractAndSaveFiscalReceiptImage(Company $company, Invoice $invoice, array $responseData, string $type = 'original'): ?string
+    {
+        // OFS može vratiti različita polja zavisno od receiptImageFormat.
+        $base64Candidates = [
+            'invoiceImagePngBase64' => 'png',
+            'invoiceImagePdfBase64' => 'pdf',
+            'invoiceImageHtmlBase64' => 'html',
+        ];
+
+        foreach ($base64Candidates as $field => $extension) {
+            $content = $responseData[$field] ?? null;
+            if (is_string($content) && $content !== '') {
+                return $this->saveFiscalReceiptFile($company, $invoice, $content, $type, $extension, true);
+            }
+        }
+
+        // Neki uređaji vraćaju HTML kao plain string (ne base64).
+        $htmlCandidates = ['invoiceImageHtml', 'invoiceHtml', 'receiptHtml'];
+        foreach ($htmlCandidates as $field) {
+            $html = $responseData[$field] ?? null;
+            if (is_string($html) && trim($html) !== '') {
+                return $this->saveFiscalReceiptFile($company, $invoice, $html, $type, 'html', false);
+            }
+        }
+
+        return null;
+    }
+
     /**
-     * Spremi sliku fiskalnog računa u folder: company-slug/mjesec/broj-fakture-(type).png
+     * Spremi fiskalni receipt u folder: company-slug/mjesec/broj-fakture-(type).ext
      */
-    protected function saveFiscalReceiptImage(Company $company, Invoice $invoice, string $base64, string $type = 'original'): string
+    protected function saveFiscalReceiptFile(
+        Company $company,
+        Invoice $invoice,
+        string $content,
+        string $type = 'original',
+        string $extension = 'png',
+        bool $isBase64 = true
+    ): string
     {
         $month = now()->format('Y-m');
         $safeNumber = preg_replace('/[^a-zA-Z0-9\-_]/', '-', $invoice->invoice_number);
-        $relativePath = $company->slug.'/'.$month.'/'.$safeNumber.'-'.$type.'.png';
+        $relativePath = $company->slug.'/'.$month.'/'.$safeNumber.'-'.$type.'.'.$extension;
 
-        $binary = base64_decode($base64, true);
-        if ($binary === false) {
-            throw new \InvalidArgumentException('Invalid base64 image data');
+        if ($isBase64) {
+            $binary = base64_decode($content, true);
+            if ($binary === false) {
+                throw new \InvalidArgumentException('Invalid base64 receipt data');
+            }
+        } else {
+            $binary = $content;
         }
 
         Storage::disk('fiscal_receipts')->put($relativePath, $binary);
@@ -653,7 +733,13 @@ class FiscalController extends Controller
             return response()->json(['message' => 'Datoteka nije pronađena'], 404);
         }
 
-        return response()->file($path, ['Content-Type' => 'image/png']);
+        $contentType = match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'pdf' => 'application/pdf',
+            'html', 'htm' => 'text/html; charset=UTF-8',
+            default => 'image/png',
+        };
+
+        return response()->file($path, ['Content-Type' => $contentType]);
     }
 
     /**

@@ -16,10 +16,10 @@ return new class extends Migration
             $table->string('bank_name');
             $table->string('account_number');
             $table->string('swift')->nullable();
-            $table->boolean('is_default')->default(false);
+            $table->boolean('show_on_documents')->default(true);
             $table->timestamps();
 
-            $table->index(['company_id', 'is_default']);
+            $table->index(['company_id', 'show_on_documents']);
         });
     }
 

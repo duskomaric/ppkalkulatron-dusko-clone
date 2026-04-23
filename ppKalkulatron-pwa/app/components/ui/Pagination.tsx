@@ -8,7 +8,6 @@ interface PaginationProps {
   loading?: boolean;
 }
 
-// Koristi se na: clients/articles/invoices (paginacija liste)
 export function Pagination({ pagination, currentPage, onPageChange, loading }: PaginationProps) {
   if (!pagination || pagination.last_page <= 1) return null;
 
@@ -19,7 +18,7 @@ export function Pagination({ pagination, currentPage, onPageChange, loading }: P
         disabled={currentPage === 1 || loading}
         className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${currentPage === 1 || loading
             ? "bg-[var(--color-border)] text-[var(--color-text-dim)] cursor-not-allowed border border-[var(--color-border)]"
-            : "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"
+            : "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 cursor-pointer"
           }`}
       >
         <ChevronLeftIcon className="h-4 w-4" />
@@ -36,7 +35,7 @@ export function Pagination({ pagination, currentPage, onPageChange, loading }: P
             key={page}
             onClick={() => onPageChange(page)}
             disabled={loading}
-            className={`h-8 w-8 rounded-xl text-xs font-bold transition-all ${page === currentPage
+            className={`h-8 w-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${page === currentPage
                 ? "bg-primary text-white shadow-glow-primary"
                 : "bg-[var(--color-border)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border border-[var(--color-border)]"
               }`}
@@ -50,7 +49,7 @@ export function Pagination({ pagination, currentPage, onPageChange, loading }: P
         disabled={currentPage === pagination.last_page || loading}
         className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${currentPage === pagination.last_page || loading
             ? "bg-[var(--color-border)] text-[var(--color-text-dim)] cursor-not-allowed border border-[var(--color-border)]"
-            : "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"
+            : "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 cursor-pointer"
           }`}
       >
         <ChevronRightIcon className="h-4 w-4" />

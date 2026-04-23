@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Companies\RelationManagers;
 
+use App\Models\Contract;
+use App\Models\Proforma;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Enums\DocumentTemplateEnum;
 use App\Models\Enums\FiscalPaymentTypeEnum;
@@ -86,6 +88,18 @@ class InvoicesRelationManager extends RelationManager
                     ->icon(Heroicon::OutlinedHashtag)
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('source_type')
+                    ->label('Izvor')
+                    ->formatStateUsing(function ($state, $record): ?string {
+                        return match ($record->source_type ?? null) {
+                            Proforma::class => 'Iz predračuna',
+                            Contract::class => 'Iz ugovora',
+                            default => null,
+                        };
+                    })
+                    ->placeholder('—')
+                    ->badge()
+                    ->color(fn ($state): ?string => $state ? 'info' : null),
                 Tables\Columns\TextColumn::make('client.name')
                     ->label('Client')
                     ->icon(Heroicon::OutlinedUser)

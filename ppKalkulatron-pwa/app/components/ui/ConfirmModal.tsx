@@ -13,7 +13,6 @@ interface ConfirmModalProps {
   loading?: boolean;
 }
 
-// Koristi se na: clients/articles/invoices (brisanje iz liste), settings/bank-accounts i settings/currencies (brisanje stavki)
 export function ConfirmModal({
   isOpen,
   onClose,
@@ -62,7 +61,7 @@ export function ConfirmModal({
             await onConfirm();
           }}
           disabled={loading}
-          className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isDanger
+          className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 ${isDanger
             ? 'bg-red-500 text-white shadow-red-500/25 hover:bg-red-600'
             : 'bg-amber-500 text-black shadow-amber-500/25 hover:bg-amber-600'
             }`}
@@ -80,7 +79,7 @@ export function ConfirmModal({
         <button
           onClick={onClose}
           disabled={loading}
-          className="w-full py-4 bg-white/5 text-gray-400 border border-white/5 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:text-white hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-4 bg-white/5 text-gray-400 border border-white/5 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:text-white hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {cancelLabel}
         </button>

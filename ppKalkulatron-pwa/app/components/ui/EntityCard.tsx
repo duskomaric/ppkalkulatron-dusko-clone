@@ -6,7 +6,6 @@ interface EntityCardProps {
     className?: string;
 }
 
-// Koristi se na: app/routes/invoices.tsx, app/routes/quotes.tsx, app/routes/proformas.tsx (kartice u listama dokumenata)
 export function EntityCard({ children, onClick, className = "" }: EntityCardProps) {
     return (
         <div

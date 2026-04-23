@@ -13,9 +13,11 @@ import type { CompanySettings } from "~/types/config";
 import type { SelectOption } from "~/types/config";
 import { Toast } from "~/components/ui/Toast";
 import { Toggle } from "~/components/ui/Toggle";
-import { CheckCircleIcon, FileTextIcon, GlobeIcon, SearchIcon } from "~/components/ui/icons";
-import { useNavigate } from "react-router";
-import { FormInput, FormSelect, FormTextarea } from "~/components/ui/Input";
+import { CheckCircleIcon, FileTextIcon, GlobeIcon, SearchIcon, InfoIcon } from "~/components/ui/icons";
+import { useNavigate, Link } from "react-router";
+import { FormInput } from "~/components/ui/FormInput";
+import { FormSelect } from "~/components/ui/FormSelect";
+import { FormTextarea } from "~/components/ui/FormTextarea";
 import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
 import { LoadingState } from "~/components/ui/LoadingState";
@@ -63,6 +65,18 @@ export default function FiscalSettingsPage() {
     const [manualIPRange, setManualIPRange] = useState("");
 
     const { toast, showToast, hideToast } = useToast();
+    const receiptLayout = formData?.ofs_receipt_layout ?? "Slip";
+    const receiptImageFormatOptions =
+        receiptLayout === "Invoice"
+            ? [
+                { value: "Pdf", label: "PDF" },
+                { value: "Html", label: "HTML" },
+            ]
+            : [
+                { value: "Png", label: "PNG" },
+                { value: "Pdf", label: "PDF" },
+                { value: "Html", label: "HTML" },
+            ];
 
     useEffect(() => {
         if (!token || !selectedCompany) return;
@@ -73,8 +87,7 @@ export default function FiscalSettingsPage() {
                 const meRes = await getMe(token, selectedCompany.slug);
                 setFormData(meRes.data.company_settings);
                 setPaymentTypes(meRes.data.payment_types ?? []);
-            } catch (error) {
-                console.error("Failed to load settings", error);
+            } catch {
                 showToast("Greška pri učitavanju podešavanja", "error");
             } finally {
                 setLoading(false);
@@ -92,8 +105,7 @@ export default function FiscalSettingsPage() {
         try {
             await updateCompanySettings(selectedCompany.slug, token, formData);
             showToast("Podešavanja fiskalizacije sačuvana", "success");
-        } catch (error) {
-            console.error("Failed to save settings", error);
+        } catch {
             showToast("Greška pri čuvanju", "error");
         } finally {
             setSaving(false);
@@ -462,11 +474,23 @@ export default function FiscalSettingsPage() {
                 >
                     {/* Connection - Cloud vs Local */}
                     <SectionBlock variant="card">
-                        <SectionHeader icon={GlobeIcon} title="Konekcija" />
+                        <SectionHeader
+                            icon={GlobeIcon}
+                            title="Konekcija"
+                            rightElement={
+                                <Link
+                                    to="/help#fiscalization"
+                                    className="h-8 w-8 rounded-lg border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:border-primary/30 transition-all cursor-pointer"
+                                    title="Pomoć: Fiskalizacija"
+                                >
+                                    <InfoIcon className="h-4 w-4" />
+                                </Link>
+                            }
+                        />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormSelect
                                 label="Način uređaja"
-                                value={formData.ofs_device_mode || "cloud"}
+                                value={formData.ofs_device_mode ?? ""}
                                 onChange={(val: string) =>
                                     setFormData({ ...formData, ofs_device_mode: val || null })
                                 }
@@ -612,7 +636,7 @@ export default function FiscalSettingsPage() {
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    className="text-xs px-3 py-1 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover"
+                                                    className="text-xs px-3 py-1 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover cursor-pointer"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setFormData({
@@ -669,10 +693,18 @@ export default function FiscalSettingsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormSelect
                                 label="Layout štampe"
-                                value={formData.ofs_receipt_layout || "Slip"}
-                                onChange={(val: string) =>
-                                    setFormData({ ...formData, ofs_receipt_layout: val || null })
-                                }
+                                value={formData.ofs_receipt_layout ?? ""}
+                                onChange={(val: string) => {
+                                    const nextLayout = val || null;
+                                    const currentFormat = formData.ofs_receipt_image_format ?? null;
+                                    const allowedFormats = nextLayout === "Invoice" ? ["Pdf", "Html"] : ["Png", "Pdf", "Html"];
+                                    const nextFormat = currentFormat && allowedFormats.includes(currentFormat) ? currentFormat : (allowedFormats[0] ?? null);
+                                    setFormData({
+                                        ...formData,
+                                        ofs_receipt_layout: nextLayout,
+                                        ofs_receipt_image_format: nextFormat,
+                                    });
+                                }}
                                 options={[
                                     { value: "Slip", label: "Slip (termalni 58/80mm)" },
                                     { value: "Invoice", label: "Invoice (A4 Laser/InkJet)" },
@@ -680,7 +712,7 @@ export default function FiscalSettingsPage() {
                             />
                             <FormSelect
                                 label="Podrazumijevani način plaćanja"
-                                value={formData.ofs_default_payment_type ?? (paymentTypes[0]?.value ?? "")}
+                                value={formData.ofs_default_payment_type ?? paymentTypes[0]?.value ?? ""}
                                 onChange={(val: string) =>
                                     setFormData({ ...formData, ofs_default_payment_type: val || null })
                                 }
@@ -688,12 +720,19 @@ export default function FiscalSettingsPage() {
                             />
                             <FormSelect
                                 label="Format slike"
-                                value={formData.ofs_receipt_image_format || "Png"}
+                                value={formData.ofs_receipt_image_format ?? ""}
                                 onChange={(val: string) =>
                                     setFormData({ ...formData, ofs_receipt_image_format: val || null })
                                 }
-                                options={[{ value: "Png", label: "PNG" }]}
+                                options={receiptImageFormatOptions}
                             />
+                            <div className="md:col-span-2">
+                                <Toggle
+                                    checked={formData.ofs_print_receipt ?? false}
+                                    onChange={(v) => setFormData({ ...formData, ofs_print_receipt: v })}
+                                    label="Štampaj račun pri fiskalizaciji (print)"
+                                />
+                            </div>
                             <div className="md:col-span-2">
                                 <Toggle
                                     checked={formData.ofs_render_receipt_image ?? true}

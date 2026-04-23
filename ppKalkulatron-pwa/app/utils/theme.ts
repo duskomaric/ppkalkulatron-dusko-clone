@@ -11,6 +11,7 @@ export const PAGE_THEMES: Record<string, string> = {
 
     // Settings (teal → blue family, iste ali različite)
     "/settings/general": "20, 184, 166",        // Teal
+    "/settings/visual": "16, 185, 129",         // Emerald
     "/settings/company": "14, 165, 233",        // Sky Blue
     "/settings/bank-accounts": "56, 189, 248",  // Light Blue
     "/settings/currencies": "45, 212, 191",     // Aqua

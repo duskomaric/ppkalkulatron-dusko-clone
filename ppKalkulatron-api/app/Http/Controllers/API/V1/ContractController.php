@@ -8,8 +8,10 @@ use App\Http\Requests\API\V1\UpdateContractRequest;
 use App\Http\Requests\API\V1\UploadFileRequest;
 use App\Http\Resources\API\V1\ContractResource;
 use App\Http\Resources\API\V1\InvoiceResource;
+use App\Exceptions\NoExchangeRateForDateException;
 use App\Models\Company;
 use App\Models\Contract;
+use App\Services\CurrencyConversionService;
 use App\Services\DocumentConversionService;
 use App\Services\DocumentNumberService;
 use Dedoc\Scramble\Attributes\Endpoint;
@@ -136,17 +138,24 @@ class ContractController extends Controller
     }
 
     #[Endpoint(operationId: 'convertContractToInvoice', title: 'Convert contract to invoice', description: 'Convert contract to invoice')]
-    public function convertToInvoice(Company $company, Contract $contract, DocumentConversionService $conversionService, DocumentNumberService $numberService): InvoiceResource
+    public function convertToInvoice(Company $company, Contract $contract, DocumentConversionService $conversionService, DocumentNumberService $numberService, CurrencyConversionService $currencyConversionService): InvoiceResource|JsonResponse
     {
         abort_if($contract->company_id !== $company->id, 404);
 
+        $contract->load(['items.article']);
         $invoice = $conversionService->convertContractToInvoice($contract);
 
-        // Reserve invoice number
-        $numberData = $numberService->reserveNumber($company, 'invoice');
+        $year = DocumentNumberService::yearFromDate($invoice->date);
+        $numberData = $numberService->reserveNumber($company, 'invoice', $year);
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 
-        return new InvoiceResource($invoice->load('items'));
+        try {
+            $currencyConversionService->fillInvoiceBam($invoice);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency']));
     }
 }

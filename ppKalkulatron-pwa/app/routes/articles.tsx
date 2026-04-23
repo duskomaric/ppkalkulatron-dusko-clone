@@ -11,15 +11,16 @@ import {
     TagIcon,
     DollarIcon,
     CheckCircleIcon,
-    FileSlidersIcon,
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { CreateButton } from "~/components/ui/CreateButton";
 import { Toast } from "~/components/ui/Toast";
+import { useNavigate } from "react-router";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge } from "~/components/ui/StatusBadge";
 import { Input } from "~/components/ui/Input";
+import { CurrencyInput } from "~/components/document/CurrencyInput";
 import { ResponsiveEntityCard } from "~/components/ui/ResponsiveEntityCard";
 import { EmptyState } from "~/components/ui/EmptyState";
 import { DetailsItem } from "~/components/ui/DetailsItem";
@@ -32,15 +33,27 @@ import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
 import { DetailsGrid } from "~/components/ui/DetailsGrid";
 import { ListHeader } from "~/components/ui/ListHeader";
-import { FilterBar } from "~/components/ui/FilterBar";
-import { FilterPillSelect } from "~/components/ui/FilterPillSelect";
-import { FilterSearchInput } from "~/components/ui/FilterSearchInput";
-import { ActiveFiltersBar } from "~/components/ui/ActiveFiltersBar";
+import { ArticleFilterSection } from "~/components/articles/ArticleFilterSection";
 import type { PaginationMeta } from "~/types/api";
 import { useToast } from "~/hooks/useToast";
 
+
+type LanguageCode = "en" | "bs" | "hr" | "sr_Latn" | "sr_Cyrl" | "fr" | "de" | "it" | "ru";
+const A = {
+    en: { title: "Articles", new: "New article", fetchErr: "Error fetching articles", created: "Article created successfully", updated: "Article updated successfully", saveErr: "Error saving article", deleted: "Article deleted successfully", deleteErr: "Error deleting article", deleteTitle: "Delete article", deleteMsg: "Are you sure you want to permanently delete article", details: "Article details", basic: "Basic", prices: "Prices", detailsSec: "Details", params: "Parameters", status: "Status", unit: "Unit", tax: "Tax", active: "Active", inactive: "Inactive", notFound: "No articles found", create: "Create article", save: "Save changes", edit: "Edit article" },
+    bs: { title: "Artikli", new: "Novi artikal", fetchErr: "Greška pri dohvatanju artikala", created: "Artikal uspješno kreiran", updated: "Artikal uspješno ažuriran", saveErr: "Greška pri čuvanju artikla", deleted: "Artikal uspješno obrisan", deleteErr: "Greška pri brisanju artikla", deleteTitle: "Obriši artikal", deleteMsg: "Da li ste sigurni da želite trajno obrisati artikal", details: "Detalji artikla", basic: "Osnovno", prices: "Cijene", detailsSec: "Detalji", params: "Parametri", status: "Status", unit: "Jedinica", tax: "Porez", active: "Aktivan", inactive: "Neaktivan", notFound: "Nema pronađenih artikala", create: "Kreiraj artikal", save: "Sačuvaj izmjene", edit: "Uredi artikal" },
+    hr: { title: "Artikli", new: "Novi artikal", fetchErr: "Greška pri dohvaćanju artikala", created: "Artikal uspješno kreiran", updated: "Artikal uspješno ažuriran", saveErr: "Greška pri spremanju artikla", deleted: "Artikal uspješno obrisan", deleteErr: "Greška pri brisanju artikla", deleteTitle: "Obriši artikal", deleteMsg: "Jeste li sigurni da želite trajno obrisati artikal", details: "Detalji artikla", basic: "Osnovno", prices: "Cijene", detailsSec: "Detalji", params: "Parametri", status: "Status", unit: "Jedinica", tax: "Porez", active: "Aktivan", inactive: "Neaktivan", notFound: "Nema pronađenih artikala", create: "Kreiraj artikal", save: "Spremi promjene", edit: "Uredi artikal" },
+    "sr_Latn": { title: "Artikli", new: "Novi artikal", fetchErr: "Greška pri dohvatanju artikala", created: "Artikal uspešno kreiran", updated: "Artikal uspešno ažuriran", saveErr: "Greška pri čuvanju artikla", deleted: "Artikal uspešno obrisan", deleteErr: "Greška pri brisanju artikla", deleteTitle: "Obriši artikal", deleteMsg: "Da li ste sigurni da želite trajno obrisati artikal", details: "Detalji artikla", basic: "Osnovno", prices: "Cene", detailsSec: "Detalji", params: "Parametri", status: "Status", unit: "Jedinica", tax: "Porez", active: "Aktivan", inactive: "Neaktivan", notFound: "Nema pronađenih artikala", create: "Kreiraj artikal", save: "Sačuvaj izmene", edit: "Uredi artikal" },
+    "sr_Cyrl": { title: "Артикли", new: "Нови артикал", fetchErr: "Грешка при дохватању артикала", created: "Артикал успешно креиран", updated: "Артикал успешно ажуриран", saveErr: "Грешка при чувању артикла", deleted: "Артикал успешно обрисан", deleteErr: "Грешка при брисању артикла", deleteTitle: "Обриши артикал", deleteMsg: "Да ли сте сигурни да желите трајно обрисати артикал", details: "Детаљи артикла", basic: "Основно", prices: "Цене", detailsSec: "Детаљи", params: "Параметри", status: "Статус", unit: "Јединица", tax: "Порез", active: "Активан", inactive: "Неактиван", notFound: "Нема пронађених артикала", create: "Креирај артикал", save: "Сачувај измене", edit: "Уреди артикал" },
+    fr: { title: "Articles", new: "Nouvel article", fetchErr: "Erreur lors du chargement des articles", created: "Article créé avec succès", updated: "Article mis à jour avec succès", saveErr: "Erreur lors de l'enregistrement de l'article", deleted: "Article supprimé avec succès", deleteErr: "Erreur lors de la suppression de l'article", deleteTitle: "Supprimer l'article", deleteMsg: "Voulez-vous vraiment supprimer définitivement l'article", details: "Détails de l'article", basic: "Base", prices: "Prix", detailsSec: "Détails", params: "Paramètres", status: "Statut", unit: "Unité", tax: "Taxe", active: "Actif", inactive: "Inactif", notFound: "Aucun article trouvé", create: "Créer un article", save: "Enregistrer les modifications", edit: "Modifier l'article" },
+    de: { title: "Artikel", new: "Neuer Artikel", fetchErr: "Fehler beim Laden der Artikel", created: "Artikel erfolgreich erstellt", updated: "Artikel erfolgreich aktualisiert", saveErr: "Fehler beim Speichern des Artikels", deleted: "Artikel erfolgreich gelöscht", deleteErr: "Fehler beim Löschen des Artikels", deleteTitle: "Artikel löschen", deleteMsg: "Möchten Sie den Artikel dauerhaft löschen", details: "Artikeldetails", basic: "Grunddaten", prices: "Preise", detailsSec: "Details", params: "Parameter", status: "Status", unit: "Einheit", tax: "Steuer", active: "Aktiv", inactive: "Inaktiv", notFound: "Keine Artikel gefunden", create: "Artikel erstellen", save: "Änderungen speichern", edit: "Artikel bearbeiten" },
+    it: { title: "Articoli", new: "Nuovo articolo", fetchErr: "Errore nel caricamento degli articoli", created: "Articolo creato con successo", updated: "Articolo aggiornato con successo", saveErr: "Errore nel salvataggio dell'articolo", deleted: "Articolo eliminato con successo", deleteErr: "Errore durante l'eliminazione dell'articolo", deleteTitle: "Elimina articolo", deleteMsg: "Sei sicuro di voler eliminare definitivamente l'articolo", details: "Dettagli articolo", basic: "Base", prices: "Prezzi", detailsSec: "Dettagli", params: "Parametri", status: "Stato", unit: "Unità", tax: "Tassa", active: "Attivo", inactive: "Inattivo", notFound: "Nessun articolo trovato", create: "Crea articolo", save: "Salva modifiche", edit: "Modifica articolo" },
+    ru: { title: "Товары", new: "Новый товар", fetchErr: "Ошибка загрузки товаров", created: "Товар успешно создан", updated: "Товар успешно обновлен", saveErr: "Ошибка сохранения товара", deleted: "Товар успешно удален", deleteErr: "Ошибка удаления товара", deleteTitle: "Удалить товар", deleteMsg: "Вы уверены, что хотите окончательно удалить товар", details: "Детали товара", basic: "Основное", prices: "Цены", detailsSec: "Детали", params: "Параметры", status: "Статус", unit: "Ед.", tax: "Налог", active: "Активен", inactive: "Неактивен", notFound: "Товары не найдены", create: "Создать товар", save: "Сохранить изменения", edit: "Редактировать товар" },
+} as const;
+
 export default function ArticlesPage() {
-    const { selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
+    const { user, selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
+    const t = A[(user?.language || "sr_Latn") as LanguageCode] || A["sr_Latn"];
 
     const [articles, setArticles] = useState<Article[]>([]);
     const [taxRates, setTaxRates] = useState<{ value: string; label: string; rate: number }[]>([]);
@@ -111,7 +124,7 @@ export default function ArticlesPage() {
             setPagination(articlesRes.meta);
             setCurrentPage(page);
         } catch (error: any) {
-            showToast(error.message || "Greška pri dohvatanju artikala", "error");
+            showToast(error.message || t.fetchErr, "error");
         } finally {
             setLoading(false);
         }
@@ -189,15 +202,15 @@ export default function ArticlesPage() {
         try {
             if (formMode === "create") {
                 await createArticle(selectedCompany.slug, token, apiData);
-                showToast("Artikal uspješno kreiran", "success");
+                showToast(t.created, "success");
             } else if (activeArticle) {
                 await updateArticle(selectedCompany.slug, activeArticle.id, token, apiData);
-                showToast("Artikal uspješno ažuriran", "success");
+                showToast(t.updated, "success");
             }
             setFormDrawerOpen(false);
             fetchArticles(currentPage);
         } catch (err: any) {
-            showToast(err.message || "Greška pri čuvanju artikla", "error");
+            showToast(err.message || t.saveErr, "error");
         } finally {
             setLoading(false);
         }
@@ -209,11 +222,11 @@ export default function ArticlesPage() {
         setLoading(true);
         try {
             const res = await deleteArticle(selectedCompany.slug, activeArticle.id, token);
-            showToast(res.message || "Artikal uspješno obrisan", "info");
+            showToast(res.message || t.deleted, "info");
             setViewDrawerOpen(false);
             fetchArticles(currentPage);
         } catch (err: any) {
-            showToast(err.message || "Greška pri brisanju artikla", "error");
+            showToast(err.message || t.deleteErr, "error");
         } finally {
             setLoading(false);
         }
@@ -237,82 +250,15 @@ export default function ArticlesPage() {
         }));
     };
 
-    const statusOptions = [
-        { value: "", label: "Status: Svi" },
-        { value: "active", label: "Status: Aktivan" },
-        { value: "inactive", label: "Status: Neaktivan" },
-    ];
-
-    const typeOptions = [
-        { value: "", label: "Tip: Svi" },
-        ...articleTypes.map((t) => ({
-            value: t.value,
-            label: `Tip: ${t.label}`,
-        })),
-    ];
-
-    const taxOptions = [
-        { value: "", label: "Porez: Svi" },
-        { value: "none", label: "Porez: Bez poreza" },
-        ...taxRates.map((t) => ({
-            value: t.value,
-            label: `Porez: ${t.label} (${t.rate}%)`,
-        })),
-    ];
-
-    const activeFilters = [
-        ...(searchQuery.trim()
-            ? [{
-                id: "search",
-                label: "Pretraga",
-                value: searchQuery.trim(),
-                onClear: () => setSearchQuery(""),
-            }]
-            : []),
-        ...(statusFilter
-            ? [{
-                id: "status",
-                label: "Status",
-                value: statusFilter === "active" ? "Aktivan" : "Neaktivan",
-                onClear: () => setStatusFilter(""),
-            }]
-            : []),
-        ...(typeFilter
-            ? [{
-                id: "type",
-                label: "Tip",
-                value: articleTypes.find((t) => t.value === typeFilter)?.label || typeFilter,
-                onClear: () => setTypeFilter(""),
-            }]
-            : []),
-        ...(taxFilter
-            ? [{
-                id: "tax",
-                label: "Porez",
-                value: taxFilter === "none"
-                    ? "Bez poreza"
-                    : (taxRates.find((t) => t.value === taxFilter)?.label || taxFilter),
-                onClear: () => setTaxFilter(""),
-            }]
-            : []),
-    ];
-
-    const resetFilters = () => {
-        setSearchQuery("");
-        setStatusFilter("");
-        setTypeFilter("");
-        setTaxFilter("");
-        setCurrentPage(1);
-    };
 
 
     return (
         <AppLayout
-            title="articles"
+            title={t.title}
             selectedCompany={selectedCompany}
             onCompanyChange={updateSelectedCompany}
             actions={
-                <CreateButton label="Novi artikal" onClick={openCreateForm} />
+                <CreateButton label={t.new} onClick={openCreateForm} />
             }
         >
             <Toast
@@ -326,79 +272,35 @@ export default function ArticlesPage() {
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={handleDelete}
-                title="Obriši artikal"
-                message={`Da li ste sigurni da želite trajno obrisati artikal ${activeArticle?.name}? Ova akcija se ne može poništiti.`}
+                title={t.deleteTitle}
+                message={`${t.deleteMsg} ${activeArticle?.name}? Ova akcija se ne može poništiti.`}
             />
 
-            <div className="space-y-3 mb-4">
-                <FilterBar
-                    actions={
-                        <button
-                            type="button"
-                            onClick={() => setFiltersOpen((prev) => !prev)}
-                            className={`h-9 px-4 rounded-full border text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-2 transition-colors ${
-                                filtersOpen
-                                    ? "border-primary/40 bg-primary/10 text-primary"
-                                    : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-[var(--color-border-strong)]"
-                            }`}
-                        >
-                            <FileSlidersIcon className="h-3.5 w-3.5" />
-                            Filteri
-                        </button>
-                    }
-                    search={
-                        <FilterSearchInput
-                            value={searchQuery}
-                            onChange={(val) => {
-                                setSearchQuery(val);
-                                setCurrentPage(1);
-                            }}
-                            placeholder="Pretraži artikle..."
-                        />
-                    }
-                />
-                {filtersOpen && (
-                    <div className="p-3 rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)]">
-                        <div className="flex flex-wrap gap-2">
-                            <FilterPillSelect
-                                value={statusFilter}
-                                options={statusOptions}
-                                onChange={(val) => {
-                                    setStatusFilter(val);
-                                    setCurrentPage(1);
-                                }}
-                            />
-                            <FilterPillSelect
-                                value={typeFilter}
-                                options={typeOptions}
-                                onChange={(val) => {
-                                    setTypeFilter(val);
-                                    setCurrentPage(1);
-                                }}
-                            />
-                            <FilterPillSelect
-                                value={taxFilter}
-                                options={taxOptions}
-                                onChange={(val) => {
-                                    setTaxFilter(val);
-                                    setCurrentPage(1);
-                                }}
-                            />
-                        </div>
-                    </div>
-                )}
-                <ActiveFiltersBar filters={activeFilters} onReset={resetFilters} />
-            </div>
+            <ArticleFilterSection
+                filtersOpen={filtersOpen}
+                onToggleFilters={() => setFiltersOpen((prev) => !prev)}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                statusFilter={statusFilter}
+                onStatusChange={setStatusFilter}
+                typeFilter={typeFilter}
+                onTypeChange={setTypeFilter}
+                articleTypes={articleTypes}
+                taxFilter={taxFilter}
+                onTaxChange={setTaxFilter}
+                taxRates={taxRates}
+                onPageReset={() => setCurrentPage(1)}
+            />
 
             {/* Desktop: header */}
             <ListHeader
                 grid="grid-cols-[minmax(0,1.4fr)_0.6fr_0.6fr_0.7fr_1fr]"
                 columns={[
                     { label: "Artikal / Tip" },
-                    { label: "Status" },
-                    { label: "Jedinica" },
-                    { label: "Porez" },
-                    { label: "Cijene", align: "right" },
+                    { label: t.status },
+                    { label: t.unit },
+                    { label: t.tax },
+                    { label: t.prices, align: "right" },
                 ]}
             />
 
@@ -429,7 +331,7 @@ export default function ArticlesPage() {
                                             </div>
                                         </div>
                                         <StatusBadge
-                                            label={article.is_active ? "Aktivan" : "Neaktivan"}
+                                            label={article.is_active ? t.active : t.inactive}
                                             color={article.is_active ? "green" : "gray"}
                                         />
                                     </div>
@@ -438,18 +340,18 @@ export default function ArticlesPage() {
                                         <div className="flex gap-4">
                                             <MetaItem
                                                 icon={TagIcon}
-                                                label="Jedinica"
+                                                label={t.unit}
                                                 value={article.unit || "—"}
                                             />
                                             <MetaItem
                                                 icon={HashIcon}
-                                                label="Porez"
+                                                label={t.tax}
                                                 value={article.tax_rate ? `${article.tax_rate.label} (${article.tax_rate.rate}%)` : "—"}
                                             />
                                         </div>
                                         <MetaItem
                                             icon={DollarIcon}
-                                            label="Cijene"
+                                            label={t.prices}
                                             className="items-end text-right"
                                             valueClassName={priceEntries ? "text-[var(--color-text-main)]" : ""}
                                             value={
@@ -484,7 +386,7 @@ export default function ArticlesPage() {
                                         </div>
                                     </div>
                                     <StatusBadge
-                                        label={article.is_active ? "Aktivan" : "Neaktivan"}
+                                        label={article.is_active ? t.active : t.inactive}
                                         color={article.is_active ? "green" : "gray"}
                                     />
                                     <div className="text-xs font-bold text-[var(--color-text-muted)]">
@@ -516,7 +418,7 @@ export default function ArticlesPage() {
             {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
 
             {!loading && articles.length === 0 && (
-                <EmptyState icon={BoxesIcon} message="Nema pronađenih artikala" />
+                <EmptyState icon={BoxesIcon} message={t.notFound} />
             )}
 
             {pagination && (
@@ -529,7 +431,7 @@ export default function ArticlesPage() {
             )}
 
             <DetailDrawer
-                title="Detalji artikla"
+                title={t.details}
                 isOpen={viewDrawerOpen}
                 onClose={() => setViewDrawerOpen(false)}
                 entityName={activeArticle?.name || ""}
@@ -538,7 +440,7 @@ export default function ArticlesPage() {
                     activeArticle && (
                         <>
                             <StatusBadge
-                                label={activeArticle.is_active ? 'Aktivan' : 'Neaktivan'}
+                                label={activeArticle.is_active ? t.active : t.inactive}
                                 color={activeArticle.is_active ? 'green' : 'gray'}
                             />
                             <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/10 text-primary`}>
@@ -562,7 +464,7 @@ export default function ArticlesPage() {
                         )}
 
                         <SectionBlock variant="plain">
-                            <SectionHeader icon={DollarIcon} title="Cijene" />
+                            <SectionHeader icon={DollarIcon} title={t.prices} />
                             <div className="flex flex-col gap-2">
                                 {activeArticle.prices_meta && typeof activeArticle.prices_meta === 'object' && !Array.isArray(activeArticle.prices_meta) ? (
                                     Object.entries(activeArticle.prices_meta)
@@ -577,11 +479,11 @@ export default function ArticlesPage() {
                         </SectionBlock>
 
                         <SectionBlock variant="plain">
-                            <SectionHeader icon={HashIcon} title="Detalji" />
+                            <SectionHeader icon={HashIcon} title={t.detailsSec} />
                             <DetailsGrid columns={2}>
                                 <DetailsItem icon={TagIcon} label="Jedinica mjere" value={activeArticle.unit} />
                                 <DetailsItem icon={HashIcon} label="Porezna stopa" value={activeArticle.tax_rate ? `${activeArticle.tax_rate.label} (${activeArticle.tax_rate.rate}%)` : "—"} />
-                                <DetailsItem icon={CheckCircleIcon} label="Status" value={activeArticle.is_active ? "Aktivan" : "Neaktivan"} />
+                                <DetailsItem icon={CheckCircleIcon} label={t.status} value={activeArticle.is_active ? t.active : t.inactive} />
                             </DetailsGrid>
                         </SectionBlock>
                     </div>
@@ -589,15 +491,15 @@ export default function ArticlesPage() {
             </DetailDrawer>
 
             <FormDrawer
-                title={formMode === 'create' ? "Novi artikal" : "Uredi artikal"}
+                title={formMode === 'create' ? t.new : t.edit}
                 isOpen={formDrawerOpen}
                 onClose={() => setFormDrawerOpen(false)}
                 onSubmit={handleFormSubmit}
                 loading={loading}
-                submitLabel={formMode === 'create' ? "Kreiraj artikal" : "Sačuvaj izmjene"}
+                submitLabel={formMode === 'create' ? t.create : t.save}
             >
                 <SectionBlock variant="card">
-                    <SectionHeader icon={BoxesIcon} title="Osnovno" />
+                    <SectionHeader icon={BoxesIcon} title={t.basic} />
                     <Input
                         label="Naziv artikla"
                         name="name"
@@ -635,30 +537,27 @@ export default function ArticlesPage() {
                 </SectionBlock>
 
                 <SectionBlock variant="card">
-                    <SectionHeader icon={DollarIcon} title="Cijene" />
+                    <SectionHeader icon={DollarIcon} title={t.prices} />
                     {currencies.length > 0 ? (
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Cijene po valuti (sa porezom)</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {currencies.map((curr) => (
-                                    <Input
+                                    <CurrencyInput
                                         key={curr.code}
                                         label={curr.code}
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={formData.pricesByCurrency?.[curr.code] ?? ""}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
+                                        value={Math.round((formData.pricesByCurrency?.[curr.code] ?? 0) * 100)}
+                                        onChange={(cents) => {
                                             setFormData(prev => ({
                                                 ...prev,
                                                 pricesByCurrency: {
                                                     ...(prev.pricesByCurrency || {}),
-                                                    [curr.code]: Number.isNaN(val) ? 0 : val
+                                                    [curr.code]: cents / 100
                                                 }
                                             }));
                                         }}
-                                        placeholder="0.00"
+                                        currency={curr.code}
+                                        icon={DollarIcon}
                                     />
                                 ))}
                             </div>
@@ -669,7 +568,7 @@ export default function ArticlesPage() {
                 </SectionBlock>
 
                 <SectionBlock variant="card">
-                    <SectionHeader icon={TagIcon} title="Parametri" />
+                    <SectionHeader icon={TagIcon} title={t.params} />
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1">Jedinica mjere</label>
@@ -704,7 +603,7 @@ export default function ArticlesPage() {
                 </SectionBlock>
 
                 <SectionBlock variant="card">
-                    <SectionHeader icon={CheckCircleIcon} title="Status" />
+                    <SectionHeader icon={CheckCircleIcon} title={t.status} />
                     <Toggle
                         id="is_active"
                         name="is_active"

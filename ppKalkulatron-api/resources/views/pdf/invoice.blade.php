@@ -1,8 +1,9 @@
 @php
     $formatAmount = fn ($pfening) => number_format($pfening / 100, 2, ',', '.');
     $currency = $invoice->currency?->code ?? 'BAM';
+    $showVat = $company->is_vat_obligor ?? true;
 @endphp
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="sr">
 <head>
     <meta charset="utf-8">
@@ -27,8 +28,8 @@
         /* Header Table */
         .header-table {
             width: 100%;
-            margin-bottom: 10px;
-            padding-bottom: 6px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
             border-bottom: 2px solid #000;
             border-collapse: collapse;
         }
@@ -38,12 +39,12 @@
         .header-right { width: 82%; text-align: right; }
 
         .logo-placeholder {
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
             background: #000;
             border-radius: 3px;
             text-align: center;
-            line-height: 40px;
+            line-height: 45px;
             font-size: 6pt;
             font-weight: 700;
             color: #fff;
@@ -60,31 +61,10 @@
             line-height: 1.2;
         }
 
-        /* Invoice Title Table */
-        .invoice-title-table {
-            width: 100%;
-            margin-bottom: 8px;
-            border-collapse: collapse;
-        }
-
-        .invoice-title-table td { border: none; vertical-align: middle; }
-        .title-left { width: 60%; }
-        .title-right { width: 40%; text-align: right; font-size: 7pt; }
-
-        .invoice-label {
-            font-size: 15pt;
-            font-weight: 700;
-        }
-
-        .invoice-number {
-            font-size: 8.5pt;
-            font-weight: 700;
-        }
-
         /* Info Section Table */
         .info-table {
             width: 100%;
-            margin-bottom: 8px;
+            margin-bottom: 15px;
             border-collapse: collapse;
         }
 
@@ -96,191 +76,123 @@
             font-size: 6pt;
             text-transform: uppercase;
             font-weight: 700;
-            margin-bottom: 2px;
-            padding-bottom: 1px;
+            margin-bottom: 4px;
+            padding-bottom: 2px;
             border-bottom: 1px solid #000;
-            font-family: DejaVu Sans, sans-serif;
         }
 
         .info-name {
             font-weight: 700;
-            font-size: 7.5pt;
-            margin-bottom: 1px;
-            font-family: DejaVu Sans, sans-serif;
+            font-size: 8pt;
+            margin-bottom: 2px;
         }
 
         .info-content {
-            font-size: 7pt;
-            line-height: 1.2;
-            font-family: DejaVu Sans, sans-serif;
+            font-size: 7.5pt;
+            line-height: 1.3;
         }
 
-        /* Detail Table */
+        /* Detail Table (Inside Payment) */
         .detail-table { width: 100%; border-collapse: collapse; }
-        .detail-table td { border: none; padding: 1px 0; font-size: 7pt; font-family: DejaVu Sans, sans-serif; }
-        .detail-label { width: 50%; font-family: DejaVu Sans, sans-serif; }
-        .detail-value { width: 50%; text-align: right; font-weight: 700; font-family: DejaVu Sans, sans-serif; }
+        .detail-table td { border: none; padding: 1px 0; font-size: 7.5pt; }
+        .detail-label { width: 50%; color: #444; }
+        .detail-value { width: 50%; text-align: right; font-weight: 700; }
+
+        /* Invoice Number Bar */
+        .invoice-bar {
+            width: 100%;
+            padding: 8px 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #000;
+        }
+
+        .invoice-label {
+            font-size: 12pt;
+            font-weight: 700;
+        }
 
         /* Items Table */
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 6px 0;
+            margin: 10px 0;
         }
 
         .items-table th {
-            padding: 3px 2px;
+            padding: 5px 4px;
             text-align: left;
-            font-size: 6pt;
+            font-size: 6.5pt;
             text-transform: uppercase;
             font-weight: 700;
             background: #000;
             color: #fff;
-            border: none;
-            font-family: DejaVu Sans, sans-serif;
         }
 
         .items-table td {
-            padding: 2px;
+            padding: 4px;
             border-bottom: 0.5px solid #ccc;
-            font-size: 7pt;
+            font-size: 7.5pt;
             vertical-align: top;
-            font-family: DejaVu Sans, sans-serif;
+        }
+
+        .items-table td.num,
+        .items-table th.num {
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .items-table td.center,
+        .items-table th.center {
+            text-align: center;
+            white-space: nowrap;
         }
 
         .items-table tbody tr:last-child td {
             border-bottom: 1px solid #000;
         }
 
-        .text-right { text-align: right; font-family: DejaVu Sans, sans-serif; }
-        .item-name {
-            font-weight: 700;
-            line-height: 1.15;
-            font-family: DejaVu Sans, sans-serif;
-        }
-        .item-desc {
-            font-size: 6pt;
-            margin-top: 1px;
-            color: #444;
-            line-height: 1.15;
-            font-family: DejaVu Sans, sans-serif;
-        }
+        .text-right { text-align: right; }
 
-        /* Totals Section Table */
+        /* Totals */
         .totals-wrapper {
             width: 100%;
-            margin-top: 5px;
+            margin-top: 10px;
             border-collapse: collapse;
         }
-
-        .totals-wrapper td { border: none; vertical-align: top; }
-        .totals-left { width: 55%; }
-        .totals-right { width: 45%; }
-
-        .totals-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .totals-table td {
-            padding: 2px 0;
-            font-size: 7pt;
-            border: none;
-            font-family: DejaVu Sans, sans-serif;
-        }
-
-        .totals-value {
-            text-align: right;
-            font-weight: 700;
-            font-family: DejaVu Sans, sans-serif;
-        }
-
-        .totals-table .total-row td {
-            padding-top: 4px;
-            border-top: 1.5px solid #000;
-            font-size: 9pt;
+        .totals-right { width: 40%; }
+        .totals-table { width: 100%; border-collapse: collapse; }
+        .totals-table td { padding: 3px 0; font-size: 8pt; }
+        .totals-value { text-align: right; font-weight: 700; }
+        .total-row td {
+            padding-top: 6px;
+            border-top: 2px solid #000;
+            font-size: 10pt;
             font-weight: 700;
         }
 
-        /* Notes Section */
-        .notes-section {
-            margin-top: 8px;
-            padding: 5px 6px;
-            background: #f5f5f5;
-            border-left: 3px solid #000;
-            font-size: 6.5pt;
-        }
-
-        .notes-label {
-            font-size: 5.5pt;
-            text-transform: uppercase;
-            font-weight: 700;
-            margin-bottom: 2px;
-            font-family: DejaVu Sans, sans-serif;
-        }
-
-        .notes-text {
-            line-height: 1.2;
-            font-family: DejaVu Sans, sans-serif;
-        }
-
-        /* Signature Section */
-        .signature-section {
-            margin-top: 12px;
-            width: 100%;
-            border-collapse: collapse;
-        }
+        /* Rest of styles... */
+        .notes-section { margin-top: 15px; padding: 8px; border-left: 3px solid #000; font-size: 7pt; }
+        .signature-section { margin-top: 30px; width: 100%; border-collapse: collapse; }
         .signature-section td {
-            border: none;
-            vertical-align: bottom;
-            padding: 0 8px;
             text-align: center;
+            font-size: 7pt;
+            position: relative; /* Omogućava pozicioniranje MP */
+            padding-top: 15px;   /* Prostor za pečat iznad linije */
         }
-        .signature-left { width: 50%; }
-        .signature-right { width: 50%; }
 
-        .signature-label {
-            font-size: 6.5pt;
-            margin-bottom: 18px;
-            display: block;
+        .mp-box {
+            font-size: 6pt;
+            color: #888;
+            margin-bottom: 25px;
         }
 
         .signature-line {
             border-bottom: 1px solid #000;
             width: 170px;
-            margin: 0 auto 2px auto;
+            margin: 0 auto 5px auto;
         }
-
-        .signature-note {
-            font-size: 5.5pt;
-            color: #666;
-        }
-
-        /* Footer */
-        .footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 5px 0;
-            border-top: 1px solid #ccc;
-            text-align: center;
-            font-size: 6pt;
-            color: #666;
-            background: #fff;
-            font-family: DejaVu Sans, sans-serif;
-        }
-
-        @media print {
-            body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            .page {
-                padding: 8mm 10mm 18mm 10mm;
-            }
-            .footer { position: fixed; bottom: 0; }
-        }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 6pt; color: #999; padding: 10px; }
     </style>
 </head>
 <body>
@@ -301,20 +213,14 @@
                     @if($company->identification_number)
                         JIB: {{ $company->identification_number }}@if($company->vat_number) | PDV: {{ $company->vat_number }}@endif
                     @endif
+                    @if(isset($bankAccounts) && $bankAccounts->isNotEmpty())
+                        <br><br>
+                        <strong>Instrukcije za plaćanje:</strong><br>
+                        @foreach($bankAccounts as $ba)
+                            {{ $ba->bank_name }}: {{ $ba->account_number }}@if(!$loop->last)<br>@endif
+                        @endforeach
+                    @endif
                 </div>
-            </td>
-        </tr>
-    </table>
-
-    <table class="invoice-title-table">
-        <tr>
-            <td class="title-left">
-                <span class="invoice-label">FAKTURA</span>
-                <span class="invoice-number">#{{ $invoice->invoice_number }}</span>
-            </td>
-            <td class="title-right">
-                <strong>Datum:</strong> {{ $invoice->date->format('d.m.Y') }} |
-                <strong>Dospijeva:</strong> {{ $invoice->due_date->format('d.m.Y') }}
             </td>
         </tr>
     </table>
@@ -327,21 +233,34 @@
                     <div class="info-name">{{ $invoice->client?->name }}</div>
                     @if($invoice->client?->address){{ $invoice->client->address }}<br>@endif
                     @if($invoice->client?->zip || $invoice->client?->city)
-                        {{ $invoice->client->zip }} {{ $invoice->client->city }}
+                        {{ $invoice->client->zip }} {{ $invoice->client->city }}<br>
+                    @endif
+                    @if($invoice->client?->country)
+                        {{ $invoice->client->country }}<br>
+                    @endif
+                    @if($invoice->client?->vat_id)
+                        <br>JIB: {{ $invoice->client->vat_id }}
+                    @endif
+                    @if($invoice->client?->tax_id)
+                        <br>PDV: {{ $invoice->client->tax_id }}
                     @endif
                 </div>
             </td>
             <td class="info-right">
-                <div class="info-label">Plaćanje</div>
+                <div class="info-label">Detalji</div>
                 <div class="info-content">
                     <table class="detail-table">
                         <tr>
-                            <td class="detail-label">Način plaćanja</td>
-                            <td class="detail-value">Transakcijski</td>
+                            <td class="detail-label">Datum izdavanja:</td>
+                            <td class="detail-value">{{ $invoice->date->format('d.m.Y') }}</td>
                         </tr>
                         <tr>
-                            <td class="detail-label">Valuta</td>
-                            <td class="detail-value">{{ $currency }}</td>
+                            <td class="detail-label">Datum dospijeća:</td>
+                            <td class="detail-value">{{ $invoice->due_date->format('d.m.Y') }}</td>
+                        </tr>
+                        <tr>
+                            <td class="detail-label">Način plaćanja:</td>
+                            <td class="detail-value">Transakcijski</td>
                         </tr>
                     </table>
                 </div>
@@ -349,33 +268,63 @@
         </tr>
     </table>
 
+    <div class="invoice-bar">
+        <span class="invoice-label">FAKTURA br: #{{ $invoice->invoice_number }}</span>
+    </div>
+
     <table class="items-table">
         <thead>
         <tr>
-            <th style="width:48%">Opis</th>
-            <th class="text-right" style="width:8%">Kol.</th>
-            <th class="text-right" style="width:15%">Cijena</th>
-            <th class="text-right" style="width:8%">PDV</th>
-            <th class="text-right" style="width:21%">Ukupno</th>
+            <th class="center" style="width:4%">#</th>
+            <th style="width:{{ $showVat ? '28%' : '50%' }}">Naziv</th>
+            <th class="center" style="width:7%">JM</th>
+            <th class="num" style="width:7%">Kol.</th>
+            <th class="num" style="width:{{ $showVat ? '10%' : '14%' }}">Cijena</th>
+            @if($showVat)
+                <th class="num" style="width:10%">Cijena sa PDV</th>
+                <th class="num" style="width:8%">PDV %</th>
+                <th class="num" style="width:9%">Iznos PDV-a</th>
+                <th class="num" style="width:9%">Iznos bez PDV</th>
+                <th class="num" style="width:8%">Iznos sa PDV</th>
+            @else
+                <th class="num" style="width:15%">Iznos</th>
+            @endif
         </tr>
         </thead>
         <tbody>
         @foreach($invoice->items as $item)
+            @php
+                $quantity = (float) ($item->quantity ?? 0);
+                $taxRateRaw = (int) ($item->tax_rate ?? 0); // basis points (1700 = 17%)
+                $unitPriceWithVat = (int) $item->unit_price;
+                $subtotal = (int) $item->subtotal; // bez PDV
+                $taxAmount = (int) $item->tax_amount;
+                $total = (int) $item->total; // sa PDV
+                $unitPriceWithoutVat = $quantity > 0 ? (int) round($subtotal / $quantity) : 0;
+                $unit = $item->article?->unit ?? $item->unit ?? 'kom';
+                $taxRatePercent = $taxRateRaw / 100;
+            @endphp
             <tr>
+                <td class="center">{{ $loop->iteration }}</td>
                 <td>
-                    <div class="item-name">{{ $item->name }}</div>
+                    <div style="font-weight: 700;">{{ $item->name }}</div>
                     @if($item->description)
-                        <div class="item-desc">{{ $item->description }}</div>
+                        <div style="font-size: 6pt; color: #555;">{{ $item->description }}</div>
                     @endif
                 </td>
-                <td class="text-right" style="font-family: DejaVu Sans, sans-serif;">{{ $item->quantity }}</td>
-                <td class="text-right" style="font-family: DejaVu Sans, sans-serif;">
-                    {{ $formatAmount($item->quantity > 0 ? $item->total / $item->quantity : 0) }} {{ $currency }}
-                </td>
-                <td class="text-right" style="font-family: DejaVu Sans, sans-serif;">{{ $item->tax_rate / 100 }}%</td>
-                <td class="text-right" style="font-weight: 700; font-family: DejaVu Sans, sans-serif;">
-                    {{ $formatAmount($item->total) }} {{ $currency }}
-                </td>
+                <td class="center">{{ $unit }}</td>
+                <td class="num">{{ rtrim(rtrim(number_format($quantity, 3, ',', '.'), '0'), ',') }}</td>
+                @if($showVat)
+                    <td class="num">{{ $formatAmount($unitPriceWithoutVat) }}</td>
+                    <td class="num">{{ $formatAmount($unitPriceWithVat) }}</td>
+                    <td class="num">{{ rtrim(rtrim(number_format($taxRatePercent, 2, ',', '.'), '0'), ',') }}%</td>
+                    <td class="num">{{ $formatAmount($taxAmount) }}</td>
+                    <td class="num">{{ $formatAmount($subtotal) }}</td>
+                    <td class="num" style="font-weight: 700;">{{ $formatAmount($total) }}</td>
+                @else
+                    <td class="num">{{ $formatAmount($quantity > 0 ? (int) round($total / $quantity) : 0) }}</td>
+                    <td class="num" style="font-weight: 700;">{{ $formatAmount($total) }}</td>
+                @endif
             </tr>
         @endforeach
         </tbody>
@@ -383,19 +332,21 @@
 
     <table class="totals-wrapper">
         <tr>
-            <td class="totals-left"></td>
+            <td style="width: 60%;"></td>
             <td class="totals-right">
                 <table class="totals-table">
                     <tr>
-                        <td style="font-family: DejaVu Sans, sans-serif;">Osnovica</td>
-                        <td class="totals-value" style="font-family: DejaVu Sans, sans-serif;">{{ $formatAmount($invoice->subtotal) }} {{ $currency }}</td>
+                        <td class="text-right">Osnovica:</td>
+                        <td class="totals-value">{{ $formatAmount($invoice->subtotal) }} {{ $currency }}</td>
                     </tr>
-                    <tr>
-                        <td style="font-family: DejaVu Sans, sans-serif;">PDV</td>
-                        <td class="totals-value" style="font-family: DejaVu Sans, sans-serif;">{{ $formatAmount($invoice->tax_total) }} {{ $currency }}</td>
-                    </tr>
+                    @if($showVat)
+                        <tr>
+                            <td class="text-right">PDV:</td>
+                            <td class="totals-value">{{ $formatAmount($invoice->tax_total) }} {{ $currency }}</td>
+                        </tr>
+                    @endif
                     <tr class="total-row">
-                        <td>UKUPNO</td>
+                        <td class="text-right">UKUPNO:</td>
                         <td class="totals-value">{{ $formatAmount($invoice->total) }} {{ $currency }}</td>
                     </tr>
                 </table>
@@ -404,29 +355,29 @@
     </table>
 
     @if($invoice->notes)
-    <div class="notes-section">
-        <div class="notes-label">Napomena</div>
-        <div class="notes-text">{{ $invoice->notes }}</div>
-    </div>
+        <div class="notes-section">
+            <strong>Napomena:</strong><br>
+            {{ $invoice->notes }}
+        </div>
     @endif
 
     <table class="signature-section">
         <tr>
             <td class="signature-left">
-                <span class="signature-label">Izdavac fakture:</span>
+                <div class="mp-box">M.P.</div>
                 <div class="signature-line"></div>
-                <div class="signature-note">(Potpis i pečat)</div>
+                <div>Fakturisao / Izdao</div>
             </td>
             <td class="signature-right">
-                <span class="signature-label">Primalac robe/usluge:</span>
+                <div class="mp-box">M.P.</div>
                 <div class="signature-line"></div>
-                <div class="signature-note">(Potpis)</div>
+                <div>Primio / Kupac</div>
             </td>
         </tr>
     </table>
 
     <div class="footer">
-        {{ $company->name }}
+        {{ $company->name }} — {{ $company->address }}, {{ $company->city }}
     </div>
 
 </div>

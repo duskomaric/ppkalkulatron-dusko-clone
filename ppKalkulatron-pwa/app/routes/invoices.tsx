@@ -1,15 +1,11 @@
 import { useAuth } from "~/hooks/useAuth";
+import { useSelectedYear } from "~/contexts/YearContext";
 import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
-import { getInvoices, getInvoice, createInvoice, updateInvoice, deleteInvoice, createRefundInvoice, fiscalizeInvoice, fiscalizeCopy, fiscalizeRefund, downloadInvoicePdf, sendInvoiceEmail } from "~/api/invoices";
-import { getClients } from "~/api/clients";
-import { getArticles } from "~/api/articles";
-import { getMe, getCurrencies } from "~/api/config";
-import { getBankAccounts } from "~/api/settings";
-import type { Invoice, InvoiceInput, InvoiceItemInput } from "~/types/invoice";
+import { formatPrice, parseDateForInput, getCurrencyCode, emptyDocumentItem } from "~/utils/format";
+import { getInvoices, getInvoice, createInvoice, updateInvoice, deleteInvoice, createRefundInvoice, getFiscalPayload, fiscalizeInvoice, fiscalizeCopy, fiscalizeRefund, downloadInvoicePdf, sendInvoiceEmail } from "~/api/invoices";
+import type { Invoice, InvoiceInput } from "~/types/invoice";
 import type { Client } from "~/types/client";
-import type { Article } from "~/types/article";
-import type { SelectOption, Currency } from "~/types/config";
 import {
     HashIcon,
     ContactRoundIcon,
@@ -18,6 +14,7 @@ import {
     XIcon,
     PlusIcon,
     FileTextIcon,
+    FileCheckIcon,
     GlobeIcon,
     RepeatIcon,
     CreditCardIcon,
@@ -42,11 +39,11 @@ import { LoadingState } from "~/components/ui/LoadingState";
 import { DetailsItem } from "~/components/ui/DetailsItem";
 import { DetailDrawer } from "~/components/ui/DetailDrawer";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
-import { ImageModal } from "~/components/ui/ImageModal";
+import { ImageModal } from "~/components/document/ImageModal";
 import { FormDrawer } from "~/components/ui/FormDrawer";
 import { SearchSelect } from "~/components/ui/SearchSelect";
 import { Input } from "~/components/ui/Input";
-import { InvoiceItemRow } from "~/components/invoice/InvoiceItemRow";
+import { InvoiceItemRow } from "~/components/document/InvoiceItemRow";
 import { Toggle } from "~/components/ui/Toggle";
 import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
@@ -54,31 +51,19 @@ import { SectionToggle } from "~/components/ui/SectionToggle";
 import { DetailsGrid } from "~/components/ui/DetailsGrid";
 import { ListHeader } from "~/components/ui/ListHeader";
 import { MetaItem } from "~/components/ui/MetaItem";
-import { FilterBar } from "~/components/ui/FilterBar";
-import { FilterPillSelect } from "~/components/ui/FilterPillSelect";
-import { FilterSearchInput } from "~/components/ui/FilterSearchInput";
-import { ActiveFiltersBar } from "~/components/ui/ActiveFiltersBar";
-import { FilterDateInput } from "~/components/ui/FilterDateInput";
+import { InvoiceFilterSection } from "~/components/document/InvoiceFilterSection";
+import { EmailModal } from "~/components/document/EmailModal";
 import type { PaginationMeta } from "~/types/api";
 import { useToast } from "~/hooks/useToast";
+import { useDocumentItems } from "~/hooks/useDocumentItems";
+import { useDocumentReferenceData } from "~/hooks/useDocumentReferenceData";
 import { OFS } from "~/config/constants";
 
-// Empty invoice item template (tax_rate in basis points: 1700 = 17%)
-const emptyInvoiceItem: InvoiceItemInput = {
-    article_id: null,
-    name: "",
-    description: null,
-    quantity: 1,
-    unit_price: 0,
-    subtotal: 0,
-    tax_rate: 1700,
-    tax_label: "A",
-    tax_amount: 0,
-    total: 0
-};
+const emptyInvoiceItem = emptyDocumentItem;
 
 export default function InvoicesPage() {
     const { user, selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
+    const [selectedYear] = useSelectedYear();
 
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [pagination, setPagination] = useState<PaginationMeta | null>(null);
@@ -94,25 +79,13 @@ export default function InvoicesPage() {
     const [createdTo, setCreatedTo] = useState("");
     const [filtersOpen, setFiltersOpen] = useState(false);
 
-    // Reference data
-    const [clients, setClients] = useState<Client[]>([]);
-    const [articles, setArticles] = useState<Article[]>([]);
-    const [currencies, setCurrencies] = useState<Currency[]>([]);
-    const [bankAccounts, setBankAccounts] = useState<import("~/types/config").BankAccount[]>([]);
-    const [languages, setLanguages] = useState<SelectOption[]>([]);
-    const [frequencies, setFrequencies] = useState<SelectOption[]>([]);
-    const [templates, setTemplates] = useState<SelectOption[]>([]);
-    const [paymentTypes, setPaymentTypes] = useState<SelectOption[]>([]);
-    const [companySettings, setCompanySettings] = useState<import("~/types/config").CompanySettings | null>(null);
-
     const { toast, showToast, hideToast } = useToast();
 
-    // Helper to get currency code from currency_id
-    const getCurrencyCode = (currencyId: number | null | undefined): string => {
-        if (!currencyId) return "BAM";
-        const curr = currencies.find(c => c.id === currencyId);
-        return curr?.code || "BAM";
-    };
+    const {
+        clients, articles, currencies,
+        languages, templates, frequencies, paymentTypes,
+        companySettings, defaultCurrency,
+    } = useDocumentReferenceData(selectedCompany?.slug, token, isAuthenticated, showToast);
 
     // Drawer states
     const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
@@ -151,8 +124,7 @@ export default function InvoicesPage() {
         date: new Date().toISOString().split("T")[0],
         due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         currency_id: null,
-        bank_account_id: null,
-        language: "sr-Latn",
+        language: "sr_Latn",
         invoice_template: "classic",
         payment_type: "Cash",
         is_recurring: false,
@@ -166,21 +138,8 @@ export default function InvoicesPage() {
         items: [{ ...emptyInvoiceItem }]
     });
 
-    // Selected client for form
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-
-    /** Format datuma za OFS referentDocumentDT: ISO (YYYY-MM-DDTHH:mm:ss) ili parse dd.MM.yyyy HH:mm iz backenda. */
-    const formatOfsDateTime = (dateStr: string | null | undefined): string => {
-        if (!dateStr) return "";
-        if (dateStr.includes("T")) return dateStr;
-        const match = dateStr.match(/^(\d{2})\.(\d{2})\.(\d{4})\s(\d{2}):(\d{2})$/);
-        if (match) {
-            const [, d, m, y, h, min] = match;
-            return `${y}-${m}-${d}T${h}:${min}:00`;
-        }
-
-        return dateStr;
-    };
+    const { handleItemChange, handleItemRemove, addItem, handleClientChange } = useDocumentItems(formData, setFormData, emptyInvoiceItem, setSelectedClient);
 
     /**
      * Lokalni device mode: poziv OFS API-ja iz PWA preko Service Workera (request ide s uređaja korisnika na base URL).
@@ -230,57 +189,6 @@ export default function InvoicesPage() {
         });
     };
 
-    // Helper to build OFS payload on client side
-    const buildOfsPayload = (invoice: Invoice, transType: string, invType: string) => {
-        const items = invoice.items.map(item => ({
-            name: item.name + (item.article?.unit ? ` / ${item.article.unit}` : ""),
-            quantity: Number(item.quantity.toFixed(3)),
-            unitPrice: Number((Math.abs(item.unit_price) / 100).toFixed(2)),
-            totalAmount: Number((Math.abs(item.total) / 100).toFixed(2)),
-            labels: [item.tax_label || "A"]
-        }));
-
-        const totalAmount = Number((Math.abs(invoice.total) / 100).toFixed(2));
-        const paymentType = invoice.payment_type || companySettings?.ofs_default_payment_type || "Cash";
-
-        const payload: any = {
-            renderReceiptImage: companySettings?.ofs_render_receipt_image ?? true,
-            receiptImageFormat: companySettings?.ofs_receipt_image_format || "Png",
-            receiptLayout: companySettings?.ofs_receipt_layout || "Slip",
-            invoiceRequest: {
-                invoiceType: invType,
-                transactionType: transType,
-                payment: [{ amount: totalAmount, paymentType }],
-                items,
-                cashier: user ? `${user.first_name} ${user.last_name}` : "System"
-            }
-        };
-
-        // Referent document za Copy/Refund (OFS zahtijeva broj i datum originala)
-        if (invType === "Copy" || transType === "Refund") {
-            if (invoice.original_fiscal_invoice_number && invoice.original_fiscalized_at) {
-                payload.invoiceRequest.referentDocumentNumber = invoice.original_fiscal_invoice_number;
-                payload.invoiceRequest.referentDocumentDT = formatOfsDateTime(invoice.original_fiscalized_at);
-            } else {
-                const originalRecord = invoice.fiscal_records?.find((r) => r.type === "original");
-                if (originalRecord) {
-                    payload.invoiceRequest.referentDocumentNumber = originalRecord.fiscal_invoice_number;
-                    payload.invoiceRequest.referentDocumentDT = formatOfsDateTime(originalRecord.fiscalized_at);
-                }
-            }
-        }
-
-        return payload;
-    };
-
-    // Format price
-    const formatPrice = (amount: number): string => {
-        return new Intl.NumberFormat('de-DE', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(amount / 100);
-    };
-
     const applyRefundSign = (amount: number, invoice?: Invoice | null): number => {
         if (!invoice) return amount;
         const isRefundInvoice = invoice.status === "refund_created" || invoice.status === "refunded";
@@ -320,6 +228,19 @@ export default function InvoicesPage() {
             label: isFiscalized ? "Fiskalizovan" : "Nije fiskalizovan",
             color: isFiscalized ? "green" : "gray",
         };
+    const getInvoiceSourceLabel = (inv: Invoice): string | null => {
+        const num = inv.source_document_number;
+        if (!num) return null;
+        if (inv.source_type?.includes("Proforma")) return `Iz predračuna: ${num}`;
+        if (inv.source_type?.includes("Contract")) return `Iz ugovora: ${num}`;
+        return null;
+    };
+    const getInvoiceSourceIcon = (inv: Invoice) => {
+        if (!inv.source_type) return FileTextIcon;
+        if (inv.source_type.includes("Proforma")) return FileCheckIcon;
+        return FileTextIcon; // Contract
+    };
+
     const fiscalHelperText = isRefundInvoice
         ? isRefundCreated
             ? "Storno faktura je kreirana i čeka refundaciju kroz fiskalizaciju."
@@ -327,69 +248,6 @@ export default function InvoicesPage() {
         : isFiscalized
             ? "Račun je fiskalizovan u OFS sistemu. Po potrebi možete odštampati kopiju."
             : "Račun nije fiskalizovan. Kliknite ispod da fiskalizujete i odštampate.";
-
-    const statusOptions = [
-        { value: "", label: "Status: Svi" },
-        { value: "created", label: "Status: Kreiran" },
-        { value: "fiscalized", label: "Status: Fiskalizovan" },
-        { value: "refund_created", label: "Status: Storno kreiran" },
-        { value: "refunded", label: "Status: Storniran" },
-    ];
-
-    const paymentOptions = [
-        { value: "", label: "Plaćanje: Svi" },
-        ...paymentTypes.map((pt) => ({
-            value: pt.value,
-            label: `Plaćanje: ${pt.label}`,
-        })),
-    ];
-
-    const activeFilters = [
-        ...(searchQuery.trim()
-            ? [{
-                id: "search",
-                label: "Pretraga",
-                value: searchQuery.trim(),
-                onClear: () => setSearchQuery(""),
-            }]
-            : []),
-        ...(statusFilter
-            ? [{
-                id: "status",
-                label: "Status",
-                value: statusOptions.find((s) => s.value === statusFilter)?.label.replace("Status: ", "") || statusFilter,
-                onClear: () => setStatusFilter(""),
-            }]
-            : []),
-        ...(paymentFilter
-            ? [{
-                id: "payment",
-                label: "Plaćanje",
-                value: paymentOptions.find((p) => p.value === paymentFilter)?.label.replace("Plaćanje: ", "") || paymentFilter,
-                onClear: () => setPaymentFilter(""),
-            }]
-            : []),
-        ...((createdFrom || createdTo)
-            ? [{
-                id: "created",
-                label: "Datum",
-                value: `${createdFrom || "—"} → ${createdTo || "—"}`,
-                onClear: () => {
-                    setCreatedFrom("");
-                    setCreatedTo("");
-                },
-            }]
-            : []),
-    ];
-
-    const resetFilters = () => {
-        setSearchQuery("");
-        setStatusFilter("");
-        setPaymentFilter("");
-        setCreatedFrom("");
-        setCreatedTo("");
-        setCurrentPage(1);
-    };
 
     // Init company handled by useAuth
 
@@ -407,6 +265,7 @@ export default function InvoicesPage() {
                 payment_type: paymentFilter || undefined,
                 created_from: createdFrom || undefined,
                 created_to: createdTo || undefined,
+                year: selectedYear,
             });
             setInvoices(response.data);
             setPagination(response.meta);
@@ -416,45 +275,13 @@ export default function InvoicesPage() {
         } finally {
             setLoading(false);
         }
-    }, [selectedCompany, token, searchForApi, statusFilter, paymentFilter, createdFrom, createdTo]);
-
-    // Fetch reference data
-    const fetchReferenceData = useCallback(async () => {
-        if (!selectedCompany || !token) return;
-        try {
-            const [clientsRes, articlesRes, currenciesRes, bankAccountsRes, meRes] = await Promise.all([
-                getClients(selectedCompany.slug, token, 1),
-                getArticles(selectedCompany.slug, token, 1),
-                getCurrencies(selectedCompany.slug, token),
-                getBankAccounts(selectedCompany.slug, token, 1),
-                getMe(token, selectedCompany.slug)
-            ]);
-            setClients(clientsRes.data);
-            setArticles(articlesRes.data);
-            setCurrencies(currenciesRes.data);
-            setBankAccounts(bankAccountsRes.data);
-            setLanguages(meRes.data.languages);
-            setFrequencies(meRes.data.frequencies);
-            setTemplates(meRes.data.templates);
-            setPaymentTypes(meRes.data.payment_types || []);
-            setCompanySettings(meRes.data.company_settings || null);
-
-            // Set default currency from Currency model (is_default flag)
-            const defaultCurrency = currenciesRes.data.find(c => c.is_default) || currenciesRes.data[0];
-            if (defaultCurrency) {
-                setFormData(prev => ({ ...prev, currency_id: defaultCurrency.id }));
-            }
-        } catch (error: any) {
-            showToast(error.message || "Greška pri učitavanju podataka", "error");
-        }
-    }, [selectedCompany, token]);
+    }, [selectedCompany, token, searchForApi, statusFilter, paymentFilter, createdFrom, createdTo, selectedYear]);
 
     useEffect(() => {
         if (isAuthenticated && selectedCompany) {
             fetchInvoices(currentPage);
-            fetchReferenceData();
         }
-    }, [isAuthenticated, selectedCompany, currentPage, fetchInvoices, fetchReferenceData]);
+    }, [isAuthenticated, selectedCompany, currentPage, fetchInvoices]);
 
     // Row click - open view
     const handleRowClick = async (invoice: Invoice) => {
@@ -468,34 +295,20 @@ export default function InvoicesPage() {
         }
     };
 
-    // Refetch invoice when view drawer opens to ensure fresh fiscal_records (incl. images for copy/refund)
-    useEffect(() => {
-        if (viewDrawerOpen && activeInvoice && selectedCompany && token) {
-            getInvoice(selectedCompany.slug, activeInvoice.id, token)
-                .then((res) => {
-                    setActiveInvoice(res.data);
-                })
-                .catch(() => { });
-        }
-    }, [viewDrawerOpen, activeInvoice?.id, selectedCompany?.slug, token]);
-
-    // Open create form - use company_settings defaults
     const openCreateForm = () => {
         const settings = companySettings;
-        const dueDays = settings?.default_document_due_days ?? 14;
+        const dueDays = settings?.default_invoice_due_days;
         const defaultCurrency = currencies.find(c => c.is_default) || currencies[0];
-        const defaultBank = bankAccounts.find(b => b.is_default) || bankAccounts[0];
         setFormMode("create");
         setSelectedClient(null);
         setFormData({
             client_id: 0,
             date: new Date().toISOString().split("T")[0],
-            due_date: new Date(Date.now() + dueDays * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+            due_date: dueDays != null ? new Date(Date.now() + dueDays * 24 * 60 * 60 * 1000).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
             currency_id: defaultCurrency?.id ?? null,
-            bank_account_id: defaultBank?.id ?? null,
-            language: (settings?.default_document_language || languages[0]?.value) ?? "",
-            invoice_template: (settings?.default_document_template || templates[0]?.value) ?? "classic",
-            payment_type: (companySettings?.ofs_default_payment_type || paymentTypes[0]?.value) ?? "",
+            language: settings?.default_document_language ?? languages[0]?.value ?? "",
+            invoice_template: settings?.default_document_template ?? templates[0]?.value ?? "",
+            payment_type: companySettings?.ofs_default_payment_type ?? paymentTypes[0]?.value ?? "",
             is_recurring: false,
             frequency: null,
             next_invoice_date: null,
@@ -516,17 +329,6 @@ export default function InvoicesPage() {
         setFormMode("edit");
         const client = clients.find(c => c.id === activeInvoice.client_id) || null;
         setSelectedClient(client);
-        // Helper to parse date for input (d.m.Y -> Y-m-d)
-        const parseDateForInput = (dateStr: string | null) => {
-            if (!dateStr) return "";
-            // Check for d.m.Y format (e.g. 19.02.2026)
-            if (dateStr.includes(".")) {
-                const [day, month, year] = dateStr.split(".");
-                return `${year}-${month}-${day}`;
-            }
-            // Fallback for ISO format
-            return dateStr.split("T")[0];
-        };
 
         setFormData({
             invoice_number: activeInvoice.invoice_number,
@@ -534,10 +336,9 @@ export default function InvoicesPage() {
             date: parseDateForInput(activeInvoice.date),
             due_date: parseDateForInput(activeInvoice.due_date),
             currency_id: activeInvoice.currency_id ?? null,
-            bank_account_id: activeInvoice.bank_account_id ?? null,
             language: activeInvoice.language,
             invoice_template: activeInvoice.invoice_template,
-            payment_type: (activeInvoice.payment_type || paymentTypes[0]?.value) ?? "",
+            payment_type: activeInvoice.payment_type ?? paymentTypes[0]?.value ?? "",
             is_recurring: activeInvoice.is_recurring,
             frequency: activeInvoice.frequency,
             next_invoice_date: parseDateForInput(activeInvoice.next_invoice_date),
@@ -546,6 +347,9 @@ export default function InvoicesPage() {
             tax_total: activeInvoice.tax_total,
             discount_total: activeInvoice.discount_total,
             total: activeInvoice.total,
+            subtotal_bam: activeInvoice.subtotal_bam ?? undefined,
+            tax_total_bam: activeInvoice.tax_total_bam ?? undefined,
+            total_bam: activeInvoice.total_bam ?? undefined,
             items: activeInvoice.items.map(item => ({
                 article_id: item.article_id,
                 name: item.name,
@@ -561,46 +365,6 @@ export default function InvoicesPage() {
         setViewDrawerOpen(false);
         setFormDrawerOpen(true);
         setShowMoreFormFields(true);
-    };
-
-    // Handle client change
-    const handleClientChange = (client: Client | null) => {
-        setSelectedClient(client);
-        setFormData(prev => ({ ...prev, client_id: client?.id || 0 }));
-    };
-
-    // Handle item change
-    const handleItemChange = (index: number, item: InvoiceItemInput) => {
-        const newItems = [...formData.items];
-        newItems[index] = item;
-        recalculateTotals(newItems);
-    };
-
-    // Handle item remove
-    const handleItemRemove = (index: number) => {
-        if (formData.items.length <= 1) return;
-        const newItems = formData.items.filter((_, i) => i !== index);
-        recalculateTotals(newItems);
-    };
-
-    // Add new item
-    const addItem = () => {
-        const newItems = [...formData.items, { ...emptyInvoiceItem }];
-        setFormData(prev => ({ ...prev, items: newItems }));
-    };
-
-    // Recalculate totals
-    const recalculateTotals = (items: InvoiceItemInput[]) => {
-        const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-        const taxTotal = items.reduce((sum, item) => sum + item.tax_amount, 0);
-        const total = subtotal + taxTotal;
-        setFormData(prev => ({
-            ...prev,
-            items,
-            subtotal,
-            tax_total: taxTotal,
-            total
-        }));
     };
 
     /**
@@ -623,7 +387,10 @@ export default function InvoicesPage() {
                     setFiscalLoading(false);
                     return;
                 }
-                const payload = buildOfsPayload(activeInvoice, "Sale", "Normal");
+                const payload = await getFiscalPayload(selectedCompany.slug, activeInvoice.id, token, {
+                    transaction_type: "Sale",
+                    invoice_type: "Normal",
+                });
                 const requestId = `${activeInvoice.id}${Date.now().toString().slice(-4)}`;
                 const url = `${baseUrl}${OFS.PATHS.INVOICES}`;
 
@@ -747,7 +514,10 @@ export default function InvoicesPage() {
                     setRefundModalOpen(true);
                     return;
                 }
-                const payload = buildOfsPayload(activeInvoice, "Refund", "Normal");
+                const payload = await getFiscalPayload(selectedCompany.slug, activeInvoice.id, token, {
+                    transaction_type: "Refund",
+                    invoice_type: "Normal",
+                });
                 const requestId = `10${activeInvoice.id}${Date.now().toString().slice(-4)}`;
                 const url = `${baseUrl}${OFS.PATHS.INVOICES}`;
                 const swResponse = await performLocalFetch(url, payload, requestId);
@@ -809,7 +579,10 @@ export default function InvoicesPage() {
                     setFiscalLoading(false);
                     return;
                 }
-                const payload = buildOfsPayload(activeInvoice, "Sale", "Copy");
+                const payload = await getFiscalPayload(selectedCompany.slug, activeInvoice.id, token, {
+                    transaction_type: "Sale",
+                    invoice_type: "Copy",
+                });
                 const requestId = `20${activeInvoice.id}${Date.now().toString().slice(-4)}`;
                 const url = `${baseUrl}${OFS.PATHS.INVOICES}`;
                 const swResponse = await performLocalFetch(url, payload, requestId);
@@ -864,11 +637,10 @@ export default function InvoicesPage() {
                 setViewDrawerOpen(true);
                 fetchInvoices(currentPage);
             } else if (activeInvoice) {
-                await updateInvoice(selectedCompany.slug, activeInvoice.id, token, payload);
+                const res = await updateInvoice(selectedCompany.slug, activeInvoice.id, token, payload);
                 showToast("Račun uspješno ažuriran", "success");
                 setFormDrawerOpen(false);
-                const updated = await getInvoice(selectedCompany.slug, activeInvoice.id, token);
-                setActiveInvoice(updated.data);
+                setActiveInvoice((prev) => (prev ? { ...prev, ...res.data } : res.data));
                 setViewDrawerOpen(true);
                 fetchInvoices(currentPage);
             }
@@ -895,79 +667,23 @@ export default function InvoicesPage() {
                 onClose={hideToast}
             />
 
-            <div className="space-y-3 mb-4">
-                <FilterBar
-                    actions={
-                        <button
-                            type="button"
-                            onClick={() => setFiltersOpen((prev) => !prev)}
-                            className={`h-9 px-4 rounded-full border text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-2 transition-colors ${filtersOpen
-                                ? "border-primary/40 bg-primary/10 text-primary"
-                                : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-[var(--color-border-strong)]"
-                            }`}
-                        >
-                            <FileSlidersIcon className="h-3.5 w-3.5" />
-                            Filteri
-                        </button>
-                    }
-                    search={
-                        <FilterSearchInput
-                            value={searchQuery}
-                            onChange={(val) => {
-                                setSearchQuery(val);
-                                if (val.trim().length >= 3 || val.trim().length === 0) setCurrentPage(1);
-                            }}
-                            placeholder="Pretraži račune (min. 3 znaka)..."
-                        />
-                    }
-                />
-                {filtersOpen && (
-                    <div className="p-3 rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)]">
-                        <div className="flex flex-wrap items-end gap-2">
-                            <FilterPillSelect
-                                value={statusFilter}
-                                options={statusOptions}
-                                onChange={(val) => {
-                                    setStatusFilter(val);
-                                    setCurrentPage(1);
-                                }}
-                            />
-                            <FilterPillSelect
-                                value={paymentFilter}
-                                options={paymentOptions}
-                                onChange={(val) => {
-                                    setPaymentFilter(val);
-                                    setCurrentPage(1);
-                                }}
-                            />
-                            <div className="flex flex-col gap-1 w-full min-w-0">
-                <span className="text-[9px] font-black uppercase tracking-widest text-[var(--color-text-dim)] ml-1">
-                  Datum kreiranja
-                </span>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <FilterDateInput
-                                        value={createdFrom}
-                                        onChange={(val) => {
-                                            setCreatedFrom(val);
-                                            setCurrentPage(1);
-                                        }}
-                                        placeholder="Od"
-                                    />
-                                    <FilterDateInput
-                                        value={createdTo}
-                                        onChange={(val) => {
-                                            setCreatedTo(val);
-                                            setCurrentPage(1);
-                                        }}
-                                        placeholder="Do"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                <ActiveFiltersBar filters={activeFilters} onReset={resetFilters} />
-            </div>
+            <InvoiceFilterSection
+                filtersOpen={filtersOpen}
+                onToggleFilters={() => setFiltersOpen((prev) => !prev)}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                statusFilter={statusFilter}
+                onStatusChange={setStatusFilter}
+                paymentFilter={paymentFilter}
+                onPaymentChange={setPaymentFilter}
+                paymentTypes={paymentTypes}
+                createdFrom={createdFrom}
+                onCreatedFromChange={setCreatedFrom}
+                createdTo={createdTo}
+                onCreatedToChange={setCreatedTo}
+                selectedYear={selectedYear}
+                onPageReset={() => setCurrentPage(1)}
+            />
 
             {/* Mobile: cards (original layout) */}
             <div className="md:hidden space-y-3">
@@ -999,6 +715,17 @@ export default function InvoicesPage() {
                 </span>
                             </div>
                         )}
+                        {getInvoiceSourceLabel(inv) && (() => {
+                            const SourceIcon = getInvoiceSourceIcon(inv);
+                            return (
+                                <div className="flex items-center gap-2">
+                                    <SourceIcon className="w-3 h-3 text-[var(--color-text-dim)]" />
+                                    <span className="text-[10px] font-bold text-[var(--color-text-dim)] tracking-tight truncate">
+                                        {getInvoiceSourceLabel(inv)}
+                                    </span>
+                                </div>
+                            );
+                        })()}
                         <div className="flex items-center gap-2">
                             <CreditCardIcon className="w-3 h-3 text-[var(--color-text-dim)]" />
                             <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
@@ -1017,7 +744,6 @@ export default function InvoicesPage() {
                                     icon={Clock1Icon}
                                     label="Dospijeće"
                                     value={inv.due_date}
-                                    valueClassName="text-red-500"
                                 />
                             </div>
                             <p className="text-lg font-black text-[var(--color-text-main)] tracking-tighter italic">
@@ -1067,6 +793,15 @@ export default function InvoicesPage() {
                                             <span className="truncate">Storno od: {inv.original_invoice_number}</span>
                                         </div>
                                     )}
+                                    {getInvoiceSourceLabel(inv) && (() => {
+                                        const SourceIcon = getInvoiceSourceIcon(inv);
+                                        return (
+                                            <div className="flex items-center gap-1.5 mt-1 text-[10px] font-bold text-[var(--color-text-dim)] min-w-0">
+                                                <SourceIcon className="w-3 h-3 shrink-0 text-[var(--color-text-dim)]" />
+                                                <span className="truncate">{getInvoiceSourceLabel(inv)}</span>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                             <StatusBadge
@@ -1077,8 +812,8 @@ export default function InvoicesPage() {
                                 <Calendar1Icon className="w-3 h-3 text-[var(--color-text-dim)]" />
                                 <span>{inv.date}</span>
                             </div>
-                            <div className="flex items-center gap-1 text-xs font-bold text-red-500">
-                                <Clock1Icon className="w-3 h-3" />
+                            <div className="flex items-center gap-1 text-xs font-bold text-[var(--color-text-muted)]">
+                                <Clock1Icon className="w-3 h-3 text-[var(--color-text-dim)]" />
                                 <span>{inv.due_date}</span>
                             </div>
                             <div className="flex items-center gap-1 text-xs font-bold text-[var(--color-text-muted)]">
@@ -1160,23 +895,28 @@ export default function InvoicesPage() {
                                         color="bg-red-500/10 text-red-500"
                                     />
                                 )}
+                                {getInvoiceSourceLabel(activeInvoice) && (() => {
+                                    const SourceIcon = getInvoiceSourceIcon(activeInvoice);
+                                    return (
+                                        <DetailsItem
+                                            icon={SourceIcon}
+                                            label="Izvor"
+                                            value={getInvoiceSourceLabel(activeInvoice)}
+                                            color="bg-[var(--color-text-dim)]/10 text-[var(--color-text-dim)]"
+                                        />
+                                    );
+                                })()}
                                 <DetailsItem
                                     icon={Clock1Icon}
                                     label="Dospijeće"
                                     value={activeInvoice.due_date}
-                                    color="bg-red-500/10 text-red-500"
+                                    color="bg-green-500/10 text-green-500"
                                 />
                                 <DetailsItem
                                     icon={CreditCardIcon}
                                     label="Valuta"
                                     value={activeInvoice.currency || "BAM"}
                                     color="bg-amber-500/10 text-amber-500"
-                                />
-                                <DetailsItem
-                                    icon={CreditCardIcon}
-                                    label="Bankovni račun"
-                                    value={activeInvoice.bank_account ? `${activeInvoice.bank_account.bank_name} (${activeInvoice.bank_account.account_number})` : "—"}
-                                    color="bg-slate-500/10 text-slate-500"
                                 />
                                 <DetailsItem
                                     icon={FileTextIcon}
@@ -1276,16 +1016,31 @@ export default function InvoicesPage() {
                         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-1.5">
                             <div className="flex justify-between text-sm">
                                 <span className="text-[var(--color-text-dim)]">Osnovica:</span>
-                                <span className="font-bold text-[var(--color-text-main)]">{formatSignedPrice(activeInvoice.subtotal, activeInvoice)} {activeInvoice.currency}</span>
+                                <span className="font-bold text-[var(--color-text-main)]">
+                                    {formatSignedPrice(activeInvoice.subtotal, activeInvoice)} {activeInvoice.currency}
+                                    {activeInvoice.currency !== "BAM" && activeInvoice.subtotal_bam != null && (
+                                        <span className="text-xs font-normal text-[var(--color-text-dim)] ml-1">({formatPrice(Math.abs(activeInvoice.subtotal_bam))} KM)</span>
+                                    )}
+                                </span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-[var(--color-text-dim)]">PDV:</span>
-                                <span className="font-bold text-[var(--color-text-main)]">{formatSignedPrice(activeInvoice.tax_total, activeInvoice)} {activeInvoice.currency}</span>
+                                <span className="font-bold text-[var(--color-text-main)]">
+                                    {formatSignedPrice(activeInvoice.tax_total, activeInvoice)} {activeInvoice.currency}
+                                    {activeInvoice.currency !== "BAM" && activeInvoice.tax_total_bam != null && (
+                                        <span className="text-xs font-normal text-[var(--color-text-dim)] ml-1">({formatPrice(Math.abs(activeInvoice.tax_total_bam))} KM)</span>
+                                    )}
+                                </span>
                             </div>
                             <div className="h-[1px] bg-amber-500/20" />
                             <div className="flex justify-between">
                                 <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno:</span>
-                                <span className="text-xl font-black text-primary tracking-tighter italic">{formatSignedPrice(activeInvoice.total, activeInvoice)} {activeInvoice.currency}</span>
+                                <span className="text-xl font-black text-primary tracking-tighter italic">
+                                    {formatSignedPrice(activeInvoice.total, activeInvoice)} {activeInvoice.currency}
+                                    {activeInvoice.currency !== "BAM" && activeInvoice.total_bam != null && (
+                                        <span className="text-sm font-normal text-[var(--color-text-dim)] ml-1">({formatPrice(Math.abs(activeInvoice.total_bam))} KM)</span>
+                                    )}
+                                </span>
                             </div>
                         </div>
 
@@ -1402,7 +1157,7 @@ export default function InvoicesPage() {
                                                                             href={rec.verification_url}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
-                                                                            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-black/5 hover:scale-[1.02] active:scale-[0.98] transition-all ${textClass}`}
+                                                                            className={`cursor-pointer flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-black/5 hover:scale-[1.02] active:scale-[0.98] transition-all ${textClass}`}
                                                                             title="Verifikacija"
                                                                         >
                                                                             <ExternalLinkIcon className="h-5 w-5 stroke-[2.5]" />
@@ -1416,7 +1171,7 @@ export default function InvoicesPage() {
                                                                                 setFiscalImageRecordId(rec.id);
                                                                                 setFiscalImageModalOpen(true);
                                                                             }}
-                                                                            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-black/5 hover:scale-[1.02] active:scale-[0.98] transition-all ${textClass}`}
+                                                                            className={`cursor-pointer flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white shadow-sm border border-black/5 hover:scale-[1.02] active:scale-[0.98] transition-all ${textClass}`}
                                                                             title="Slika"
                                                                         >
                                                                             <ImageIcon className="h-5 w-5 stroke-[2.5]" />
@@ -1557,102 +1312,39 @@ export default function InvoicesPage() {
 
             {/* Send Email modal */}
             {emailModalOpen && (
-                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-[12px]"
-                        onClick={() => !emailLoading && setEmailModalOpen(false)}
-                    />
-                    <div className="relative w-full max-w-[480px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xl overflow-hidden">
-                        <div className="p-6 border-b border-[var(--color-border)]">
-                            <h3 className="text-lg font-black text-[var(--color-text-main)] flex items-center gap-2">
-                                <MailIcon className="h-5 w-5 text-primary" />
-                                Pošalji fakturu na email
-                            </h3>
-                        </div>
-                        <form onSubmit={handleSendEmail} className="p-6 space-y-4">
-                            <Input
-                                label="Email primaoca"
-                                type="email"
-                                value={emailForm.to}
-                                onChange={(e) => setEmailForm(prev => ({ ...prev, to: e.target.value }))}
-                                icon={MailIcon}
-                                required
-                                placeholder="klijent@email.com"
-                            />
-                            <Input
-                                label="Predmet"
-                                type="text"
-                                value={emailForm.subject}
-                                onChange={(e) => setEmailForm(prev => ({ ...prev, subject: e.target.value }))}
-                                icon={FileTextIcon}
-                                required
-                            />
-                            <div className="space-y-1.5">
-                                <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">
-                                    Tekst maila
-                                </label>
-                                <textarea
-                                    value={emailForm.body}
-                                    onChange={(e) => setEmailForm(prev => ({ ...prev, body: e.target.value }))}
-                                    rows={5}
-                                    required
-                                    className="w-full p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 placeholder:text-[var(--color-text-dim)] resize-none"
-                                    placeholder="Tekst maila..."
-                                />
+                <EmailModal
+                    title="Pošalji fakturu na email"
+                    emailForm={emailForm}
+                    onChange={(form) => setEmailForm(prev => ({ ...prev, ...form }))}
+                    onSubmit={handleSendEmail}
+                    onClose={() => setEmailModalOpen(false)}
+                    loading={emailLoading}
+                    pdfLabel="Priloži PDF fakturu"
+                    extraToggles={(() => {
+                        const fiscalRecordsWithImages = (activeInvoice?.fiscal_records ?? []).filter((r) => r.fiscal_receipt_image_path);
+                        if (fiscalRecordsWithImages.length === 0) return null;
+                        return (
+                            <div className="space-y-2">
+                                {fiscalRecordsWithImages.map((r) => (
+                                    <Toggle
+                                        key={r.id}
+                                        checked={emailForm.attach_fiscal_record_ids.includes(r.id)}
+                                        onChange={(v) => {
+                                            setEmailForm((prev) => ({
+                                                ...prev,
+                                                attach_fiscal_record_ids: v
+                                                    ? [...prev.attach_fiscal_record_ids, r.id]
+                                                    : prev.attach_fiscal_record_ids.filter((id) => id !== r.id),
+                                            }));
+                                        }}
+                                        label={`Priloži sliku fiskalnog računa (${r.type_label})`}
+                                        className="!p-2"
+                                    />
+                                ))}
                             </div>
-                            <div className="flex flex-col gap-2 pt-2">
-                                <Toggle
-                                    checked={emailForm.attach_pdf}
-                                    onChange={(v) => setEmailForm(prev => ({ ...prev, attach_pdf: v }))}
-                                    label="Priloži PDF fakturu"
-                                    className="!p-2"
-                                />
-                                {(() => {
-                                    const fiscalRecordsWithImages = (activeInvoice?.fiscal_records ?? []).filter((r) => r.fiscal_receipt_image_path);
-                                    if (fiscalRecordsWithImages.length === 0) return null;
-                                    return (
-                                        <div className="space-y-2">
-                                            {fiscalRecordsWithImages.map((r) => (
-                                                <Toggle
-                                                    key={r.id}
-                                                    checked={emailForm.attach_fiscal_record_ids.includes(r.id)}
-                                                    onChange={(v) => {
-                                                        setEmailForm((prev) => ({
-                                                            ...prev,
-                                                            attach_fiscal_record_ids: v
-                                                                ? [...prev.attach_fiscal_record_ids, r.id]
-                                                                : prev.attach_fiscal_record_ids.filter((id) => id !== r.id),
-                                                        }));
-                                                    }}
-                                                    label={`Priloži sliku fiskalnog računa (${r.type_label})`}
-                                                    className="!p-2"
-                                                />
-                                            ))}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                            <div className="flex gap-2 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => !emailLoading && setEmailModalOpen(false)}
-                                    disabled={emailLoading}
-                                    className="flex-1 py-3 rounded-xl border border-[var(--color-border)] text-[var(--color-text-muted)] font-bold text-sm hover:bg-[var(--color-surface-hover)] transition-all disabled:opacity-50 cursor-pointer"
-                                >
-                                    Odustani
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={emailLoading}
-                                    className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-                                >
-                                    {emailLoading ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /> : <MailIcon className="h-4 w-4" />}
-                                    {emailLoading ? "Slanje..." : "Pošalji"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                        );
+                    })()}
+                />
             )}
 
             {/* Form Drawer */}
@@ -1764,24 +1456,6 @@ export default function InvoicesPage() {
                                             >
                                                 {currencies.map(c => (
                                                     <option key={c.id} value={c.id}>{c.code}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5 group">
-                                        <label className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] ml-1 block">Bankovni račun</label>
-                                        <div className="relative">
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
-                                                <CreditCardIcon className="h-4 w-4" />
-                                            </div>
-                                            <select
-                                                value={formData.bank_account_id ?? ""}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, bank_account_id: e.target.value ? parseInt(e.target.value) : null }))}
-                                                className="w-full min-h-[44px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-main)] font-bold text-sm pl-10 pr-10 py-3 outline-none focus:border-primary/50 cursor-pointer"
-                                            >
-                                                <option value="">—</option>
-                                                {bankAccounts.map(b => (
-                                                    <option key={b.id} value={b.id}>{b.bank_name} ({b.account_number})</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -1906,7 +1580,7 @@ export default function InvoicesPage() {
                                 item={item}
                                 index={idx}
                                 articles={articles}
-                                currency={getCurrencyCode(formData.currency_id)}
+                                currency={getCurrencyCode(formData.currency_id, currencies)}
                                 onChange={handleItemChange}
                                 onRemove={handleItemRemove}
                                 disabled={formLoading}
@@ -1930,16 +1604,31 @@ export default function InvoicesPage() {
                         <div className="flex-1 min-w-0 space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span className="text-[var(--color-text-dim)]">Osnovica:</span>
-                                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.subtotal)} {getCurrencyCode(formData.currency_id)}</span>
+                                <span className="font-bold text-[var(--color-text-main)]">
+                                    {formatPrice(formData.subtotal)} {getCurrencyCode(formData.currency_id, currencies)}
+                                    {getCurrencyCode(formData.currency_id, currencies) !== "BAM" && formData.subtotal_bam != null && (
+                                        <span className="text-xs font-normal text-[var(--color-text-dim)] ml-1">({formatPrice(formData.subtotal_bam)} KM)</span>
+                                    )}
+                                </span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-[var(--color-text-dim)]">PDV:</span>
-                                <span className="font-bold text-[var(--color-text-main)]">{formatPrice(formData.tax_total)} {getCurrencyCode(formData.currency_id)}</span>
+                                <span className="font-bold text-[var(--color-text-main)]">
+                                    {formatPrice(formData.tax_total)} {getCurrencyCode(formData.currency_id, currencies)}
+                                    {getCurrencyCode(formData.currency_id, currencies) !== "BAM" && formData.tax_total_bam != null && (
+                                        <span className="text-xs font-normal text-[var(--color-text-dim)] ml-1">({formatPrice(formData.tax_total_bam)} KM)</span>
+                                    )}
+                                </span>
                             </div>
                             <div className="h-[1px] bg-primary/20" />
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-bold text-[var(--color-text-main)]">Ukupno</span>
-                                <span className="text-xl font-black text-primary tracking-tighter italic">{formatPrice(formData.total)} {getCurrencyCode(formData.currency_id)}</span>
+                                <span className="text-xl font-black text-primary tracking-tighter italic">
+                                    {formatPrice(formData.total)} {getCurrencyCode(formData.currency_id, currencies)}
+                                    {getCurrencyCode(formData.currency_id, currencies) !== "BAM" && formData.total_bam != null && (
+                                        <span className="text-sm font-normal text-[var(--color-text-dim)] ml-1">({formatPrice(formData.total_bam)} KM)</span>
+                                    )}
+                                </span>
                             </div>
                         </div>
                     </div>

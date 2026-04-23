@@ -6,7 +6,6 @@ export interface CreateButtonProps {
   className?: string;
 }
 
-// Koristi se na: clients/articles/invoices/bank-accounts/currencies (header akcija kreiranja)
 export function CreateButton({ label, onClick, className = "" }: CreateButtonProps) {
   return (
     <button

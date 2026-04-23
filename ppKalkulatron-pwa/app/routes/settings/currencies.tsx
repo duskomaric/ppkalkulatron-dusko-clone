@@ -11,13 +11,15 @@ import type { Currency } from "~/types/config";
 import { Toast } from "~/components/ui/Toast";
 import { Toggle } from "~/components/ui/Toggle";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
-import { PencilIcon } from "~/components/ui/icons";
+import { PencilIcon, InfoIcon, CurrencyEuroIcon } from "~/components/ui/icons";
 import { CreateButton } from "~/components/ui/CreateButton";
-import { useNavigate } from "react-router";
-import { FormInput } from "~/components/ui/Input";
+import { useNavigate, Link } from "react-router";
+import { FormInput } from "~/components/ui/FormInput";
 import { ModalForm } from "~/components/ui/ModalForm";
 import { CardGrid } from "~/components/ui/CardGrid";
 import { LoadingState } from "~/components/ui/LoadingState";
+import { SectionHeader } from "~/components/ui/SectionHeader";
+import { SectionBlock } from "~/components/ui/SectionBlock";
 import { useToast } from "~/hooks/useToast";
 
 export default function CurrenciesPage() {
@@ -39,8 +41,7 @@ export default function CurrenciesPage() {
         try {
             const res = await getCurrencies(selectedCompany.slug, token);
             setCurrencies(res.data);
-        } catch (error) {
-            console.error(error);
+        } catch {
             showToast("Greška pri učitavanju", "error");
         } finally {
             setLoading(false);
@@ -63,12 +64,10 @@ export default function CurrenciesPage() {
             }
             setEditingItem(null);
             loadData();
-        } catch (error) {
-            console.error(error);
+        } catch {
             showToast("Greška", "error");
         }
     };
-
 
     if (!selectedCompany) return null;
 
@@ -112,46 +111,62 @@ export default function CurrenciesPage() {
             )}
 
             {!loading && (
-                <CardGrid
-                    gridClassName="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
-                    isEmpty={currencies.length === 0}
-                    empty={
-                        <div className="col-span-1 md:col-span-3 text-center py-12 text-[var(--color-text-muted)] italic">
-                            Nema dodatih valuta.
-                        </div>
-                    }
-                >
-                    {currencies.map(curr => (
-                        <div key={curr.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl relative group shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-center mb-3 pr-12">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 min-w-10 px-2 bg-[var(--color-surface-hover)] rounded-full flex items-center justify-center text-primary font-black text-sm">
-                                        {curr.symbol}
+                <SectionBlock variant="card">
+                    <SectionHeader
+                        icon={CurrencyEuroIcon}
+                        title="Pregled valuta"
+                        rightElement={
+                            <Link
+                                to="/help#currencies"
+                                className="h-8 w-8 rounded-lg border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-dim)] hover:text-primary hover:border-primary/30 transition-all cursor-pointer"
+                                title="Pomoć: Valute"
+                            >
+                                <InfoIcon className="h-4 w-4" />
+                            </Link>
+                        }
+                    />
+                    <CardGrid
+                        gridClassName="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
+                        isEmpty={currencies.length === 0}
+                        empty={
+                            <div className="col-span-1 md:col-span-3 text-center py-12 text-[var(--color-text-muted)] italic">
+                                Nema dodatih valuta.
+                            </div>
+                        }
+                    >
+                        {currencies.map(curr => (
+                            <div key={curr.id} className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl relative group shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-center mb-3 pr-12">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 min-w-10 px-2 bg-[var(--color-surface-hover)] rounded-full flex items-center justify-center text-primary font-black text-sm">
+                                            {curr.symbol}
+                                        </div>
+                                        <span className="font-bold text-[var(--color-text-main)] text-lg">{curr.code}</span>
                                     </div>
-                                    <span className="font-bold text-[var(--color-text-main)] text-lg">{curr.code}</span>
+                                    {curr.is_default && (
+                                        <span className="text-primary text-lg shrink-0" title="Podrazumijevana valuta">★</span>
+                                    )}
                                 </div>
-                                {curr.is_default && (
-                                    <span className="text-primary text-lg shrink-0" title="Podrazumijevana valuta">★</span>
-                                )}
-                            </div>
-                            <p className="text-sm text-[var(--color-text-dim)] font-medium pl-1">{curr.name}</p>
+                                <p className="text-sm text-[var(--color-text-dim)] font-medium pl-1">{curr.name}</p>
 
-                            <div className="absolute top-4 right-4 flex gap-2">
-                                <button
-                                    onClick={() => setEditingItem(curr)}
-                                    className="h-8 w-8 bg-[var(--color-surface-hover)] hover:text-primary rounded-lg flex items-center justify-center transition-colors"
-                                >
-                                    <PencilIcon className="h-4 w-4" />
-                                </button>
+                                <div className="absolute top-4 right-4 flex gap-2">
+                                    <button
+                                        onClick={() => setEditingItem(curr)}
+                                        className="h-8 w-8 bg-[var(--color-surface-hover)] hover:text-primary rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+                                    >
+                                        <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </CardGrid>
+                        ))}
+                    </CardGrid>
+                </SectionBlock>
             )}
 
             {editingItem && (
                 <ModalForm
                     title={editingItem.id ? "Izmjeni Valutu" : "Nova Valuta"}
+                    isOpen
                     onSubmit={handleSave}
                     onClose={() => setEditingItem(null)}
                     sizeClassName="max-w-sm md:max-w-md"

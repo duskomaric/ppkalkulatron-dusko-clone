@@ -37,6 +37,8 @@ class UpdateCompanyRequest extends FormRequest
             'vat_number' => 'sometimes|nullable|string|max:50',
             'is_active' => 'sometimes|boolean',
             'subscription_ends_at' => 'sometimes|nullable|date',
+            'is_small_business' => 'sometimes|boolean',
+            'is_vat_obligor' => 'sometimes|boolean',
         ];
     }
 

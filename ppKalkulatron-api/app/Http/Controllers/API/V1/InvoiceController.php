@@ -16,7 +16,10 @@ use App\Models\Contract;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Invoice;
 use App\Models\Proforma;
+use App\Exceptions\NoExchangeRateForDateException;
+use App\Models\Article;
 use App\Services\CompanyMailService;
+use App\Services\CurrencyConversionService;
 use App\Services\DocumentConversionService;
 use App\Services\DocumentNumberService;
 use App\Services\InvoicePdfService;
@@ -34,8 +37,22 @@ class InvoiceController extends Controller
     public function index(IndexInvoiceRequest $request, Company $company): AnonymousResourceCollection
     {
         $query = $company->invoices()
-            ->with(['items', 'source', 'client', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice'])
+            ->with(['source', 'client', 'fiscalRecords', 'currency', 'refundInvoice', 'originalInvoice'])
             ->latest();
+
+        $dateRange = null;
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            $from = $request->filled('date_from')
+                ? Carbon::parse($request->date_from)->toDateString()
+                : Carbon::parse($request->date_to)->toDateString();
+            $to = $request->filled('date_to')
+                ? Carbon::parse($request->date_to)->toDateString()
+                : $from;
+            $dateRange = ['from' => $from, 'to' => $to];
+        } elseif ($request->filled('year')) {
+            $y = (int) $request->year;
+            $dateRange = ['from' => "{$y}-01-01", 'to' => "{$y}-12-31"];
+        }
 
         $query
             ->when($request->validated('search'), function ($q, $search) {
@@ -55,21 +72,24 @@ class InvoiceController extends Controller
             ->when($request->validated('created_to'), function ($q, $createdTo) {
                 $to = Carbon::parse($createdTo)->endOfDay();
                 $q->where('created_at', '<=', $to);
+            })
+            ->when($dateRange, function ($q, $range) {
+                $q->whereBetween('date', [$range['from'], $range['to']]);
             });
 
         return InvoiceResource::collection($query->paginate(20));
     }
 
     #[Endpoint(operationId: 'storeInvoice', title: 'Store invoice', description: 'Create a new invoice')]
-    public function store(StoreInvoiceRequest $request, Company $company, DocumentNumberService $numberService): InvoiceResource
+    public function store(StoreInvoiceRequest $request, Company $company, DocumentNumberService $numberService, CurrencyConversionService $conversionService): InvoiceResource|JsonResponse
     {
-        logger('Store: ' . print_r($request->validated(), true));
-        // Reserve invoice number if not provided
+        $year = DocumentNumberService::yearFromDate($request->validated('date'));
+
         $invoice = $company->invoices()->create(
             $request->safe()
                 ->merge([
                     'invoice_number' => $request->validated('invoice_number')
-                        ?: $numberService->reserveNumber($company, 'invoice')['formatted'],
+                        ?: $numberService->reserveNumber($company, 'invoice', $year)['formatted'],
                 ])
                 ->except('items')
         );
@@ -77,25 +97,36 @@ class InvoiceController extends Controller
         $items = $request->validated('items') ?? [];
         $invoice->items()->createMany($items);
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount']));
+        try {
+            $conversionService->fillInvoiceBam($invoice);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        $this->updateArticleLastPricesFromInvoice($invoice);
+
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency']));
     }
 
     #[Endpoint(operationId: 'showInvoice', title: 'Show invoice', description: 'Get invoice')]
     public function show(Company $company, Invoice $invoice): InvoiceResource
     {
-        return new InvoiceResource($invoice->load(['client', 'items', 'source', 'parent', 'children', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice']));
+        return new InvoiceResource($invoice->load(['client', 'items', 'source', 'parent', 'children', 'fiscalRecords', 'currency', 'refundInvoice', 'originalInvoice']));
     }
 
     #[Endpoint(operationId: 'downloadInvoicePdf', title: 'Download invoice PDF', description: 'Export invoice as PDF')]
     public function downloadPdf(Company $company, Invoice $invoice, InvoicePdfService $pdfService): Response
     {
+        $invoice->loadMissing(['items.article']);
+
         return $pdfService->download($invoice)->toResponse(request());
     }
 
     #[Endpoint(operationId: 'sendInvoiceEmail', title: 'Send invoice email', description: 'Send invoice and fiscal receipt via email')]
     public function sendEmail(SendInvoiceEmailRequest $request, Company $company, Invoice $invoice, CompanyMailService $mailService, InvoicePdfService $pdfService): JsonResponse
     {
-        logger('Send email: ' . print_r($request->validated(), true));
         $invoice->load(['client', 'company', 'fiscalRecords']);
         $verificationUrl = $invoice->fiscal_verification_url;
 
@@ -136,7 +167,7 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'updateInvoice', title: 'Update invoice', description: 'Update invoice')]
-    public function update(UpdateInvoiceRequest $request, Company $company, Invoice $invoice): InvoiceResource
+    public function update(UpdateInvoiceRequest $request, Company $company, Invoice $invoice, CurrencyConversionService $conversionService): InvoiceResource|JsonResponse
     {
         $invoice->update($request->safe()->except('items'));
 
@@ -145,11 +176,21 @@ class InvoiceController extends Controller
             $invoice->items()->createMany($request->validated('items') ?? []);
         }
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice']));
+        try {
+            $conversionService->fillInvoiceBam($invoice);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        $this->updateArticleLastPricesFromInvoice($invoice);
+
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'refundInvoice', 'originalInvoice']));
     }
 
     #[Endpoint(operationId: 'destroyInvoice', title: 'Destroy invoice', description: 'Remove invoice')]
-    public function destroy(Company $company, Invoice $invoice): JsonResponse
+    public function destroy(Company $company, Invoice $invoice, DocumentNumberService $numberService): JsonResponse
     {
         if (! in_array($invoice->status, [DocumentStatusEnum::Created, DocumentStatusEnum::RefundCreated], true)) {
             return response()->json([
@@ -160,36 +201,59 @@ class InvoiceController extends Controller
         if ($invoice->status === DocumentStatusEnum::RefundCreated) {
             $invoice->originalInvoice()->update(['refund_invoice_id' => null]);
         }
+
+        $numberService->releaseNumber($company, 'invoice', $invoice->invoice_number);
         $invoice->delete();
+
         return response()->json(['message' => 'Invoice deleted successfully']);
     }
 
     #[Endpoint(operationId: 'createInvoiceFromProforma', title: 'Create invoice from proforma', description: 'Create invoice from proforma')]
-    public function createFromProforma(CreateFromProformaRequest $request, Company $company, Proforma $proforma, DocumentConversionService $conversionService, DocumentNumberService $numberService): InvoiceResource
+    public function createFromProforma(CreateFromProformaRequest $request, Company $company, Proforma $proforma, DocumentConversionService $conversionService, DocumentNumberService $numberService, CurrencyConversionService $currencyConversionService): InvoiceResource|JsonResponse
     {
         $proforma->load(['items.article']);
         $invoice = $conversionService->convertProformaToInvoice($proforma);
 
-        // Reserve invoice number
-        $numberData = $numberService->reserveNumber($company, 'invoice');
+        $year = DocumentNumberService::yearFromDate($invoice->date);
+        $numberData = $numberService->reserveNumber($company, 'invoice', $year);
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount', 'refundInvoice', 'originalInvoice']));
+        try {
+            $currencyConversionService->fillInvoiceBam($invoice);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        $this->updateArticleLastPricesFromInvoice($invoice);
+
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'refundInvoice', 'originalInvoice']));
     }
 
     #[Endpoint(operationId: 'createInvoiceFromContract', title: 'Create invoice from contract', description: 'Create invoice from contract')]
-    public function createFromContract(CreateFromContractRequest $request, Company $company, Contract $contract, DocumentConversionService $conversionService, DocumentNumberService $numberService): InvoiceResource
+    public function createFromContract(CreateFromContractRequest $request, Company $company, Contract $contract, DocumentConversionService $conversionService, DocumentNumberService $numberService, CurrencyConversionService $currencyConversionService): InvoiceResource|JsonResponse
     {
         $contract->load(['items.article']);
         $invoice = $conversionService->convertContractToInvoice($contract);
 
-        // Reserve invoice number
-        $numberData = $numberService->reserveNumber($company, 'invoice');
+        $year = DocumentNumberService::yearFromDate($invoice->date);
+        $numberData = $numberService->reserveNumber($company, 'invoice', $year);
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 
-        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount']));
+        try {
+            $currencyConversionService->fillInvoiceBam($invoice);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        $this->updateArticleLastPricesFromInvoice($invoice);
+
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency']));
     }
 
     #[Endpoint(operationId: 'createRefundInvoice', title: 'Create refund invoice', description: 'Create refund/storno invoice from original')]
@@ -197,7 +261,8 @@ class InvoiceController extends Controller
     {
         $invoice->load(['items']);
 
-        $numberData = $numberService->reserveNumber($company, 'invoice');
+        $year = DocumentNumberService::yearFromDate($invoice->date);
+        $numberData = $numberService->reserveNumber($company, 'invoice', $year);
         $refundInvoice = $company->invoices()->create([
             'invoice_number' => $numberData['formatted'],
             'client_id' => $invoice->client_id,
@@ -211,7 +276,6 @@ class InvoiceController extends Controller
             'next_invoice_date' => null,
             'parent_id' => null,
             'currency_id' => $invoice->currency_id,
-            'bank_account_id' => $invoice->bank_account_id,
             'invoice_template' => $invoice->invoice_template,
             'payment_type' => $invoice->payment_type,
             'subtotal' => abs($invoice->subtotal),
@@ -237,7 +301,27 @@ class InvoiceController extends Controller
 
         $invoice->update(['refund_invoice_id' => $refundInvoice->id]);
 
-        return new InvoiceResource($refundInvoice->load(['items', 'fiscalRecords', 'currency', 'bankAccount', 'originalInvoice']));
+        try {
+            app(CurrencyConversionService::class)->fillInvoiceBam($refundInvoice);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return new InvoiceResource($refundInvoice->load(['items', 'fiscalRecords', 'currency', 'originalInvoice']));
     }
 
+    protected function updateArticleLastPricesFromInvoice(Invoice $invoice): void
+    {
+        $invoice->loadMissing('items');
+        foreach ($invoice->items as $item) {
+            if ($item->article_id) {
+                Article::where('id', $item->article_id)->update([
+                    'last_unit_price' => $item->unit_price,
+                    'last_currency_id' => $invoice->currency_id,
+                ]);
+            }
+        }
+    }
 }

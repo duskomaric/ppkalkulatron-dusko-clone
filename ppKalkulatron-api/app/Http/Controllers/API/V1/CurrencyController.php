@@ -27,6 +27,10 @@ class CurrencyController extends Controller
         $validated = $request->validated();
         $validated['code'] = strtoupper($validated['code']);
 
+        if ($company->currencies()->count() === 0) {
+            $validated['is_default'] = true;
+        }
+
         if (($validated['is_default'] ?? false) === true) {
             $company->currencies()->update(['is_default' => false]);
         }

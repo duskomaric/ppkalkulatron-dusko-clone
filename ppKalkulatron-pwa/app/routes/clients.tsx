@@ -12,11 +12,11 @@ import {
   HashIcon,
   GlobeIcon,
   CheckCircleIcon,
-  FileSlidersIcon
 } from "~/components/ui/icons";
 import { AppLayout } from "~/components/layout/AppLayout";
 import { CreateButton } from "~/components/ui/CreateButton";
 import { Toast } from "~/components/ui/Toast";
+import { useNavigate } from "react-router";
 import { ConfirmModal } from "~/components/ui/ConfirmModal";
 import { Pagination } from "~/components/ui/Pagination";
 import { StatusBadge } from "~/components/ui/StatusBadge";
@@ -33,15 +33,27 @@ import { SectionBlock } from "~/components/ui/SectionBlock";
 import { SectionHeader } from "~/components/ui/SectionHeader";
 import { DetailsGrid } from "~/components/ui/DetailsGrid";
 import { ListHeader } from "~/components/ui/ListHeader";
-import { FilterBar } from "~/components/ui/FilterBar";
-import { FilterPillSelect } from "~/components/ui/FilterPillSelect";
-import { FilterSearchInput } from "~/components/ui/FilterSearchInput";
-import { ActiveFiltersBar } from "~/components/ui/ActiveFiltersBar";
+import { ClientFilterSection } from "~/components/clients/ClientFilterSection";
 import type { PaginationMeta } from "~/types/api";
 import { useToast } from "~/hooks/useToast";
 
+type LanguageCode = "en" | "bs" | "hr" | "sr_Latn" | "sr_Cyrl" | "fr" | "de" | "it" | "ru";
+const clientsTranslations: Record<LanguageCode, Record<string, string>> = {
+  en: { title: "Clients", newClient: "New client", fetchError: "Error fetching clients", created: "Client created successfully", updated: "Client updated successfully", saveError: "Error saving client", deleted: "Client deleted successfully", deleteError: "Error deleting client", deleteTitle: "Delete client", deleteMessage: "Are you sure you want to permanently delete client", listClient: "Client", listStatus: "Status", listEmail: "Email", listPhone: "Phone", listLocation: "Location", active: "Active", inactive: "Inactive", empty: "No clients found", detailsTitle: "Client details", basicInfo: "Basic info", phone: "Phone", address: "Address", city: "City", country: "Country", status: "Status", editClient: "Edit client", createClient: "Create client", saveChanges: "Save changes", clientName: "Client name", clientNamePlaceholder: "e.g. PlusPlus Ltd.", clientActive: "Client is active", contact: "Contact", addressTitle: "Address", addressPlaceholder: "Street and number", taxInfo: "Tax info" },
+  bs: { title: "Klijenti", newClient: "Novi klijent", fetchError: "Greška pri dohvatanju klijenata", created: "Klijent uspješno kreiran", updated: "Klijent uspješno ažuriran", saveError: "Greška pri čuvanju klijenta", deleted: "Klijent uspješno obrisan", deleteError: "Greška pri brisanju klijenta", deleteTitle: "Obriši klijenta", deleteMessage: "Da li ste sigurni da želite trajno obrisati klijenta", listClient: "Klijent", listStatus: "Status", listEmail: "Email", listPhone: "Telefon", listLocation: "Lokacija", active: "Aktivan", inactive: "Neaktivan", empty: "Nema pronađenih klijenata", detailsTitle: "Detalji klijenta", basicInfo: "Osnovni podaci", phone: "Telefon", address: "Adresa", city: "Grad", country: "Država", status: "Status", editClient: "Uredi klijenta", createClient: "Kreiraj klijenta", saveChanges: "Sačuvaj izmjene", clientName: "Naziv klijenta", clientNamePlaceholder: "npr. PlusPlus d.o.o.", clientActive: "Klijent je aktivan", contact: "Kontakt", addressTitle: "Adresa", addressPlaceholder: "Ulica i broj", taxInfo: "Porezni podaci" },
+  hr: { title: "Klijenti", newClient: "Novi klijent", fetchError: "Greška pri dohvaćanju klijenata", created: "Klijent uspješno kreiran", updated: "Klijent uspješno ažuriran", saveError: "Greška pri spremanju klijenta", deleted: "Klijent uspješno obrisan", deleteError: "Greška pri brisanju klijenta", deleteTitle: "Obriši klijenta", deleteMessage: "Jeste li sigurni da želite trajno obrisati klijenta", listClient: "Klijent", listStatus: "Status", listEmail: "E-mail", listPhone: "Telefon", listLocation: "Lokacija", active: "Aktivan", inactive: "Neaktivan", empty: "Nema pronađenih klijenata", detailsTitle: "Detalji klijenta", basicInfo: "Osnovni podaci", phone: "Telefon", address: "Adresa", city: "Grad", country: "Država", status: "Status", editClient: "Uredi klijenta", createClient: "Kreiraj klijenta", saveChanges: "Spremi promjene", clientName: "Naziv klijenta", clientNamePlaceholder: "npr. PlusPlus d.o.o.", clientActive: "Klijent je aktivan", contact: "Kontakt", addressTitle: "Adresa", addressPlaceholder: "Ulica i broj", taxInfo: "Porezni podaci" },
+  "sr_Latn": { title: "Klijenti", newClient: "Novi klijent", fetchError: "Greška pri dohvatanju klijenata", created: "Klijent uspešno kreiran", updated: "Klijent uspešno ažuriran", saveError: "Greška pri čuvanju klijenta", deleted: "Klijent uspešno obrisan", deleteError: "Greška pri brisanju klijenta", deleteTitle: "Obriši klijenta", deleteMessage: "Da li ste sigurni da želite trajno obrisati klijenta", listClient: "Klijent", listStatus: "Status", listEmail: "Email", listPhone: "Telefon", listLocation: "Lokacija", active: "Aktivan", inactive: "Neaktivan", empty: "Nema pronađenih klijenata", detailsTitle: "Detalji klijenta", basicInfo: "Osnovni podaci", phone: "Telefon", address: "Adresa", city: "Grad", country: "Država", status: "Status", editClient: "Uredi klijenta", createClient: "Kreiraj klijenta", saveChanges: "Sačuvaj izmene", clientName: "Naziv klijenta", clientNamePlaceholder: "npr. PlusPlus d.o.o.", clientActive: "Klijent je aktivan", contact: "Kontakt", addressTitle: "Adresa", addressPlaceholder: "Ulica i broj", taxInfo: "Poreski podaci" },
+  "sr_Cyrl": { title: "Клијенти", newClient: "Нови клијент", fetchError: "Грешка при дохватању клијената", created: "Клијент успешно креиран", updated: "Клијент успешно ажуриран", saveError: "Грешка при чувању клијента", deleted: "Клијент успешно обрисан", deleteError: "Грешка при брисању клијента", deleteTitle: "Обриши клијента", deleteMessage: "Да ли сте сигурни да желите трајно обрисати клијента", listClient: "Клијент", listStatus: "Статус", listEmail: "Имејл", listPhone: "Телефон", listLocation: "Локација", active: "Активан", inactive: "Неактиван", empty: "Нема пронађених клијената", detailsTitle: "Детаљи клијента", basicInfo: "Основни подаци", phone: "Телефон", address: "Адреса", city: "Град", country: "Држава", status: "Статус", editClient: "Уреди клијента", createClient: "Креирај клијента", saveChanges: "Сачувај измене", clientName: "Назив клијента", clientNamePlaceholder: "нпр. PlusPlus д.о.о.", clientActive: "Клијент је активан", contact: "Контакт", addressTitle: "Адреса", addressPlaceholder: "Улица и број", taxInfo: "Порески подаци" },
+  fr: { title: "Clients", newClient: "Nouveau client", fetchError: "Erreur lors du chargement des clients", created: "Client créé avec succès", updated: "Client mis à jour avec succès", saveError: "Erreur lors de l'enregistrement du client", deleted: "Client supprimé avec succès", deleteError: "Erreur lors de la suppression du client", deleteTitle: "Supprimer le client", deleteMessage: "Voulez-vous vraiment supprimer définitivement le client", listClient: "Client", listStatus: "Statut", listEmail: "E-mail", listPhone: "Téléphone", listLocation: "Localisation", active: "Actif", inactive: "Inactif", empty: "Aucun client trouvé", detailsTitle: "Détails du client", basicInfo: "Informations de base", phone: "Téléphone", address: "Adresse", city: "Ville", country: "Pays", status: "Statut", editClient: "Modifier le client", createClient: "Créer le client", saveChanges: "Enregistrer les modifications", clientName: "Nom du client", clientNamePlaceholder: "ex. PlusPlus SARL", clientActive: "Le client est actif", contact: "Contact", addressTitle: "Adresse", addressPlaceholder: "Rue et numéro", taxInfo: "Données fiscales" },
+  de: { title: "Kunden", newClient: "Neuer Kunde", fetchError: "Fehler beim Laden der Kunden", created: "Kunde erfolgreich erstellt", updated: "Kunde erfolgreich aktualisiert", saveError: "Fehler beim Speichern des Kunden", deleted: "Kunde erfolgreich gelöscht", deleteError: "Fehler beim Löschen des Kunden", deleteTitle: "Kunden löschen", deleteMessage: "Möchten Sie den Kunden dauerhaft löschen", listClient: "Kunde", listStatus: "Status", listEmail: "E-Mail", listPhone: "Telefon", listLocation: "Standort", active: "Aktiv", inactive: "Inaktiv", empty: "Keine Kunden gefunden", detailsTitle: "Kundendetails", basicInfo: "Grunddaten", phone: "Telefon", address: "Adresse", city: "Stadt", country: "Land", status: "Status", editClient: "Kunde bearbeiten", createClient: "Kunde erstellen", saveChanges: "Änderungen speichern", clientName: "Kundenname", clientNamePlaceholder: "z. B. PlusPlus GmbH", clientActive: "Kunde ist aktiv", contact: "Kontakt", addressTitle: "Adresse", addressPlaceholder: "Straße und Nummer", taxInfo: "Steuerdaten" },
+  it: { title: "Clienti", newClient: "Nuovo cliente", fetchError: "Errore nel caricamento dei clienti", created: "Cliente creato con successo", updated: "Cliente aggiornato con successo", saveError: "Errore nel salvataggio del cliente", deleted: "Cliente eliminato con successo", deleteError: "Errore durante l'eliminazione del cliente", deleteTitle: "Elimina cliente", deleteMessage: "Sei sicuro di voler eliminare definitivamente il cliente", listClient: "Cliente", listStatus: "Stato", listEmail: "Email", listPhone: "Telefono", listLocation: "Posizione", active: "Attivo", inactive: "Inattivo", empty: "Nessun cliente trovato", detailsTitle: "Dettagli cliente", basicInfo: "Dati base", phone: "Telefono", address: "Indirizzo", city: "Città", country: "Paese", status: "Stato", editClient: "Modifica cliente", createClient: "Crea cliente", saveChanges: "Salva modifiche", clientName: "Nome cliente", clientNamePlaceholder: "es. PlusPlus S.r.l.", clientActive: "Il cliente è attivo", contact: "Contatto", addressTitle: "Indirizzo", addressPlaceholder: "Via e numero", taxInfo: "Dati fiscali" },
+  ru: { title: "Клиенты", newClient: "Новый клиент", fetchError: "Ошибка загрузки клиентов", created: "Клиент успешно создан", updated: "Клиент успешно обновлен", saveError: "Ошибка сохранения клиента", deleted: "Клиент успешно удален", deleteError: "Ошибка удаления клиента", deleteTitle: "Удалить клиента", deleteMessage: "Вы уверены, что хотите окончательно удалить клиента", listClient: "Клиент", listStatus: "Статус", listEmail: "Email", listPhone: "Телефон", listLocation: "Локация", active: "Активен", inactive: "Неактивен", empty: "Клиенты не найдены", detailsTitle: "Детали клиента", basicInfo: "Основные данные", phone: "Телефон", address: "Адрес", city: "Город", country: "Страна", status: "Статус", editClient: "Редактировать клиента", createClient: "Создать клиента", saveChanges: "Сохранить изменения", clientName: "Название клиента", clientNamePlaceholder: "напр. PlusPlus LLC", clientActive: "Клиент активен", contact: "Контакты", addressTitle: "Адрес", addressPlaceholder: "Улица и номер", taxInfo: "Налоговые данные" },
+};
+
 export default function ClientsPage() {
-  const { selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
+  const { user, selectedCompany, updateSelectedCompany, token, isAuthenticated } = useAuth();
+  const lang = (user?.language || "sr_Latn") as LanguageCode;
+  const t = clientsTranslations[lang] || clientsTranslations["sr_Latn"];
 
   const createEmptyClientForm = (): Partial<Client> => ({
     name: "",
@@ -94,7 +106,7 @@ export default function ClientsPage() {
       setPagination(response.meta);
       setCurrentPage(page);
     } catch (error: any) {
-      showToast(error.message || "Greška pri dohvatanju klijenata", "error");
+      showToast(error.message || t.fetchError, "error");
     } finally {
       setLoading(false);
     }
@@ -133,15 +145,15 @@ export default function ClientsPage() {
     try {
       if (formMode === "create") {
         await createClient(selectedCompany.slug, token, formData);
-        showToast("Klijent uspješno kreiran", "success");
+        showToast(t.created, "success");
       } else if (activeClient) {
         await updateClient(selectedCompany.slug, activeClient.id, token, formData);
-        showToast("Klijent uspješno ažuriran", "success");
+        showToast(t.updated, "success");
       }
       setFormDrawerOpen(false);
       fetchClients(currentPage);
     } catch (err: any) {
-      showToast(err.message || "Greška pri čuvanju klijenta", "error");
+      showToast(err.message || t.saveError, "error");
     } finally {
       setLoading(false);
     }
@@ -153,11 +165,11 @@ export default function ClientsPage() {
     setLoading(true);
     try {
       const res = await deleteClient(selectedCompany.slug, activeClient.id, token);
-      showToast(res.message || "Klijent uspješno obrisan", "info");
+      showToast(res.message || t.deleted, "info");
       setViewDrawerOpen(false);
       fetchClients(currentPage);
     } catch (err: any) {
-      showToast(err.message || "Greška pri brisanju klijenta", "error");
+      showToast(err.message || t.deleteError, "error");
     } finally {
       setLoading(false);
     }
@@ -171,44 +183,14 @@ export default function ClientsPage() {
     }));
   };
 
-  const statusOptions = [
-    { value: "", label: "Status: Svi" },
-    { value: "active", label: "Status: Aktivan" },
-    { value: "inactive", label: "Status: Neaktivan" },
-  ];
-
-  const activeFilters = [
-    ...(searchQuery.trim()
-      ? [{
-        id: "search",
-        label: "Pretraga",
-        value: searchQuery.trim(),
-        onClear: () => setSearchQuery(""),
-      }]
-      : []),
-    ...(statusFilter
-      ? [{
-        id: "status",
-        label: "Status",
-        value: statusFilter === "active" ? "Aktivan" : "Neaktivan",
-        onClear: () => setStatusFilter(""),
-      }]
-      : []),
-  ];
-
-  const resetFilters = () => {
-    setSearchQuery("");
-    setStatusFilter("");
-    setCurrentPage(1);
-  };
 
   return (
     <AppLayout
-      title="clients"
+      title={t.title}
       selectedCompany={selectedCompany}
       onCompanyChange={updateSelectedCompany}
       actions={
-        <CreateButton label="Novi klijent" onClick={openCreateForm} />
+        <CreateButton label={t.newClient} onClick={openCreateForm} />
       }
     >
       <Toast
@@ -222,63 +204,29 @@ export default function ClientsPage() {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDelete}
-        title="Obriši klijenta"
-        message={`Da li ste sigurni da želite trajno obrisati klijenta ${activeClient?.name}? Ova akcija se ne može poništiti.`}
+        title={t.deleteTitle}
+        message={`${t.deleteMessage} ${activeClient?.name}? Ova akcija se ne može poništiti.`}
       />
 
-      <div className="space-y-3 mb-4">
-        <FilterBar
-          actions={
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((prev) => !prev)}
-              className={`h-9 px-4 rounded-full border text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-2 transition-colors ${
-                filtersOpen
-                  ? "border-primary/40 bg-primary/10 text-primary"
-                  : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-[var(--color-border-strong)]"
-              }`}
-            >
-              <FileSlidersIcon className="h-3.5 w-3.5" />
-              Filteri
-            </button>
-          }
-          search={
-            <FilterSearchInput
-              value={searchQuery}
-              onChange={(val) => {
-                setSearchQuery(val);
-                setCurrentPage(1);
-              }}
-              placeholder="Pretraži klijente..."
-            />
-          }
-        />
-        {filtersOpen && (
-          <div className="p-3 rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)]">
-            <div className="flex flex-wrap gap-2">
-              <FilterPillSelect
-                value={statusFilter}
-                options={statusOptions}
-                onChange={(val) => {
-                  setStatusFilter(val);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-          </div>
-        )}
-        <ActiveFiltersBar filters={activeFilters} onReset={resetFilters} />
-      </div>
+      <ClientFilterSection
+        filtersOpen={filtersOpen}
+        onToggleFilters={() => setFiltersOpen((prev) => !prev)}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        statusFilter={statusFilter}
+        onStatusChange={setStatusFilter}
+        onPageReset={() => setCurrentPage(1)}
+      />
 
       {/* Desktop: header */}
       <ListHeader
         grid="grid-cols-[minmax(0,1.3fr)_0.5fr_0.9fr_0.7fr_0.8fr]"
         columns={[
-          { label: "Klijent" },
-          { label: "Status" },
-          { label: "Email" },
-          { label: "Telefon" },
-          { label: "Lokacija" },
+          { label: t.listClient },
+          { label: t.listStatus },
+          { label: t.listEmail },
+          { label: t.listPhone },
+          { label: t.listLocation },
         ]}
       />
 
@@ -298,7 +246,7 @@ export default function ClientsPage() {
                     </span>
                   </div>
                   <StatusBadge
-                    label={client.is_active ? 'Aktivan' : 'Neaktivan'}
+                    label={client.is_active ? t.active : t.inactive}
                     color={client.is_active ? 'green' : 'gray'}
                   />
                 </div>
@@ -316,7 +264,7 @@ export default function ClientsPage() {
                     {client.phone && (
                       <MetaItem
                         icon={PhoneIcon}
-                        label="Telefon"
+                        label={t.phone}
                         value={client.phone}
                       />
                     )}
@@ -324,7 +272,7 @@ export default function ClientsPage() {
                   {(client.address || client.city) && (
                     <MetaItem
                       icon={MapPinIcon}
-                      label="Lokacija"
+                      label={t.listLocation}
                       className="items-end text-right"
                       valueClassName="text-[var(--color-text-main)] tracking-tight italic leading-none"
                       value={
@@ -356,7 +304,7 @@ export default function ClientsPage() {
                   </div>
                 </div>
                 <StatusBadge
-                  label={client.is_active ? 'Aktivan' : 'Neaktivan'}
+                  label={client.is_active ? t.active : t.inactive}
                   color={client.is_active ? 'green' : 'gray'}
                 />
                 <div className="text-xs font-bold text-[var(--color-text-muted)] truncate">
@@ -382,7 +330,7 @@ export default function ClientsPage() {
       {loading && !viewDrawerOpen && !formDrawerOpen && <LoadingState />}
 
       {!loading && clients.length === 0 && (
-        <EmptyState icon={XIcon} message="Nema pronađenih klijenata" />
+        <EmptyState icon={XIcon} message={t.empty} />
       )}
 
       {/* Pagination */}
@@ -397,7 +345,7 @@ export default function ClientsPage() {
 
       {/* VIEW DRAWER */}
       <DetailDrawer
-        title="Detalji klijenta"
+        title={t.detailsTitle}
         isOpen={viewDrawerOpen}
         onClose={() => setViewDrawerOpen(false)}
         entityName={activeClient?.name || ""}
@@ -405,7 +353,7 @@ export default function ClientsPage() {
         badges={
           activeClient && (
             <StatusBadge
-              label={activeClient.is_active ? 'Aktivan' : 'Neaktivan'}
+              label={activeClient.is_active ? t.active : t.inactive}
               color={activeClient.is_active ? 'green' : 'gray'}
             />
           )
@@ -415,17 +363,17 @@ export default function ClientsPage() {
       >
         {activeClient && (
           <SectionBlock variant="plain">
-            <SectionHeader icon={ContactRoundIcon} title="Osnovni podaci" />
+            <SectionHeader icon={ContactRoundIcon} title={t.basicInfo} />
             <DetailsGrid columns={2}>
               <DetailsItem icon={MailIcon} label="Email" value={activeClient.email} />
-              <DetailsItem icon={PhoneIcon} label="Telefon" value={activeClient.phone} />
-              <DetailsItem icon={MapPinIcon} label="Adresa" value={activeClient.address} />
-              <DetailsItem icon={MapPinIcon} label="Grad" value={activeClient.city} />
+              <DetailsItem icon={PhoneIcon} label={t.phone} value={activeClient.phone} />
+              <DetailsItem icon={MapPinIcon} label={t.address} value={activeClient.address} />
+              <DetailsItem icon={MapPinIcon} label={t.city} value={activeClient.city} />
               <DetailsItem icon={HashIcon} label="ZIP" value={activeClient.zip} />
-              <DetailsItem icon={GlobeIcon} label="Država" value={activeClient.country} />
+              <DetailsItem icon={GlobeIcon} label={t.country} value={activeClient.country} />
               <DetailsItem icon={HashIcon} label="VAT ID" value={activeClient.vat_id} />
               <DetailsItem icon={HashIcon} label="TAX ID" value={activeClient.tax_id} />
-              <DetailsItem icon={CheckCircleIcon} label="Status" value={activeClient.is_active} />
+              <DetailsItem icon={CheckCircleIcon} label={t.status} value={activeClient.is_active} />
             </DetailsGrid>
           </SectionBlock>
         )}
@@ -433,34 +381,34 @@ export default function ClientsPage() {
 
       {/* FORM DRAWER (Create/Edit) */}
       <FormDrawer
-        title={formMode === 'create' ? "Novi klijent" : "Uredi klijenta"}
+        title={formMode === 'create' ? t.newClient : t.editClient}
         isOpen={formDrawerOpen}
         onClose={() => setFormDrawerOpen(false)}
         onSubmit={handleFormSubmit}
         loading={loading}
-        submitLabel={formMode === 'create' ? "Kreiraj klijenta" : "Sačuvaj izmjene"}
+        submitLabel={formMode === 'create' ? t.createClient : t.saveChanges}
       >
         <SectionBlock variant="card">
-          <SectionHeader icon={ContactRoundIcon} title="Osnovni podaci" />
+          <SectionHeader icon={ContactRoundIcon} title={t.basicInfo} />
           <Input
-            label="Naziv klijenta"
+            label={t.clientName}
             name="name"
             required
             value={formData.name}
             onChange={handleInputChange}
-            placeholder="npr. PlusPlus d.o.o."
+            placeholder={t.clientNamePlaceholder}
           />
           <Toggle
             id="is_active"
             name="is_active"
             checked={formData.is_active ?? false}
             onChange={(v) => handleInputChange({ target: { name: "is_active", type: "checkbox", checked: v } } as ChangeEvent<HTMLInputElement>)}
-            label="Klijent je aktivan"
+            label={t.clientActive}
           />
         </SectionBlock>
 
         <SectionBlock variant="card">
-          <SectionHeader icon={MailIcon} title="Kontakt" />
+          <SectionHeader icon={MailIcon} title={t.contact} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Email"
@@ -472,7 +420,7 @@ export default function ClientsPage() {
               placeholder="info@klijent.com"
             />
             <Input
-              label="Telefon"
+              label={t.phone}
               name="phone"
               icon={PhoneIcon}
               value={formData.phone || ""}
@@ -483,14 +431,14 @@ export default function ClientsPage() {
         </SectionBlock>
 
         <SectionBlock variant="card">
-          <SectionHeader icon={MapPinIcon} title="Adresa" />
+          <SectionHeader icon={MapPinIcon} title={t.addressTitle} />
           <Input
-            label="Adresa"
+            label={t.address}
             name="address"
             icon={MapPinIcon}
             value={formData.address || ""}
             onChange={handleInputChange}
-            placeholder="Ulica i broj"
+            placeholder={t.addressPlaceholder}
           />
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-1">
@@ -504,7 +452,7 @@ export default function ClientsPage() {
             </div>
             <div className="col-span-2">
               <Input
-                label="Grad"
+                label={t.city}
                 name="city"
                 value={formData.city || ""}
                 onChange={handleInputChange}
@@ -513,7 +461,7 @@ export default function ClientsPage() {
             </div>
           </div>
           <Input
-            label="Država"
+            label={t.country}
             name="country"
             icon={GlobeIcon}
             value={formData.country || ""}
@@ -523,7 +471,7 @@ export default function ClientsPage() {
         </SectionBlock>
 
         <SectionBlock variant="card">
-          <SectionHeader icon={HashIcon} title="Porezni podaci" />
+          <SectionHeader icon={HashIcon} title={t.taxInfo} />
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="VAT ID"

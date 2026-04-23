@@ -81,6 +81,14 @@
                 <div class="label">Valuta</div>
                 <div class="bank-block">
                     <strong>{{ $currency }}</strong>
+                    @if(isset($bankAccounts) && $bankAccounts->isNotEmpty())
+                        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #e5e7eb;">
+                            <strong>Žiro računi:</strong>
+                            @foreach($bankAccounts as $ba)
+                                <div style="margin-top: 4px; font-size: 9pt;">{{ $ba->bank_name }} — {{ $ba->account_number }}</div>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

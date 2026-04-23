@@ -28,7 +28,6 @@ const sizeClasses: Record<CardRowSize, string> = {
   lg: "p-4 rounded-2xl",
 };
 
-// Koristi se na: DrawerNavItem/Toggle/DetailsItem/SectionToggle (settings drawer + detalji + toggles)
 export function CardRow({
   as = "div",
   variant = "surface",

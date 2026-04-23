@@ -9,7 +9,6 @@ interface SectionToggleProps {
   className?: string;
 }
 
-// Koristi se na: app/routes/invoices.tsx, app/routes/quotes.tsx, app/routes/proformas.tsx (kreiranje/uredjivanje -> Prikazi vise)
 export function SectionToggle({
   open,
   onClick,

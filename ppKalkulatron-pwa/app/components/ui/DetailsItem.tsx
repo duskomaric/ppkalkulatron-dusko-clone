@@ -8,7 +8,6 @@ interface DetailsItemProps {
     color?: string;
 }
 
-// Koristi se na: clients/articles/invoices (stavka detalja u view draweru)
 export function DetailsItem({ icon: Icon, label, value, color }: DetailsItemProps) {
     return (
         <CardRow variant="muted" size="sm" className="gap-2.5">

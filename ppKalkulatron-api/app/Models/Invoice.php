@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\BankAccount;
 use App\Models\Currency;
 use App\Models\Enums\DocumentFrequencyEnum;
 use App\Models\Enums\DocumentStatusEnum;
@@ -41,7 +40,6 @@ class Invoice extends Model
         'source_id',
 
         'currency_id',
-        'bank_account_id',
         'invoice_template',
         'payment_type',
 
@@ -50,6 +48,12 @@ class Invoice extends Model
         'tax_total', // zbir poreza sa itema
         'discount_total',// ukupni popust
         'total',// subtotal + tax_total - discount_total
+
+        // BAM equivalent (pfening) for fiscal and income book
+        'subtotal_bam',
+        'tax_total_bam',
+        'discount_total_bam',
+        'total_bam',
     ];
 
     protected $casts = [
@@ -69,6 +73,11 @@ class Invoice extends Model
         'tax_total' => 'integer',
         'discount_total' => 'integer',
         'total' => 'integer',
+
+        'subtotal_bam' => 'integer',
+        'tax_total_bam' => 'integer',
+        'discount_total_bam' => 'integer',
+        'total_bam' => 'integer',
     ];
 
     public function client(): BelongsTo
@@ -84,11 +93,6 @@ class Invoice extends Model
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class, 'currency_id');
-    }
-
-    public function bankAccount(): BelongsTo
-    {
-        return $this->belongsTo(BankAccount::class);
     }
 
     public function items(): HasMany

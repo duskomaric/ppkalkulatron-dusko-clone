@@ -1,6 +1,6 @@
 export const APP_CONFIG = {
     name: "++Kalkulatron",
-    version: "1.0.0",
+    version: "1.0.5",
     titles: {
         login: "Prijava",
         invoices: "Računi",
@@ -10,7 +10,8 @@ export const APP_CONFIG = {
         quotes: "Ponude",
         settings: "Podešavanja",
         user: "Moj Nalog",
-        company: "Izmjena kompanije"
+        company: "Izmjena kompanije",
+        incomes: "Knjiga prihoda"
     }
 };
 

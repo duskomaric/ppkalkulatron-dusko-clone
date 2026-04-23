@@ -22,6 +22,55 @@ trait HasKeyValueSettings
         return $resolved;
     }
 
+    /**
+     * Resolve settings for multiple owners with one DB query.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function resolvedMany(array $ownerIds): array
+    {
+        $ownerIds = array_values(array_unique(array_map('intval', array_filter($ownerIds))));
+        if ($ownerIds === []) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($ownerIds as $ownerId) {
+            $result[$ownerId] = [];
+            foreach (static::keys() as $key) {
+                $result[$ownerId][$key] = static::cast($key, config(static::$configKey . ".{$key}", null));
+            }
+        }
+
+        $rows = static::query()
+            ->whereIn(static::$ownerKey, $ownerIds)
+            ->get([static::$ownerKey, 'key', 'value']);
+
+        foreach ($rows as $row) {
+            $ownerId = (int) $row->{static::$ownerKey};
+            $key = (string) $row->key;
+            if (! array_key_exists($key, static::$castsTo)) {
+                continue;
+            }
+
+            $raw = $row->value;
+            if ($raw !== null) {
+                $decoded = json_decode($raw, true);
+                $raw = json_last_error() === JSON_ERROR_NONE ? $decoded : $raw;
+            }
+
+            $result[$ownerId][$key] = static::cast($key, $raw);
+        }
+
+        foreach ($ownerIds as $ownerId) {
+            $cacheKey = static::$cacheKey . '_' . $ownerId;
+            Cache::put($cacheKey, static::encodeForCache($result[$ownerId]), now()->addMinutes(3));
+            static::$cachedSettings[$cacheKey] = static::encodeForCache($result[$ownerId]);
+        }
+
+        return $result;
+    }
+
     private static function settings(int $ownerId): array
     {
         $cacheKey = static::$cacheKey . '_' . $ownerId;
@@ -32,6 +81,19 @@ trait HasKeyValueSettings
                 ->pluck('value', 'key')
                 ->toArray();
         });
+    }
+
+    /**
+     * Store values in same format as DB cache (json strings) so get() keeps behavior.
+     *
+     * @param array<string, mixed> $resolved
+     * @return array<string, string|null>
+     */
+    private static function encodeForCache(array $resolved): array
+    {
+        return array_map(function ($value) {
+            return $value === null ? null : json_encode($value, JSON_UNESCAPED_UNICODE);
+        }, $resolved);
     }
 
     public static function get(string $key, mixed $default = null, ?int $ownerId = null): mixed

@@ -25,6 +25,7 @@ export const links: Route.LinksFunction = () => [
 
 import { useEffect } from "react";
 import { ThemeProvider } from "./components/ui/ThemeProvider";
+import { YearProvider } from "./contexts/YearContext";
 
 export function Layout({ children }: { children: ReactNode }) {
     useEffect(() => {
@@ -63,7 +64,9 @@ export function Layout({ children }: { children: ReactNode }) {
         </head>
         <body>
         <ThemeProvider>
-            {children}
+            <YearProvider>
+                {children}
+            </YearProvider>
         </ThemeProvider>
         <ScrollRestoration />
         <Scripts />

@@ -39,6 +39,16 @@ class CompaniesTable
                     ->label('Active')
                     ->boolean()
                     ->sortable(),
+                IconColumn::make('is_small_business')
+                    ->label('Mali Preduzetnik')
+                    ->boolean()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('is_vat_obligor')
+                    ->label('PDV obv.')
+                    ->boolean()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('subscription_ends_at')
                     ->label('Subscription ends')
                     ->icon(Heroicon::OutlinedCalendar)

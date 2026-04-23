@@ -15,19 +15,19 @@ export interface Currency {
 
 export interface CompanySettings {
     default_document_template: string | null;
-    default_document_due_days: number | null;
     default_document_language: string | null;
     default_document_notes: string | null;
     default_invoice_notes: string | null;
+    default_invoice_due_days: number | null;
     default_proforma_notes: string | null;
+    default_proforma_due_days: number | null;
     default_quote_notes: string | null;
+    default_quote_due_days: number | null;
     document_numbering_reset_yearly: boolean;
     document_numbering_pad_zeros: number;
-    document_numbering_starting_number: number;
     invoice_numbering_starting_number: number;
     quote_numbering_starting_number: number;
     proforma_numbering_starting_number: number;
-    document_numbering_prefix: string | null;
     invoice_numbering_prefix: string | null;
     quote_numbering_prefix: string | null;
     proforma_numbering_prefix: string | null;
@@ -43,6 +43,7 @@ export interface CompanySettings {
     ofs_receipt_header_text_lines: string[] | null;
     ofs_device_mode: string | null;
     ofs_default_payment_type: string | null;
+    ofs_print_receipt?: boolean;
 
     // Mail - ako nije podešeno, koristi se default iz .env
     mail_from_address: string | null;
@@ -53,6 +54,8 @@ export interface CompanySettings {
     mail_username: string | null;
     mail_password: string | null;
     mail_encryption: string | null; // tls | ssl | null
+    menu_modules?: string[] | null;
+    drawer_modules?: string[] | null;
 }
 
 export interface BankAccount {
@@ -60,15 +63,15 @@ export interface BankAccount {
     company_id: number;
     bank_name: string;
     account_number: string;
-    currency: string;
     swift?: string;
-    iban?: string;
-    is_default: boolean;
+    show_on_documents: boolean;
 }
 
 export interface AppConfigData {
     user: import("./user").User;
     company_settings: CompanySettings;
+    /** Years that have documents for this company (from backend). Used for year switcher. */
+    available_years?: number[];
     languages: SelectOption[];
     frequencies: SelectOption[];
     templates: SelectOption[];
@@ -78,7 +81,7 @@ export interface AppConfigData {
     tax_rates: TaxRateOption[];
 }
 
-interface TaxRateOption {
+export interface TaxRateOption {
     value: string;
     label: string;
     rate: number;

@@ -6,7 +6,6 @@ interface FilterBarProps {
     actions?: ReactNode;
 }
 
-// Koristi se na: articles/clients/invoices/quotes/proformas (filter bar iznad liste)
 export function FilterBar({ filters, search, actions }: FilterBarProps) {
     return (
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">

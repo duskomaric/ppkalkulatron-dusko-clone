@@ -40,3 +40,6 @@ export * from './ArrowLeftIcon';
 export * from './CurrencyEuroIcon';
 export * from './ExternalLinkIcon';
 export * from './ImageIcon';
+export * from './GripIcon';
+export * from './FileInputIcon';
+export * from './LogInIcon';

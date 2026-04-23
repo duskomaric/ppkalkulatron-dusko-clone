@@ -8,6 +8,8 @@ export interface QuoteFilters {
     status?: string;
     date_from?: string;
     date_to?: string;
+    /** When no date_from/date_to, backend uses this year (01.01–31.12). */
+    year?: number;
 }
 
 export async function getQuotes(
@@ -22,6 +24,7 @@ export async function getQuotes(
     if (filters?.status) params.set("status", filters.status);
     if (filters?.date_from) params.set("date_from", filters.date_from);
     if (filters?.date_to) params.set("date_to", filters.date_to);
+    if (filters?.year != null && !filters?.date_from && !filters?.date_to) params.set("year", String(filters.year));
     return fetchApi<QuotesResponse>(`/${companySlug}/quotes?${params.toString()}`, { token });
 }
 

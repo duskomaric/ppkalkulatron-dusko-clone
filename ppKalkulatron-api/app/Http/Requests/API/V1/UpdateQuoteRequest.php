@@ -32,7 +32,6 @@ class UpdateQuoteRequest extends FormRequest
             'valid_until' => 'sometimes|nullable|date|after_or_equal:date',
             'notes' => 'sometimes|nullable|string',
             'currency_id' => ['sometimes', 'nullable', $currencyRule],
-            'bank_account_id' => 'sometimes|nullable|exists:bank_accounts,id',
             'quote_template' => 'sometimes|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'subtotal' => 'sometimes|integer|min:0',
             'tax_total' => 'sometimes|integer|min:0',

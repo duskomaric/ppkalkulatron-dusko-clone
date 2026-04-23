@@ -11,7 +11,6 @@ interface ToggleProps {
     className?: string;
 }
 
-// Koristi se na: clients/articles/invoices (status toggle) i settings/* (toggle polja)
 export function Toggle({ id, name, checked, onChange, label, disabled, className = "" }: ToggleProps) {
     return (
         <CardRow

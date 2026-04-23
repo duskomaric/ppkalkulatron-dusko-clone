@@ -26,11 +26,17 @@ class Company extends Model
 
         'is_active',
         'subscription_ends_at',
+        'enabled_modules',
+        'is_small_business',
+        'is_vat_obligor',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'subscription_ends_at' => 'datetime',
+        'enabled_modules' => 'array',
+        'is_small_business' => 'boolean',
+        'is_vat_obligor' => 'boolean',
     ];
 
     /**
@@ -86,4 +92,8 @@ class Company extends Model
         return $this->hasMany(Quote::class);
     }
 
+    public function incomeBookEntries(): HasMany
+    {
+        return $this->hasMany(IncomeBookEntry::class);
+    }
 }

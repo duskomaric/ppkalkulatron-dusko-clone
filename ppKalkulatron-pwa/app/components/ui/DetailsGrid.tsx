@@ -7,12 +7,11 @@ interface DetailsGridProps {
 }
 
 const columnClasses: Record<number, string> = {
-  2: "grid-cols-2",
+  2: "grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
   3: "grid-cols-3",
   4: "grid-cols-4",
 };
 
-// Koristi se na: clients/articles/invoices (grid detalja u view draweru)
 export function DetailsGrid({
   columns = 2,
   className = "",

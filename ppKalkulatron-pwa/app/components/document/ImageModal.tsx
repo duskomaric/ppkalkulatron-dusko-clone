@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { XIcon } from "~/components/ui/icons";
 import { API_URL } from "~/config/constants";
-import { ModalShell } from "./ModalShell";
+import { ModalShell } from "~/components/ui/ModalShell";
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -14,9 +14,9 @@ interface ImageModalProps {
   title?: string;
 }
 
-// Koristi se na: app/routes/invoices.tsx (pregled fiskalnog racuna -> slika)
 export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }: ImageModalProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [contentType, setContentType] = useState<"image" | "pdf" | "html">("image");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
@@ -31,18 +31,16 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
     };
   }, [isOpen, imageSrc]);
 
-  // Fetch slike sa API-ja (zahtijeva auth)
   useEffect(() => {
     if (!isOpen || !src) {
       setImageSrc(null);
+      setContentType("image");
       return;
     }
-    // Ako je data URL ili blob, koristi direktno
     if (src.startsWith("data:") || src.startsWith("blob:")) {
       setImageSrc(src);
       return;
     }
-    // API URL - fetch sa tokenom
     if (token) {
       setLoading(true);
       setError(false);
@@ -51,6 +49,14 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
       })
         .then((res) => {
           if (!res.ok) throw new Error("Failed to load image");
+          const type = (res.headers.get("content-type") || "").toLowerCase();
+          if (type.includes("application/pdf")) {
+            setContentType("pdf");
+          } else if (type.includes("text/html")) {
+            setContentType("html");
+          } else {
+            setContentType("image");
+          }
           return res.blob();
         })
         .then((blob) => {
@@ -78,6 +84,22 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mx-auto" />
           </div>
         ) : imageSrc && !error ? (
+          contentType === "pdf" ? (
+            <iframe
+              src={imageSrc}
+              title={title || "PDF pregled"}
+              className="w-[90vw] h-[80vh] rounded-xl bg-white"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : contentType === "html" ? (
+            <iframe
+              src={imageSrc}
+              title={title || "HTML pregled"}
+              className="w-[90vw] h-[80vh] rounded-xl bg-white"
+              sandbox="allow-same-origin"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
           <img
             src={imageSrc}
             alt={alt}
@@ -85,9 +107,10 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
             onClick={(e) => e.stopPropagation()}
             onError={() => setError(true)}
           />
+          )
         ) : (
           <div className="max-w-md p-8 rounded-xl bg-white/10 text-white text-center">
-            <p className="text-sm font-bold">Slika nije dostupna ili nije učitana.</p>
+            <p className="text-sm font-bold">Sadržaj nije dostupan ili nije učitan.</p>
           </div>
         )}
         <button

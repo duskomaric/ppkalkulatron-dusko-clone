@@ -1,13 +1,17 @@
 import { fetchApi } from "~/utils/api";
 import type { CompanySettings, BankAccount, Currency } from "~/types/config";
-export { getCurrencies } from "./config";
 
 // --- Company Settings ---
 
 export async function updateCompanySettings(companySlug: string, token: string, settings: Partial<CompanySettings>) {
+    const safeSettings =
+        settings && typeof settings === "object" && !Array.isArray(settings)
+            ? settings
+            : {};
+
     return fetchApi<{ data: { settings: CompanySettings } }>(`/${companySlug}/settings`, {
         method: "PATCH",
-        body: JSON.stringify({ settings }),
+        body: JSON.stringify({ settings: safeSettings }),
         token,
     });
 }
@@ -72,4 +76,3 @@ export async function updateCurrency(companySlug: string, token: string, id: num
         token,
     });
 }
-

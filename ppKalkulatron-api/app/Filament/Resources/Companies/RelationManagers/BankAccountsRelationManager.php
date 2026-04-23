@@ -37,9 +37,9 @@ class BankAccountsRelationManager extends RelationManager
                     ->prefixIcon(Heroicon::OutlinedGlobeAlt)
                     ->maxLength(255)
                     ->columnSpan(1),
-                Forms\Components\Toggle::make('is_default')
-                    ->label('Default')
-                    ->required()
+                Forms\Components\Toggle::make('show_on_documents')
+                    ->label('Prikaz na dokumentima (PDF)')
+                    ->default(true)
                     ->columnSpan(1),
             ])
             ->columns(2);
@@ -63,8 +63,8 @@ class BankAccountsRelationManager extends RelationManager
                     ->icon(Heroicon::OutlinedGlobeAlt)
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\IconColumn::make('is_default')
-                    ->label('Default')
+                Tables\Columns\IconColumn::make('show_on_documents')
+                    ->label('Na dokumentima')
                     ->boolean()
                     ->sortable(),
             ])

@@ -63,7 +63,7 @@ export default defineConfig({
     ],
     server: {
         // Add the specific ngrok hostname to the allowed list
-        allowedHosts: ['4201-185-84-144-229.ngrok-free.app', 'localhost', '127.0.0.1'],
+        allowedHosts: ['515d-185-84-144-229.ngrok-free.app', 'localhost', '127.0.0.1'],
         proxy: {
             '/api': {
                 target: 'http://localhost',

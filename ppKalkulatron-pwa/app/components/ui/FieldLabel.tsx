@@ -7,7 +7,6 @@ interface FieldLabelProps {
   className?: string;
 }
 
-// Koristi se na: Input/SearchSelect/CurrencyInput (labeli u formama kroz vise stranica)
 export function FieldLabel({
   children,
   required,

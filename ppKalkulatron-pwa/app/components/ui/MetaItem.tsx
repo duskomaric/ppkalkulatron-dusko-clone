@@ -8,7 +8,6 @@ interface MetaItemProps {
   className?: string;
 }
 
-// Koristi se na: clients/articles/invoices/quotes/proformas (mobile kartice -> meta redovi)
 export function MetaItem({
   icon: Icon,
   label,

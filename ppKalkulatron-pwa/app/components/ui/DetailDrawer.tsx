@@ -17,7 +17,6 @@ interface DetailDrawerProps {
     children: ReactNode;
 }
 
-// Koristi se na: clients/articles/invoices/quotes/proformas (drawer za pregled detalja)
 export function DetailDrawer({
     isOpen,
     onClose,
@@ -65,7 +64,7 @@ export function DetailDrawer({
                         {onDelete && (
                             <button
                                 onClick={onDelete}
-                                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[11px] uppercase tracking-[0.15em] hover:bg-red-500 hover:text-white transition-all group"
+                                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[11px] uppercase tracking-[0.15em] hover:bg-red-500 hover:text-white transition-all group cursor-pointer"
                             >
                                 <DeleteActionIcon className="h-4 w-4 transition-transform group-hover:rotate-12" />
                                 {deleteLabel}
@@ -74,7 +73,7 @@ export function DetailDrawer({
                         {onEdit && (
                             <button
                                 onClick={onEdit}
-                                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-black text-[11px] uppercase tracking-[0.15em] shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all"
+                                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-black text-[11px] uppercase tracking-[0.15em] shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
                             >
                                 <PencilIcon className="h-4 w-4" />
                                 Uredi

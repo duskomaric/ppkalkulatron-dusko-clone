@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Companies\Schemas;
 
+use App\Models\Enums\CompanyModuleEnum;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -70,6 +71,14 @@ class CompanyInfolist
                             ->icon(Heroicon::OutlinedDocumentText)
                             ->placeholder('-')
                             ->columnSpan(1),
+                        IconEntry::make('is_small_business')
+                            ->label('Mali Preduzetnik')
+                            ->boolean()
+                            ->columnSpan(1),
+                        IconEntry::make('is_vat_obligor')
+                            ->label('PDV obveznik')
+                            ->boolean()
+                            ->columnSpan(1),
                         TextEntry::make('subscription_ends_at')
                             ->label('Subscription ends at')
                             ->icon(Heroicon::OutlinedCalendar)
@@ -116,6 +125,13 @@ class CompanyInfolist
                                 return $record->subscription_ends_at->format('d.m.Y H:i') . " ({$daysLeft} days left)";
                             })
                             ->columnSpan(1),
+                        TextEntry::make('enabled_modules')
+                            ->label('Enabled modules')
+                            ->formatStateUsing(fn ($state) => collect($state ?: [])
+                                ->map(fn (string $moduleId) => CompanyModuleEnum::tryFrom($moduleId)?->label() ?? $moduleId)
+                                ->join(', '))
+                            ->placeholder('-')
+                            ->columnSpan(3),
                         TextEntry::make('created_at')
                             ->label('Created at')
                             ->icon(Heroicon::OutlinedCalendar)

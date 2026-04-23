@@ -12,7 +12,6 @@ interface FormDrawerProps {
     children: ReactNode;
 }
 
-// Koristi se na: clients/articles/invoices (kreiranje/uredjivanje), profile (uredi nalog)
 export function FormDrawer({
     isOpen,
     onClose,
@@ -35,7 +34,7 @@ export function FormDrawer({
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-3.5 bg-primary text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                        className="w-full py-3.5 bg-primary text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-glow-primary hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                         {loading ? (
                             <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

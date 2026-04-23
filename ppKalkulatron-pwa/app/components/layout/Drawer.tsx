@@ -9,7 +9,6 @@ interface DrawerProps {
   onClose: () => void;
 }
 
-// Koristi se na: AppLayout (company/user/settings), DetailDrawer (pregled), FormDrawer (kreiranje/uredjivanje)
 export function Drawer({ title, children, isOpen, onClose }: DrawerProps) {
   // Prevent body scroll when drawer is open
   useEffect(() => {

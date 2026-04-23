@@ -35,24 +35,40 @@ class OFSService
         ];
     }
 
-    public function getStatus()
+    protected function request(string $method, string $path, array $payload = [], ?string $requestId = null)
     {
-        $endpoint = $this->baseUrl.'/api/status';
+        $endpoint = $this->baseUrl.$path;
 
-        Log::info('OFS getStatus - Request', [
+        $headers = $this->headers();
+        if ($requestId !== null) {
+            $headers['RequestId'] = $requestId;
+        }
+
+        Log::info('OFS request', [
+            'method' => $method,
             'url' => $endpoint,
-            'headers' => $this->headers(),
+            'request_id' => $requestId,
+            'payload_json' => $method === 'GET' ? null : json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
         ]);
 
-        $response = Http::withHeaders($this->headers())->get($endpoint);
+        $http = Http::withHeaders($headers);
+        $response = $method === 'GET'
+            ? $http->get($endpoint)
+            : $http->send($method, $endpoint, ['json' => $payload]);
 
-        Log::info('OFS getStatus - Response', [
+        Log::info('OFS response', [
             'status' => $response->status(),
             'successful' => $response->successful(),
+            'body' => $response->body(),
             'json' => $response->json(),
         ]);
 
         return $response;
+    }
+
+    public function getStatus()
+    {
+        return $this->request('GET', '/api/status');
     }
 
     /**
@@ -61,24 +77,7 @@ class OFSService
      */
     public function testAttention()
     {
-        $endpoint = $this->baseUrl.'/api/attention';
-
-        Log::info('OFS testAttention - Request', [
-            'url' => $endpoint,
-            'headers' => $this->headers(),
-        ]);
-
-        $response = Http::withHeaders($this->headers())
-            ->get($endpoint);
-
-        Log::info('OFS testAttention - Response', [
-            'status' => $response->status(),
-            'successful' => $response->successful(),
-            'body' => $response->body(),
-            'json' => $response->json(),
-        ]);
-
-        return $response;
+        return $this->request('GET', '/api/attention');
     }
 
     /**
@@ -87,32 +86,7 @@ class OFSService
      */
     public function createInvoice(array $payload, ?string $requestId = null)
     {
-        $endpoint = $this->baseUrl.'/api/invoices';
-
-        $headers = $this->headers();
-        if ($requestId !== null) {
-            $headers['RequestId'] = $requestId;
-        }
-
-        Log::info('OFS createInvoice - Request', [
-            'url' => $endpoint,
-            'request_id' => $requestId,
-            'headers' => $headers,
-            'payload' => $payload,
-            'payload_json' => json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-        ]);
-
-        $response = Http::withHeaders($headers)
-            ->post($endpoint, $payload);
-
-        Log::info('OFS createInvoice - Response', [
-            'status' => $response->status(),
-            'successful' => $response->successful(),
-            'body' => $response->body(),
-            'json' => $response->json(),
-        ]);
-
-        return $response;
+        return $this->request('POST', '/api/invoices', $payload, $requestId);
     }
 
     /**
@@ -123,71 +97,11 @@ class OFSService
      */
     public function getInvoiceByRequestId(string $requestId)
     {
-        $endpoint = $this->baseUrl.'/api/invoices/request/'.$requestId;
-
-        Log::info('OFS getInvoiceByRequestId - Request', [
-            'url' => $endpoint,
-            'request_id' => $requestId,
-        ]);
-
-        $response = Http::withHeaders($this->headers())
-            ->get($endpoint);
-
-        Log::info('OFS getInvoiceByRequestId - Response', [
-            'status' => $response->status(),
-            'successful' => $response->successful(),
-            'body' => $response->body(),
-            'json' => $response->json(),
-        ]);
-
-        return $response;
-    }
-
-    public function printInvoice(array $payload)
-    {
-        // API endpoint: https://pos.ofs.ba/api/print
-        $endpoint = $this->baseUrl.'/api/print';
-
-        Log::info('OFS printInvoice - Request', [
-            'url' => $endpoint,
-            'headers' => $this->headers(),
-            'payload' => $payload,
-            'payload_json' => json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-        ]);
-
-        $response = Http::withHeaders($this->headers())
-            ->post($endpoint, $payload);
-
-        Log::info('OFS printInvoice - Response', [
-            'status' => $response->status(),
-            'successful' => $response->successful(),
-            'body' => $response->body(),
-            'json' => $response->json(),
-        ]);
-
-        return $response;
+        return $this->request('GET', '/api/invoices/request/'.$requestId, [], $requestId);
     }
 
     public function getSettings()
     {
-        // API endpoint: https://pos.ofs.ba/api/settings
-        $endpoint = $this->baseUrl.'/api/settings';
-
-        Log::info('OFS getSettings - Request', [
-            'url' => $endpoint,
-            'headers' => $this->headers(),
-        ]);
-
-        $response = Http::withHeaders($this->headers())
-            ->get($endpoint);
-
-        Log::info('OFS getSettings - Response', [
-            'status' => $response->status(),
-            'successful' => $response->successful(),
-            'body' => $response->body(),
-            'json' => $response->json(),
-        ]);
-
-        return $response;
+        return $this->request('GET', '/api/settings');
     }
 }

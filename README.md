@@ -28,3 +28,16 @@ API će biti dostupan na `http://localhost`, a PWA na `http://localhost:5173`.
 ![desktop-login.jpg](desktop-login.jpg)
 
 ![desktop-racuni.jpg](desktop-racuni.jpg)
+
+
+{
+"message": "PIN code is required",
+"modelState": [
+{
+"errors": [
+"1500"
+],
+"property": ""
+}
+]
+}

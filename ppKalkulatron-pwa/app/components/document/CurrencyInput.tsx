@@ -1,16 +1,15 @@
 import { useState, useEffect } from "react";
 import type { ChangeEvent, FocusEvent, KeyboardEvent, ElementType } from "react";
-import { FieldLabel } from "./FieldLabel";
+import { FieldLabel } from "~/components/ui/FieldLabel";
 
 interface CurrencyInputProps {
-    value: number; // Value in cents (smallest currency unit)
+    value: number;
     onChange: (valueInCents: number) => void;
     currency?: string;
     label?: string;
     required?: boolean;
     disabled?: boolean;
     className?: string;
-    /** Ikona unutar inputa (lijeva strana) */
     icon?: ElementType;
 }
 
@@ -19,10 +18,8 @@ interface CurrencyInputProps {
  * - Always shows 2 decimal places
  * - When typing digits, they fill from right to left
  * - Example: type "50" = 0,50 | type "5000" = 50,00
- * - Accepts both comma and dot as decimal separator for display
  * - Internally stores value in cents (smallest unit)
  */
-// Koristi se na: app/routes/invoices.tsx (kreiranje/uredjivanje racuna -> stavke -> jedinicna cijena)
 export function CurrencyInput({
     value,
     onChange,
@@ -33,7 +30,6 @@ export function CurrencyInput({
     className = "",
     icon: Icon
 }: CurrencyInputProps) {
-    // Display value formatted with 2 decimals
     const formatDisplay = (cents: number): string => {
         const whole = Math.floor(cents / 100);
         const decimal = Math.abs(cents % 100);
@@ -42,46 +38,26 @@ export function CurrencyInput({
 
     const [displayValue, setDisplayValue] = useState(formatDisplay(value));
 
-    // Sync display when external value changes
     useEffect(() => {
         setDisplayValue(formatDisplay(value));
     }, [value]);
 
-    // Handle input - ATM style (digits fill from right)
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        let input = e.target.value;
-
-        // Remove all non-digits
-        const digits = input.replace(/[^0-9]/g, "");
-
-        // Convert to cents - the raw number IS cents
+        const digits = e.target.value.replace(/[^0-9]/g, "");
         const cents = parseInt(digits, 10) || 0;
-
-        // Update display with formatted value
         setDisplayValue(formatDisplay(cents));
         onChange(cents);
     };
 
-    // Handle focus - select all for easy replacement
     const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
         e.target.select();
     };
 
-    // Handle key events for better UX
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-        // Allow: backspace, delete, tab, escape, enter, arrows
         const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
-        if (allowedKeys.includes(e.key)) {
-            return;
-        }
-        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-        if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) {
-            return;
-        }
-        // Allow: digits and comma/dot (for UX, but we strip them anyway)
-        if (!/^[0-9,.]$/.test(e.key)) {
-            e.preventDefault();
-        }
+        if (allowedKeys.includes(e.key)) return;
+        if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) return;
+        if (!/^[0-9,.]$/.test(e.key)) e.preventDefault();
     };
 
     return (

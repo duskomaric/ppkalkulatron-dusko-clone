@@ -14,7 +14,9 @@ use App\Mail\ProformaMail;
 use App\Models\Company;
 use App\Models\Proforma;
 use App\Models\Quote;
+use App\Exceptions\NoExchangeRateForDateException;
 use App\Services\CompanyMailService;
+use App\Services\CurrencyConversionService;
 use App\Services\DocumentConversionService;
 use App\Services\DocumentNumberService;
 use App\Services\ProformaPdfService;
@@ -32,8 +34,22 @@ class ProformaController extends Controller
     public function index(IndexProformaRequest $request, Company $company): AnonymousResourceCollection
     {
         $query = $company->proformas()
-            ->with(['items', 'client', 'source', 'bankAccount', 'currency'])
+            ->with(['client', 'source', 'source.currency', 'currency'])
             ->latest();
+
+        $dateRange = null;
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            $from = $request->filled('date_from')
+                ? Carbon::parse($request->date_from)->toDateString()
+                : Carbon::parse($request->date_to)->toDateString();
+            $to = $request->filled('date_to')
+                ? Carbon::parse($request->date_to)->toDateString()
+                : $from;
+            $dateRange = ['from' => $from, 'to' => $to];
+        } elseif ($request->filled('year')) {
+            $y = (int) $request->year;
+            $dateRange = ['from' => "{$y}-01-01", 'to' => "{$y}-12-31"];
+        }
 
         $query
             ->when($request->validated('search'), function ($q, $search) {
@@ -45,13 +61,8 @@ class ProformaController extends Controller
                 });
             })
             ->when($request->validated('status'), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->validated('date_from'), function ($q, $dateFrom) {
-                $from = Carbon::parse($dateFrom)->toDateString();
-                $q->whereDate('date', '>=', $from);
-            })
-            ->when($request->validated('date_to'), function ($q, $dateTo) {
-                $to = Carbon::parse($dateTo)->toDateString();
-                $q->whereDate('date', '<=', $to);
+            ->when($dateRange, function ($q, $range) {
+                $q->whereBetween('date', [$range['from'], $range['to']]);
             });
 
         return ProformaResource::collection($query->paginate(20));
@@ -60,24 +71,26 @@ class ProformaController extends Controller
     #[Endpoint(operationId: 'storeProforma', title: 'Store proforma', description: 'Create a new proforma')]
     public function store(StoreProformaRequest $request, Company $company, DocumentNumberService $numberService): ProformaResource
     {
+        $year = DocumentNumberService::yearFromDate($request->validated('date'));
+
         $proforma = $company->proformas()->create(
             $request->safe()
                 ->merge([
                     'proforma_number' => $request->validated('proforma_number')
-                        ?: $numberService->reserveNumber($company, 'proforma')['formatted'],
+                        ?: $numberService->reserveNumber($company, 'proforma', $year)['formatted'],
                 ])
                 ->except('items')
         );
 
         $proforma->items()->createMany($request->validated('items') ?? []);
 
-        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));
+        return new ProformaResource($proforma->load(['items', 'client', 'source', 'source.currency', 'currency']));
     }
 
     #[Endpoint(operationId: 'showProforma', title: 'Show proforma', description: 'Get proforma')]
     public function show(Company $company, Proforma $proforma): ProformaResource
     {
-        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));
+        return new ProformaResource($proforma->load(['items', 'client', 'source', 'source.currency', 'currency']));
     }
 
     #[Endpoint(operationId: 'downloadProformaPdf', title: 'Download proforma PDF', description: 'Export proforma as PDF')]
@@ -130,12 +143,13 @@ class ProformaController extends Controller
             $proforma->items()->createMany($request->validated('items') ?? []);
         }
 
-        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));
+        return new ProformaResource($proforma->load(['items', 'client', 'source', 'source.currency', 'currency']));
     }
 
     #[Endpoint(operationId: 'destroyProforma', title: 'Destroy proforma', description: 'Remove proforma')]
-    public function destroy(Company $company, Proforma $proforma): JsonResponse
+    public function destroy(Company $company, Proforma $proforma, DocumentNumberService $numberService): JsonResponse
     {
+        $numberService->releaseNumber($company, 'proforma', $proforma->proforma_number);
         $proforma->delete();
         return response()->json(['message' => 'Proforma deleted successfully']);
     }
@@ -145,25 +159,32 @@ class ProformaController extends Controller
     {
         $proforma = $conversionService->convertQuoteToProforma($quote);
 
-        // Reserve proforma number
-        $numberData = $numberService->reserveNumber($company, 'proforma');
+        $year = DocumentNumberService::yearFromDate($proforma->date);
+        $numberData = $numberService->reserveNumber($company, 'proforma', $year);
         $proforma->proforma_number = $numberData['formatted'];
         $proforma->save();
 
-        return new ProformaResource($proforma->load(['items', 'client', 'source', 'bankAccount', 'currency']));
+        return new ProformaResource($proforma->load(['items', 'client', 'source', 'source.currency', 'currency']));
     }
 
     #[Endpoint(operationId: 'convertProformaToInvoice', title: 'Convert proforma to invoice', description: 'Convert proforma to invoice')]
-    public function convertToInvoice(Company $company, Proforma $proforma, DocumentConversionService $conversionService, DocumentNumberService $numberService): InvoiceResource
+    public function convertToInvoice(Company $company, Proforma $proforma, DocumentConversionService $conversionService, DocumentNumberService $numberService, CurrencyConversionService $currencyConversionService): InvoiceResource|JsonResponse
     {
+        $proforma->load(['items.article']);
         $invoice = $conversionService->convertProformaToInvoice($proforma);
 
-        // Reserve invoice number
-        $numberData = $numberService->reserveNumber($company, 'invoice');
+        $year = DocumentNumberService::yearFromDate($invoice->date);
+        $numberData = $numberService->reserveNumber($company, 'invoice', $year);
         $invoice->invoice_number = $numberData['formatted'];
         $invoice->save();
 
-        return new InvoiceResource($invoice->load('items'));
+        try {
+            $currencyConversionService->fillInvoiceBam($invoice);
+        } catch (NoExchangeRateForDateException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return new InvoiceResource($invoice->load(['items', 'fiscalRecords', 'currency']));
     }
 
 }

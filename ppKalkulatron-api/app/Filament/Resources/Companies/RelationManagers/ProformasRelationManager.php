@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Companies\RelationManagers;
 
+use App\Models\Quote;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Enums\DocumentTemplateEnum;
 use App\Models\Enums\LanguageEnum;
@@ -85,6 +86,12 @@ class ProformasRelationManager extends RelationManager
                     ->icon(Heroicon::OutlinedHashtag)
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('source_type')
+                    ->label('Izvor')
+                    ->formatStateUsing(fn ($state, $record): ?string => $record->source_type === Quote::class ? 'Iz ponude' : null)
+                    ->placeholder('—')
+                    ->badge()
+                    ->color(fn ($state): ?string => $state ? 'info' : null),
                 Tables\Columns\TextColumn::make('client.name')
                     ->label('Client')
                     ->icon(Heroicon::OutlinedUser)

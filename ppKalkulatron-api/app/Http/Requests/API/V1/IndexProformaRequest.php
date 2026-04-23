@@ -20,6 +20,7 @@ class IndexProformaRequest extends FormRequest
             'status' => ['nullable', Rule::in(array_column(DocumentStatusEnum::cases(), 'value'))],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
         ];
     }
 

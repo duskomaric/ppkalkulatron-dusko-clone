@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\Companies\Schemas;
 
+use Filament\Actions\Action;
+use App\Models\Enums\CompanyModuleEnum;
 use App\Models\User;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Filament\Schemas\Schema;
 
@@ -71,10 +75,27 @@ class CompanyForm
                             ->label('VAT')
                             ->prefixIcon(Heroicon::OutlinedDocumentText)
                             ->columnSpan(1),
+                        Toggle::make('is_small_business')
+                            ->label('Mali Preduzetnik')
+                            ->columnSpan(1),
+                        Toggle::make('is_vat_obligor')
+                            ->label('PDV obveznik')
+                            ->hint('Ako je isključeno, PDV se ne prikazuje na PDF računima.')
+                            ->columnSpan(1),
                         Toggle::make('is_active')
                             ->label('Active')
                             ->required()
                             ->columnSpan(1),
+                        CheckboxList::make('enabled_modules')
+                            ->label('Enabled modules')
+                            ->options(CompanyModuleEnum::options())
+                            ->hintAction(
+                                Action::make('fillDefaultModules')
+                                    ->label('Postavi default')
+                                    ->action(fn (Set $schemaSet) => $schemaSet('enabled_modules', CompanyModuleEnum::defaultModules()))
+                            )
+                            ->columns(2)
+                            ->columnSpan(2),
                         DateTimePicker::make('subscription_ends_at')
                             ->label('Subscription ends at')
                             ->prefixIcon(Heroicon::OutlinedCalendar)

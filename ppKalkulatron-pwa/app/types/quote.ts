@@ -18,7 +18,7 @@ interface QuoteItem {
     updated_at: string;
 }
 
-type StatusColor = 'green' | 'gray' | 'red' | 'amber' | 'blue';
+import type { StatusColor } from "./api";
 
 export interface Quote {
     id: number;
@@ -37,8 +37,6 @@ export interface Quote {
     currency: string;
     currency_id: number | null;
     currency_relation?: { id: number; code: string; name: string; symbol: string } | null;
-    bank_account_id: number | null;
-    bank_account?: { id: number; bank_name: string; account_number: string } | null;
     quote_template: string;
     quote_template_label: string;
     subtotal: number;
@@ -59,7 +57,6 @@ export interface QuoteInput {
     valid_until?: string | null;
     notes?: string | null;
     currency_id?: number | null;
-    bank_account_id?: number | null;
     quote_template?: string;
     subtotal: number;
     tax_total: number;

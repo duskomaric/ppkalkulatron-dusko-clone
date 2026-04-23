@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import { ChevronRightIcon } from "~/components/ui/icons";
-import { CardRow } from "./CardRow";
+import { CardRow } from "~/components/ui/CardRow";
 
 interface DrawerNavItemProps {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
@@ -10,7 +10,6 @@ interface DrawerNavItemProps {
   className?: string;
 }
 
-// Koristi se na: AppLayout (settings drawer -> navigacioni linkovi)
 export function DrawerNavItem({
   icon: Icon,
   title,

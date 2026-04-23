@@ -26,8 +26,8 @@ class BankAccountController extends Controller
     {
         $validated = $request->validated();
 
-        if (($validated['is_default'] ?? false) === true) {
-            $company->bankAccounts()->update(['is_default' => false]);
+        if ($company->bankAccounts()->count() === 0) {
+            $validated['show_on_documents'] = true;
         }
 
         $bankAccount = $company->bankAccounts()->create($validated);
@@ -44,13 +44,7 @@ class BankAccountController extends Controller
     #[Endpoint(operationId: 'updateCompanyBankAccount', title: 'Update bank account', description: 'Update bank account')]
     public function update(UpdateBankAccountRequest $request, Company $company, BankAccount $bankAccount): BankAccountResource
     {
-        $validated = $request->validated();
-
-        if (($validated['is_default'] ?? false) === true) {
-            $company->bankAccounts()->whereKeyNot($bankAccount->getKey())->update(['is_default' => false]);
-        }
-
-        $bankAccount->update($validated);
+        $bankAccount->update($request->validated());
 
         return new BankAccountResource($bankAccount);
     }

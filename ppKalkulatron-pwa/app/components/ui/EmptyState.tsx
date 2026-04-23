@@ -5,7 +5,6 @@ interface EmptyStateProps {
     message: string;
 }
 
-// Koristi se na: clients/articles/invoices (prazna lista)
 export function EmptyState({ icon: Icon, message }: EmptyStateProps) {
     return (
         <div className="py-20 text-center bg-[var(--color-surface)]/60 border border-dashed border-[var(--color-border)] rounded-2xl">

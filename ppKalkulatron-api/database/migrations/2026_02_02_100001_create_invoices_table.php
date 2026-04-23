@@ -35,7 +35,6 @@ return new class extends Migration
 
             // Currency and template
             $table->foreignId('currency_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('bank_account_id')->nullable()->constrained('bank_accounts')->nullOnDelete();
             $table->string('invoice_template')->default('classic');
 
             // Fiscal payment type (Cash, Card, WireTransfer, Check, Voucher, MobileMoney, Other)
@@ -55,6 +54,12 @@ return new class extends Migration
             $table->integer('tax_total')->default(0);
             $table->integer('discount_total')->default(0);
             $table->integer('total')->default(0);
+
+            // BAM equivalent (pfening) for fiscal and income book
+            $table->integer('subtotal_bam')->nullable();
+            $table->integer('tax_total_bam')->nullable();
+            $table->integer('discount_total_bam')->nullable();
+            $table->integer('total_bam')->nullable();
 
             $table->timestamps();
 

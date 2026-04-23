@@ -35,10 +35,18 @@ class InvoiceResource extends JsonResource
             'original_fiscalized_at' => $this->whenLoaded('originalInvoice', fn () => $this->originalInvoice?->fiscalized_at?->format('Y-m-d\TH:i:s')),
             'source_type' => $this->source_type,
             'source_id' => $this->source_id,
+            'source_document_number' => $this->whenLoaded('source', function () {
+                if (! $this->source) {
+                    return null;
+                }
+                return match (get_class($this->source)) {
+                    \App\Models\Proforma::class => $this->source->proforma_number,
+                    \App\Models\Contract::class => $this->source->contract_number,
+                    default => null,
+                };
+            }),
             'currency_id' => $this->currency_id,
             'currency' => $this->currency?->code ?? null,
-            'bank_account_id' => $this->bank_account_id,
-            'bank_account' => $this->whenLoaded('bankAccount', fn () => BankAccountResource::make($this->bankAccount)),
             'invoice_template' => $this->invoice_template,
             'invoice_template_label' => $this->invoice_template?->getLabel(),
             'payment_type' => $this->payment_type?->value,
@@ -56,6 +64,10 @@ class InvoiceResource extends JsonResource
             'tax_total' => $this->tax_total,
             'discount_total' => $this->discount_total,
             'total' => $this->total,
+            'subtotal_bam' => $this->subtotal_bam,
+            'tax_total_bam' => $this->tax_total_bam,
+            'discount_total_bam' => $this->discount_total_bam,
+            'total_bam' => $this->total_bam,
             'items' => InvoiceItemResource::collection($this->whenLoaded('items')),
             'client' => $this->whenLoaded('client', function () {
                 return ClientResource::make($this->client);

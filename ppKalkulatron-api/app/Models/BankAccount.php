@@ -17,11 +17,11 @@ class BankAccount extends Model
         'bank_name',
         'account_number',
         'swift',
-        'is_default',
+        'show_on_documents',
     ];
 
     protected $casts = [
-        'is_default' => 'boolean',
+        'show_on_documents' => 'boolean',
     ];
 
     public function company(): BelongsTo

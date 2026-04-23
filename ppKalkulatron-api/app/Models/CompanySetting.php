@@ -28,21 +28,24 @@ class CompanySetting extends Model
 
     protected static array $castsTo = [
         'default_document_template' => 'string',
-        'default_document_due_days' => 'integer',
         'default_document_language' => 'string',
         'default_document_notes' => 'string',
         'default_invoice_notes' => 'string',
+        'default_invoice_due_days' => 'integer',
         'default_proforma_notes' => 'string',
+        'default_proforma_due_days' => 'integer',
         'default_quote_notes' => 'string',
+        'default_quote_due_days' => 'integer',
         'document_numbering_reset_yearly' => 'boolean',
         'document_numbering_pad_zeros' => 'integer',
         'invoice_numbering_starting_number' => 'integer',
         'quote_numbering_starting_number' => 'integer',
         'proforma_numbering_starting_number' => 'integer',
-        'document_numbering_prefix' => 'string',
         'invoice_numbering_prefix' => 'string',
         'quote_numbering_prefix' => 'string',
         'proforma_numbering_prefix' => 'string',
+        'menu_modules' => 'array',
+        'drawer_modules' => 'array',
 
         //OFS fiscal
         'ofs_base_url' => 'string', //https://pos.ofs.ba/api
@@ -63,6 +66,7 @@ class CompanySetting extends Model
 
         // Default za fiskalizaciju
         'ofs_default_payment_type' => 'string', // Cash, Card, WireTransfer, itd.
+        'ofs_print_receipt' => 'boolean', // Štampaj račun pri fiskalizaciji (default false)
 
         // Mail - ako nije podešeno, koristi se default iz .env
         'mail_from_address' => 'string',
@@ -96,5 +100,23 @@ class CompanySetting extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /** Cast type for a key (string, integer, boolean, array). */
+    public static function getSettingCastType(string $key): string
+    {
+        return static::$castsTo[$key] ?? 'string';
+    }
+
+    /** Allowed values for enum-like string keys (for validation and Select options). */
+    public static function getAllowedValues(string $key): ?array
+    {
+        return match ($key) {
+            'ofs_receipt_layout' => ['Slip', 'Invoice'],
+            'ofs_receipt_image_format' => ['Png', 'Pdf', 'Html'],
+            'ofs_device_mode' => ['cloud', 'local'],
+            'mail_encryption' => ['tls', 'ssl'],
+            default => null,
+        };
     }
 }

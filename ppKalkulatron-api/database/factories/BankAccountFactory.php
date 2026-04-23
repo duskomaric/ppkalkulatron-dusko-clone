@@ -17,14 +17,7 @@ class BankAccountFactory extends Factory
             'bank_name' => fake()->company().' Bank',
             'account_number' => fake()->numerify('##########'),
             'swift' => fake()->optional()->regexify('[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}[A-Z0-9]{3}'),
-            'is_default' => false,
+            'show_on_documents' => true,
         ];
-    }
-
-    public function default(): static
-    {
-        return $this->state(fn () => [
-            'is_default' => true,
-        ]);
     }
 }

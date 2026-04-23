@@ -36,7 +36,6 @@ class StoreInvoiceRequest extends FormRequest
             'frequency' => 'nullable|in:' . implode(',', array_column(DocumentFrequencyEnum::cases(), 'value')),
             'next_invoice_date' => 'nullable|date|required_if:is_recurring,true',
             'currency_id' => ['nullable', $currencyRule],
-            'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'invoice_template' => 'required|in:' . implode(',', array_column(DocumentTemplateEnum::cases(), 'value')),
             'payment_type' => 'required|in:' . implode(',', array_column(FiscalPaymentTypeEnum::cases(), 'value')),
             'subtotal' => 'required|integer|min:0',

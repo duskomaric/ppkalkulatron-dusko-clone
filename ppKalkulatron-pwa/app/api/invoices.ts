@@ -8,6 +8,10 @@ export interface InvoiceFilters {
     payment_type?: string;
     created_from?: string;
     created_to?: string;
+    date_from?: string;
+    date_to?: string;
+    /** When no date_from/date_to, backend uses this year (01.01–31.12) on invoice date. */
+    year?: number;
 }
 
 export async function getInvoices(
@@ -23,6 +27,9 @@ export async function getInvoices(
     if (filters?.payment_type) params.set("payment_type", filters.payment_type);
     if (filters?.created_from) params.set("created_from", filters.created_from);
     if (filters?.created_to) params.set("created_to", filters.created_to);
+    if (filters?.date_from) params.set("date_from", filters.date_from);
+    if (filters?.date_to) params.set("date_to", filters.date_to);
+    if (filters?.year != null && !filters?.date_from && !filters?.date_to) params.set("year", String(filters.year));
     return fetchApi<InvoicesResponse>(`/${companySlug}/invoices?${params.toString()}`, { token });
 }
 
@@ -79,6 +86,20 @@ export async function createRefundInvoice(
         method: "POST",
         token,
     });
+}
+
+/** Get OFS payload for local device (BAM amounts from API). */
+export async function getFiscalPayload(
+    companySlug: string,
+    invoiceId: number,
+    token: string,
+    params: { transaction_type: string; invoice_type: string }
+): Promise<Record<string, unknown>> {
+    const q = new URLSearchParams(params);
+    return fetchApi<Record<string, unknown>>(
+        `/${companySlug}/invoices/${invoiceId}/fiscal-payload?${q.toString()}`,
+        { token }
+    );
 }
 
 export async function fiscalizeInvoice(
