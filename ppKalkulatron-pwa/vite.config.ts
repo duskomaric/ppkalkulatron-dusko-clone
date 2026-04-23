@@ -11,6 +11,8 @@ export default defineConfig({
         tsconfigPaths(),
         VitePWA({
             strategies: 'injectManifest',
+            srcDir: 'app',
+            filename: 'sw.ts',
             registerType: 'autoUpdate',
             injectRegister: 'auto',
             devOptions: {
@@ -19,7 +21,6 @@ export default defineConfig({
             includeAssets: ['favicon.ico', 'icon-512.png', 'icon-192.png', 'screenshot-desktop.png'],
             injectManifest: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-                swSrc: 'app/sw.ts',
             },
             manifest: {
                 name: '++Kalkulatron',

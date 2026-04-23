@@ -1,4 +1,4 @@
-export const API_URL = "/api/v1";
+export const API_URL = import.meta.env.VITE_API_URL ?? "/api/v1";
 
 /** OFS ESIR – konstante za lokalni uređaj (PWA → Service Worker → lokalna adresa). */
 export const OFS = {
