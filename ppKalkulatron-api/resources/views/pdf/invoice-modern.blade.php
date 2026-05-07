@@ -5,9 +5,12 @@
 
     // Boje iz dizajna
     $color_primary = '#2f80ed';
+    $color_primary_dark = '#1d5fc4';
     $color_bg_light = '#f3f8fb';
+    $color_border = '#e5eaf0';
     $color_text_dark = '#111827';
     $color_text_muted = '#6b7280';
+
 @endphp
     <!DOCTYPE html>
 <html lang="sr">
@@ -16,160 +19,212 @@
     <style>
         /* DomPDF A4 – ne postavljati height na body da ne bi nastala prazna stranica 2 */
         @page { margin: 0; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        html, body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
         body {
-            font-family: 'DejaVu Sans', sans-serif;
+            font-family: 'DejaVu Sans', 'Helvetica', 'Arial', sans-serif;
             font-size: 9pt;
             color: {{ $color_text_dark }};
             background: #fff;
             width: 210mm;
         }
 
+        /* Tanka akcentna traka na vrhu stranice */
+        .accent-stripe {
+            height: 5px;
+            background-color: {{ $color_primary }};
+        }
+
         .page-wrapper {
-            padding: 40px 50px 80px 50px;
+            padding: 28px 50px 32px 50px;
             position: relative;
         }
 
-        /* Header section – lijevo: logo placeholder + ime; desno: detalji kompanije */
-        .header-table { width: 100%; margin-bottom: 30px; border-collapse: collapse; border-bottom: 2px solid {{ $color_primary }}; padding-bottom: 15px; }
-        .header-table td { vertical-align: top; }
-        .header-left { width: 45%; }
-        .header-right { width: 55%; text-align: right; }
-        .header-logo-row .logo-placeholder { width: 50px; height: 50px; background: {{ $color_bg_light }}; border-radius: 10px; vertical-align: middle; text-align: center; font-size: 6pt; color: {{ $color_text_muted }}; }
-        .company-name-left { font-size: 16pt; font-weight: bold; color: {{ $color_primary }}; }
-        .company-info-right { font-size: 8pt; color: {{ $color_text_muted }}; line-height: 1.5; text-align: right; }
+        /* Header section – lijevo: logo avatar + ime; desno: detalji kompanije */
+        .header-table { width: 100%; margin-bottom: 12px; border-collapse: collapse; padding-bottom: 10px; border-bottom: 1px solid {{ $color_border }}; }
+        .header-table td { vertical-align: middle; }
+        .header-left { width: 50%; }
+        .header-right { width: 50%; text-align: right; }
+        .logo-avatar {
+            width: 46px;
+            height: 46px;
+            background: {{ $color_primary }};
+            border-radius: 50%;
+            color: #fff;
+            font-size: 18pt;
+            font-weight: bold;
+            text-align: center;
+            line-height: 46px;
+            display: inline-block;
+        }
+        .company-name-left { font-size: 15pt; font-weight: bold; color: {{ $color_text_dark }}; letter-spacing: -0.3px; }
+        .company-info-right { font-size: 8pt; color: {{ $color_text_muted }}; line-height: 1.35; text-align: right; }
 
-        /* Client card – isti stil kao Detalji plaćanja */
+        /* Oznaka sekcije (eyebrow) iznad naslova boxa */
+        .card-eyebrow {
+            font-size: 7pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: {{ $color_primary }};
+            margin-bottom: 8px;
+        }
+
+        /* Client card */
         .client-card {
             background: {{ $color_bg_light }};
-            border-radius: 15px;
-            padding: 18px 20px;
+            border-radius: 12px;
+            padding: 14px 18px;
         }
-        .client-card .client-name { font-size: 9pt; font-weight: bold; margin-bottom: 4px; color: {{ $color_text_dark }}; }
-        .client-card .client-detail { font-size: 8pt; color: {{ $color_text_muted }}; line-height: 1.5; }
+        .client-card .client-name { font-size: 10pt; font-weight: bold; margin-bottom: 4px; color: {{ $color_text_dark }}; }
+        .client-card .client-detail { font-size: 8pt; color: {{ $color_text_muted }}; line-height: 1.55; }
 
-        /* Dva boxa u jednom redu: Klijent lijevo, Detalji desno – uvijek ista visina */
-        .client-details-row { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; }
+        /* Dva boxa u jednom redu: Klijent lijevo, Detalji desno */
+        .client-details-row { width: 100%; border-collapse: collapse; margin-bottom: 16px; table-layout: fixed; }
         .client-details-row td { vertical-align: top; padding: 0; }
-        .client-details-row td:first-child { padding-right: 12px; width: 50%; }
-        .client-details-row td:last-child { padding-left: 12px; width: 50%; }
+        .client-details-row td:first-child { padding-right: 10px; width: 50%; }
+        .client-details-row td:last-child { padding-left: 10px; width: 50%; }
         .client-details-row .client-card,
         .client-details-row .document-details-box {
-            height: 140px;
-            min-height: 140px;
+            height: 115px;
+            min-height: 115px;
             box-sizing: border-box;
         }
         .document-details-box {
             background: #fff;
-            border-radius: 10px;
-            border: 2px solid {{ $color_primary }};
-            padding: 18px 20px;
+            border-radius: 12px;
+            border: 1px solid {{ $color_border }};
+            padding: 12px 18px;
         }
-        .document-details-box .document-details-row { padding: 5px 0; font-size: 8pt; }
-        .document-details-box .document-details-label { color: {{ $color_text_muted }}; text-transform: uppercase; }
-        .document-details-box .document-details-value { font-weight: bold; color: {{ $color_primary }}; }
+        .document-details-box .document-details-row {
+            padding: 4px 0;
+            font-size: 8pt;
+            border-bottom: 1px dashed {{ $color_border }};
+        }
+        .document-details-box .document-details-row:last-child { border-bottom: none; }
+        .document-details-box .document-details-label { color: {{ $color_text_muted }}; text-transform: uppercase; letter-spacing: 0.4px; font-size: 7pt; }
+        .document-details-box .document-details-value { font-weight: bold; color: {{ $color_text_dark }}; }
 
-        /* Stilizovano ime dokumenta: Račun broj/godina – jedna linija, donja crta */
-        .document-title-bar { margin-bottom: 22px; padding: 10px 0; border-bottom: 2px solid {{ $color_primary }}; }
-        .document-title-bar .document-title-line { font-size: 20pt; font-weight: bold; color: {{ $color_text_dark }}; }
-        .document-title-bar .document-title-line .document-title-number { color: {{ $color_primary }}; }
+        /* Naslov dokumenta + status chip */
+        .document-title-bar { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid {{ $color_border }}; }
+        .document-title-line { font-size: 22pt; font-weight: bold; color: {{ $color_text_dark }}; letter-spacing: -0.5px; }
+        .document-title-line .document-title-number { color: {{ $color_primary }}; }
+        .status-chip {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 7.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            vertical-align: middle;
+            margin-left: 12px;
+        }
 
         /* MAIN INVOICE TABLE */
         .invoice-table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed; /* Ključno za DomPDF stabilnost */
+            table-layout: fixed;
         }
-
-        /* Kolone - klasik raspored sa PDV ili bez (širine se pode u thead) */
-        .cell-description { padding-left: 8px !important; }
 
         .invoice-table thead th {
-            font-size: 8pt;
+            font-size: 7.5pt;
             color: {{ $color_text_muted }};
-            font-weight: normal;
-            padding: 12px 15px;
-            text-align: left;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            padding: 12px 14px;
+            background-color: {{ $color_bg_light }};
+            border-bottom: 2px solid {{ $color_primary }};
         }
-
-        /* Zaobljavanje gornjih uglova panela */
-        .th-panel-start { border-top-left-radius: 0px; }
-        .th-panel-end { border-top-right-radius: 15px; }
+        .invoice-table th.text-right,
+        .invoice-table td.text-right { text-align: right; }
+        .invoice-table th.text-center,
+        .invoice-table td.text-center { text-align: center; }
 
         .invoice-table tbody td {
-            padding: 12px 15px;
+            padding: 11px 14px;
             vertical-align: top;
-            border-bottom: 1px solid #ffffff; /* Beli border pravi razmak između redova na plavoj pozadini */
+            border-bottom: 1px solid {{ $color_border }};
+            font-size: 9pt;
         }
-
-        /* Redovi u tabeli */
-        .cell-description { padding-left: 0 !important; }
-        .cell-blue { background-color: {{ $color_bg_light }}; }
+        .invoice-table tbody tr:nth-child(even) td {
+            background-color: {{ $color_bg_light }};
+        }
+        .invoice-table tbody tr:last-child td {
+            border-bottom: 1px solid {{ $color_border }};
+        }
+        .cell-description .item-name { font-weight: bold; color: {{ $color_text_dark }}; }
+        .cell-description .item-desc { font-size: 7.5pt; color: {{ $color_text_muted }}; margin-top: 2px; }
 
         .text-right { text-align: right; }
         .text-center { text-align: center; }
 
-        /* SUMMARY SECTION - Spojena sa tabelom */
+        /* SUMMARY */
         .summary-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            margin-top: 12px;
         }
-        /* Prva ćelija = ispod # + Naziv; druga = ispod JM, Kol. i svih numeričkih kolona */
         .summary-col-left { vertical-align: top; padding-right: 0; }
         .summary-col-right {
             vertical-align: top;
             background-color: {{ $color_bg_light }};
-            padding: 12px 15px 15px 15px;
+            padding: 10px 16px 14px 16px;
+            border-radius: 12px;
         }
 
-        .summary-row {
-            padding: 8px 0;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        /* Brišemo inline-block i širine, koristimo tabelu za poravnanje */
         .summary-item-table {
             width: 100%;
             border-collapse: collapse;
         }
         .summary-label {
-            font-size: 8.5pt;
+            font-size: 9pt;
             color: {{ $color_text_muted }};
-            padding: 8px 0;
+            padding: 5px 0;
             text-align: left;
         }
         .summary-value {
-            font-size: 8.5pt;
+            font-size: 9pt;
             font-weight: bold;
-            padding: 8px 0;
+            padding: 5px 0;
             text-align: right;
+            color: {{ $color_text_dark }};
         }
-        .summary-row-line {
-            border-bottom: 1px solid #e2e8f0;
-        }
+        .summary-row-line { }
 
-        /* TOTAL BLUE BOX (Dno panela) */
+        /* TOTAL BLUE BOX */
         .total-blue-box {
             background-color: {{ $color_primary }};
             color: #ffffff;
-            padding: 15px;
-            margin: 0 -15px -15px -15px; /* Poravnanje sa ivicama summary-content-a */
-            border-bottom-left-radius: 15px;
-            border-bottom-right-radius: 15px;
+            padding: 10px 16px;
+            margin: 6px -16px -14px -16px;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
         }
+        .total-blue-box .total-label { font-size: 9.5pt; font-weight: bold; color: #ffffff; text-transform: uppercase; letter-spacing: 0.8px; }
+        .total-blue-box .total-value { font-size: 12.5pt; font-weight: bold; color: #ffffff; }
 
         .amount-in-words {
             font-size: 7.5pt;
             color: {{ $color_text_muted }};
-            margin-top: 15px;
+            margin-top: 8px;
             text-align: right;
+            font-style: italic;
         }
 
         .notes-section {
-            margin-top: 18px;
-            padding: 12px 15px;
+            margin-top: 12px;
+            padding: 10px 14px;
             background: {{ $color_bg_light }};
             border-radius: 15px;
         }
@@ -181,36 +236,45 @@
         }
         .notes-section .notes-text { font-size: 8pt; color: {{ $color_text_muted }}; line-height: 1.4; }
 
-        /* Footer positioning */
-        .footer-container {
-            position: absolute;
-            bottom: 40px;
-            left: 50px;
-            right: 50px;
+        /* Signature section */
+        .signature-section { margin-top: 45px; width: 100%; border-collapse: collapse; }
+        .signature-section td {
+            width: 50%;
+            text-align: center;
+            font-size: 8pt;
+            color: {{ $color_text_muted }};
+            padding: 0 20px;
         }
+        .signature-mp { font-size: 7pt; color: {{ $color_text_muted }}; margin-bottom: 18px; letter-spacing: 0.6px; }
+        .signature-line { border-bottom: 1px solid {{ $color_text_dark }}; width: 180px; margin: 0 auto 6px auto; }
+        .signature-label { text-transform: uppercase; font-weight: bold; letter-spacing: 0.6px; color: {{ $color_text_dark }}; font-size: 7.5pt; }
+
+        /* Footer positioning */
+        .footer-container { margin-top: 18px; }
 
         .payment-card {
             background: {{ $color_bg_light }};
-            border-radius: 15px;
-            padding: 18px 20px;
+            border-radius: 12px;
+            padding: 10px 14px;
             min-width: 280px;
             max-width: 320px;
         }
-        .payment-card .bank-name { font-size: 9pt; font-weight: bold; margin-bottom: 4px; }
-        .payment-card .bank-detail { font-size: 8pt; color: {{ $color_text_muted }}; line-height: 1.5; }
-        .payment-card .bank-contact { margin-top: 10px; padding-top: 10px; border-top: 1px solid #d1d5db; font-size: 8pt; color: {{ $color_text_muted }}; line-height: 1.4; word-wrap: break-word; }
+        .payment-card .bank-name { font-size: 9pt; font-weight: bold; margin-bottom: 2px; }
+        .payment-card .bank-detail { font-size: 8pt; color: {{ $color_text_muted }}; line-height: 1.4; }
+        .payment-card .bank-contact { margin-top: 6px; padding-top: 6px; border-top: 1px solid #d1d5db; font-size: 8pt; color: {{ $color_text_muted }}; line-height: 1.3; word-wrap: break-word; }
     </style>
 </head>
 <body>
+
+<div class="accent-stripe"></div>
 
 <div class="page-wrapper">
 
     <table class="header-table">
         <tr>
             <td class="header-left">
-                <table class="header-logo-row" style="border-collapse: collapse; border: none;"><tr>
-                    <td class="logo-placeholder">LOGO</td>
-                    <td style="padding-left: 12px; vertical-align: middle;">
+                <table style="border-collapse: collapse; border: none;"><tr>
+                    <td style="vertical-align: middle;">
                         <div class="company-name-left">{{ $company->name }}</div>
                     </td>
                 </tr></table>
@@ -218,9 +282,11 @@
             <td class="header-right">
                 @if($company->address || $company->city || $company->identification_number)
                     <div class="company-info-right">
+                        {{ $company->name }}<br>
                         @if($company->address){{ $company->address }}<br>@endif
                         @if($company->postal_code || $company->city){{ $company->postal_code }} {{ $company->city }}@if($company->country), {{ $company->country }}@endif<br>@endif
-                        @if($company->identification_number)JIB: {{ $company->identification_number }}@if($company->vat_number && $showVat) | PDV: {{ $company->vat_number }}@endif @endif
+                        @if($company->identification_number) JIB: {{ $company->identification_number }}<br>@endif
+                        @if($company->vat_number) PDV: {{ $company->vat_number }}@endif
                     </div>
                 @endif
             </td>
@@ -231,45 +297,57 @@
         <tr>
             <td>
                 <div class="client-card">
+                    <div class="card-eyebrow">Kupac</div>
                     <div class="client-name">{{ $invoice->client?->name }}</div>
                     <div class="client-detail">
                         @if($invoice->client?->address){{ $invoice->client->address }}<br>@endif
                         @if($invoice->client?->city){{ $invoice->client->city }}<br>@endif
-                        @if($invoice->client?->phone){{ $invoice->client->phone }}@endif
+                        @if($invoice->client?->country){{ $invoice->client->country }}<br>@endif
+                        @if($invoice->client?->phone){{ $invoice->client->phone }}<br>@endif
+                        @if($invoice->client?->vat_id)JIB: {{ $invoice->client->vat_id }}<br>@endif
+                        @if($invoice->client?->tax_id)PDV: {{ $invoice->client->tax_id }}@endif
                     </div>
                 </div>
             </td>
             <td>
                 <div class="document-details-box">
-                    <div class="document-details-row"><span class="document-details-label">Rok dospijeća</span> <span class="document-details-value">{{ $invoice->due_date->format('d.m.Y.') }}</span></div>
-                    <div class="document-details-row"><span class="document-details-label">Datum izdavanja</span> <span class="document-details-value">{{ $invoice->date->format('d.m.Y.') }}</span></div>
-                    <div class="document-details-row"><span class="document-details-label">Broj računa</span> <span class="document-details-value">#{{ $invoice->invoice_number }}</span></div>
-                    <div class="document-details-row"><span class="document-details-label">Referenca</span> <span class="document-details-value">INV-{{ $invoice->id }}</span></div>
+                    <div class="card-eyebrow">Detalji</div>
+                    <div class="document-details-row"><span class="document-details-label">Rok dospijeća</span> <span class="document-details-value">{{ $invoice->due_date?->format('d.m.Y.') ?? '-' }}</span></div>
+                    <div class="document-details-row"><span class="document-details-label">Datum izdavanja</span> <span class="document-details-value">{{ $invoice->date?->format('d.m.Y.') ?? '-' }}</span></div>
+                    <div class="document-details-row"><span class="document-details-label">Način plaćanja</span> <span class="document-details-value">{{ $invoice->payment_type }}</span></div>
+                    @php
+                        $originalFiscal = $invoice->fiscalRecords->firstWhere('type', \App\Models\Enums\FiscalRecordTypeEnum::Original);
+                    @endphp
+                    @if($originalFiscal?->fiscal_invoice_number)
+                        <div class="document-details-row"><span class="document-details-label">Br. fiskalnog računa</span> <span class="document-details-value">{{ $originalFiscal->fiscal_invoice_number }}</span></div>
+                    @endif
                 </div>
             </td>
         </tr>
     </table>
 
     <div class="document-title-bar">
-        <div class="document-title-line">Račun <span class="document-title-number">#{{ $invoice->invoice_number }}</span></div>
+        <div class="document-title-line">
+            Račun <span class="document-title-number">{{ $invoice->invoice_number }}</span>
+        </div>
     </div>
 
     <table class="invoice-table">
         <thead>
         <tr>
-            <th style="width:4%; background-color: {{ $color_bg_light }};" class="text-center">#</th>
-            <th style="width:{{ $showVat ? '24%' : '46%' }}; background-color: {{ $color_bg_light }};">Naziv</th>
-            <th style="width:6%; background-color: {{ $color_bg_light }};" class="text-center">JM</th>
-            <th style="width:6%; background-color: {{ $color_bg_light }};" class="text-center">Kol.</th>
-            <th style="width:{{ $showVat ? '8%' : '14%' }}; background-color: {{ $color_bg_light }};" class="text-right">Cijena</th>
+            <th style="width:4%;" class="text-center">#</th>
+            <th style="width:{{ $showVat ? '24%' : '46%' }};">Naziv</th>
+            <th style="width:6%;" class="text-center">JM</th>
+            <th style="width:6%;" class="text-center">Kol.</th>
+            <th style="width:{{ $showVat ? '8%' : '14%' }};" class="text-right">Cijena</th>
             @if($showVat)
-                <th style="width:10%; background-color: {{ $color_bg_light }};" class="text-right">Cijena sa PDV</th>
-                <th style="width:6%; background-color: {{ $color_bg_light }};" class="text-center">PDV %</th>
-                <th style="width:10%; background-color: {{ $color_bg_light }};" class="text-right">Iznos PDV-a</th>
-                <th style="width:10%; background-color: {{ $color_bg_light }};" class="text-right">Iznos bez PDV</th>
-                <th style="width:14%; background-color: {{ $color_bg_light }};" class="text-right th-panel-end">Iznos sa PDV</th>
+                <th style="width:10%;" class="text-right">Cijena sa PDV</th>
+                <th style="width:6%;" class="text-center">PDV %</th>
+                <th style="width:10%;" class="text-right">Iznos PDV-a</th>
+                <th style="width:10%;" class="text-right">Iznos bez PDV</th>
+                <th style="width:14%;" class="text-right th-panel-end">Iznos sa PDV</th>
             @else
-                <th style="width:24%; background-color: {{ $color_bg_light }};" class="text-right th-panel-end">Iznos</th>
+                <th style="width:24%;" class="text-right th-panel-end">Iznos</th>
             @endif
         </tr>
         </thead>
@@ -289,21 +367,21 @@
             <tr>
                 <td class="text-center">{{ $loop->iteration }}</td>
                 <td class="cell-description">
-                    <div style="font-weight: bold;">{{ $item->name }}</div>
-                    @if($item->description)<div style="font-size: 7.5pt; color: {{ $color_text_muted }};">{{ $item->description }}</div>@endif
+                    <div class="item-name">{{ $item->name }}</div>
+                    @if($item->description)<div class="item-desc">{{ $item->description }}</div>@endif
                 </td>
-                <td class="cell-blue text-center">{{ $unit }}</td>
-                <td class="cell-blue text-center">{{ rtrim(rtrim(number_format($quantity, 3, ',', '.'), '0'), ',') }}</td>
+                <td class="text-center">{{ $unit }}</td>
+                <td class="text-center">{{ rtrim(rtrim(number_format($quantity, 3, ',', '.'), '0'), ',') }}</td>
                 @if($showVat)
-                    <td class="cell-blue text-right">{{ $formatAmount($unitPriceWithoutVat) }}</td>
-                    <td class="cell-blue text-right">{{ $formatAmount($unitPriceWithVat) }}</td>
-                    <td class="cell-blue text-right">{{ rtrim(rtrim(number_format($taxRatePercent, 2, ',', '.'), '0'), ',') }}%</td>
-                    <td class="cell-blue text-right">{{ $formatAmount($taxAmount) }}</td>
-                    <td class="cell-blue text-right">{{ $formatAmount($subtotal) }}</td>
-                    <td class="cell-blue text-right" style="font-weight: bold;">{{ $formatAmount($total) }} {{ $currency }}</td>
+                    <td class="text-right">{{ $formatAmount($unitPriceWithoutVat) }}</td>
+                    <td class="text-right">{{ $formatAmount($unitPriceWithVat) }}</td>
+                    <td class="text-right">{{ rtrim(rtrim(number_format($taxRatePercent, 2, ',', '.'), '0'), ',') }}%</td>
+                    <td class="text-right">{{ $formatAmount($taxAmount) }}</td>
+                    <td class="text-right">{{ $formatAmount($subtotal) }}</td>
+                    <td class="text-right" style="font-weight: bold; color: {{ $color_primary }};">{{ $formatAmount($total) }} {{ $currency }}</td>
                 @else
-                    <td class="cell-blue text-right">{{ $formatAmount($quantity > 0 ? (int)round($total / $quantity) : 0) }}</td>
-                    <td class="cell-blue text-right" style="font-weight: bold;">{{ $formatAmount($total) }} {{ $currency }}</td>
+                    <td class="text-right">{{ $formatAmount($quantity > 0 ? (int)round($total / $quantity) : 0) }}</td>
+                    <td class="text-right" style="font-weight: bold; color: {{ $color_primary }};">{{ $formatAmount($total) }} {{ $currency }}</td>
                 @endif
             </tr>
         @endforeach
@@ -331,8 +409,8 @@
                 <div class="total-blue-box">
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
-                            <td style="font-weight: bold; font-size: 10pt; color: #ffffff;">UKUPNO:</td>
-                            <td style="text-align: right; font-weight: bold; font-size: 11pt; color: #ffffff;">
+                            <td class="total-label">Ukupno</td>
+                            <td class="total-value" style="text-align: right;">
                                 {{ $formatAmount($invoice->total) }} {{ $currency }}
                             </td>
                         </tr>
@@ -346,9 +424,16 @@
         Slovima:
         @php
             $locale = $invoice->language?->value ?? 'sr_Latn_BA';
-            $nf = new \NumberFormatter($locale, \NumberFormatter::SPELLOUT);
+            $spelled = null;
+            if (class_exists(\NumberFormatter::class)) {
+                try {
+                    $spelled = (new \NumberFormatter($locale, \NumberFormatter::SPELLOUT))->format(intdiv($invoice->total, 100));
+                } catch (\Throwable $e) {
+                    $spelled = null;
+                }
+            }
         @endphp
-        {{ $nf->format(intdiv($invoice->total, 100)) }}
+        {{ $spelled ?? number_format(intdiv($invoice->total, 100), 0, ',', '.') }}
         {{ $currency }}
         i {{ str_pad($invoice->total % 100, 2, '0', STR_PAD_LEFT) }}/100
     </div>
@@ -370,7 +455,7 @@
                         @if(isset($bankAccounts) && $bankAccounts->isNotEmpty())
                             @foreach($bankAccounts as $acc)
                                 <div class="bank-name">{{ $acc->bank_name }}</div>
-                                <div class="bank-detail">Račun: {{ $acc->account_number }}</div>
+                                <div class="bank-detail">{{ $acc->bank_name }}: {{ $acc->account_number }}</div>
                                 @if($acc->swift)<div class="bank-detail">SWIFT: {{ $acc->swift }}</div>@endif
                                 @if(!$loop->last)<div style="height: 8px;"></div>@endif
                             @endforeach
@@ -387,6 +472,21 @@
             </tr>
         </table>
     </div>
+
+    <table class="signature-section">
+        <tr>
+            <td>
+                <div class="signature-mp">M.P.</div>
+                <div class="signature-line"></div>
+                <div class="signature-label">Izdao</div>
+            </td>
+            <td>
+                <div class="signature-mp">M.P.</div>
+                <div class="signature-line"></div>
+                <div class="signature-label">Primio</div>
+            </td>
+        </tr>
+    </table>
 
 </div>
 

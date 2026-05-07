@@ -12,13 +12,13 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: DejaVu Sans, sans-serif; }
         body {
             font-family: DejaVu Sans, sans-serif;
-            font-size: 7.5pt;
+            font-size: 8pt;
             color: #000;
-            line-height: 1.2;
+            line-height: 1.35;
             background: #fff;
         }
         .page {
-            padding: 18px 18px 50px 18px;
+            padding: 28px 28px 50px 28px;
             max-width: 210mm;
             margin: 0 auto;
             position: relative;
@@ -28,26 +28,20 @@
         /* Header Table */
         .header-table {
             width: 100%;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
+            margin-bottom: 22px;
+            padding-bottom: 14px;
             border-bottom: 2px solid #000;
             border-collapse: collapse;
         }
 
-        .header-table td { border: none; vertical-align: top; }
-        .header-left { width: 18%; }
-        .header-right { width: 82%; text-align: right; }
+        .header-table td { border: none; vertical-align: middle; }
+        .header-left { width: 50%; }
+        .header-right { width: 50%; text-align: right; }
 
-        .logo-placeholder {
-            width: 45px;
-            height: 45px;
-            background: #000;
-            border-radius: 3px;
-            text-align: center;
-            line-height: 45px;
-            font-size: 6pt;
+        .company-name-left {
+            font-size: 15pt;
             font-weight: 700;
-            color: #fff;
+            letter-spacing: -0.3px;
         }
 
         .company-name {
@@ -64,7 +58,7 @@
         /* Info Section Table */
         .info-table {
             width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             border-collapse: collapse;
         }
 
@@ -172,6 +166,7 @@
         }
 
         /* Rest of styles... */
+        .amount-in-words { margin-top: 10px; text-align: right; font-size: 7pt; font-style: italic; color: #555; }
         .notes-section { margin-top: 15px; padding: 8px; border-left: 3px solid #000; font-size: 7pt; }
         .signature-section { margin-top: 30px; width: 100%; border-collapse: collapse; }
         .signature-section td {
@@ -201,23 +196,22 @@
     <table class="header-table">
         <tr>
             <td class="header-left">
-                <div class="logo-placeholder">LOGO</div>
+                <div class="company-name-left">{{ $company->name }}</div>
             </td>
             <td class="header-right">
-                <div class="company-name">{{ $company->name }}</div>
                 <div class="company-info">
+                    {{ $company->name }}<br>
                     @if($company->address){{ $company->address }}<br>@endif
                     @if($company->postal_code || $company->city)
                         {{ $company->postal_code }} {{ $company->city }}@if($company->country), {{ $company->country }}@endif<br>
                     @endif
-                    @if($company->identification_number)
-                        JIB: {{ $company->identification_number }}@if($company->vat_number) | PDV: {{ $company->vat_number }}@endif
-                    @endif
+                    @if($company->identification_number)JIB: {{ $company->identification_number }}<br>@endif
+                    @if($company->vat_number)PDV: {{ $company->vat_number }}@endif
                     @if(isset($bankAccounts) && $bankAccounts->isNotEmpty())
                         <br><br>
                         <strong>Instrukcije za plaćanje:</strong><br>
                         @foreach($bankAccounts as $ba)
-                            {{ $ba->bank_name }}: {{ $ba->account_number }}@if(!$loop->last)<br>@endif
+                            {{ $ba->bank_name }}: {{ $ba->account_number }}@if($ba->swift) | SWIFT: {{ $ba->swift }}@endif@if(!$loop->last)<br>@endif
                         @endforeach
                     @endif
                 </div>
@@ -235,15 +229,10 @@
                     @if($invoice->client?->zip || $invoice->client?->city)
                         {{ $invoice->client->zip }} {{ $invoice->client->city }}<br>
                     @endif
-                    @if($invoice->client?->country)
-                        {{ $invoice->client->country }}<br>
-                    @endif
-                    @if($invoice->client?->vat_id)
-                        <br>JIB: {{ $invoice->client->vat_id }}
-                    @endif
-                    @if($invoice->client?->tax_id)
-                        <br>PDV: {{ $invoice->client->tax_id }}
-                    @endif
+                    @if($invoice->client?->country){{ $invoice->client->country }}<br>@endif
+                    @if($invoice->client?->phone){{ $invoice->client->phone }}<br>@endif
+                    @if($invoice->client?->vat_id)JIB: {{ $invoice->client->vat_id }}<br>@endif
+                    @if($invoice->client?->tax_id)PDV: {{ $invoice->client->tax_id }}@endif
                 </div>
             </td>
             <td class="info-right">
@@ -251,17 +240,26 @@
                 <div class="info-content">
                     <table class="detail-table">
                         <tr>
-                            <td class="detail-label">Datum izdavanja:</td>
-                            <td class="detail-value">{{ $invoice->date->format('d.m.Y') }}</td>
+                            <td class="detail-label">Rok dospijeća:</td>
+                            <td class="detail-value">{{ $invoice->due_date?->format('d.m.Y.') ?? '-' }}</td>
                         </tr>
                         <tr>
-                            <td class="detail-label">Datum dospijeća:</td>
-                            <td class="detail-value">{{ $invoice->due_date->format('d.m.Y') }}</td>
+                            <td class="detail-label">Datum izdavanja:</td>
+                            <td class="detail-value">{{ $invoice->date?->format('d.m.Y.') ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="detail-label">Način plaćanja:</td>
-                            <td class="detail-value">Transakcijski</td>
+                            <td class="detail-value">{{ $invoice->payment_type }}</td>
                         </tr>
+                        @php
+                            $originalFiscal = $invoice->fiscalRecords->firstWhere('type', \App\Models\Enums\FiscalRecordTypeEnum::Original);
+                        @endphp
+                        @if($originalFiscal?->fiscal_invoice_number)
+                            <tr>
+                                <td class="detail-label">Br. fiskalnog računa:</td>
+                                <td class="detail-value">{{ $originalFiscal->fiscal_invoice_number }}</td>
+                            </tr>
+                        @endif
                     </table>
                 </div>
             </td>
@@ -269,7 +267,7 @@
     </table>
 
     <div class="invoice-bar">
-        <span class="invoice-label">FAKTURA br: #{{ $invoice->invoice_number }}</span>
+        <span class="invoice-label">Račun {{ $invoice->invoice_number }}</span>
     </div>
 
     <table class="items-table">
@@ -354,6 +352,24 @@
         </tr>
     </table>
 
+    <div class="amount-in-words">
+        Slovima:
+        @php
+            $locale = $invoice->language?->value ?? 'sr_Latn_BA';
+            $spelled = null;
+            if (class_exists(\NumberFormatter::class)) {
+                try {
+                    $spelled = (new \NumberFormatter($locale, \NumberFormatter::SPELLOUT))->format(intdiv($invoice->total, 100));
+                } catch (\Throwable $e) {
+                    $spelled = null;
+                }
+            }
+        @endphp
+        {{ $spelled ?? number_format(intdiv($invoice->total, 100), 0, ',', '.') }}
+        {{ $currency }}
+        i {{ str_pad($invoice->total % 100, 2, '0', STR_PAD_LEFT) }}/100
+    </div>
+
     @if($invoice->notes)
         <div class="notes-section">
             <strong>Napomena:</strong><br>
@@ -366,12 +382,12 @@
             <td class="signature-left">
                 <div class="mp-box">M.P.</div>
                 <div class="signature-line"></div>
-                <div>Fakturisao / Izdao</div>
+                <div>Izdao</div>
             </td>
             <td class="signature-right">
                 <div class="mp-box">M.P.</div>
                 <div class="signature-line"></div>
-                <div>Primio / Kupac</div>
+                <div>Primio</div>
             </td>
         </tr>
     </table>
