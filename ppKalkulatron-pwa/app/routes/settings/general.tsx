@@ -17,6 +17,12 @@ import { SectionHeader } from "~/components/ui/SectionHeader";
 import { LoadingState } from "~/components/ui/LoadingState";
 import { useToast } from "~/hooks/useToast";
 
+function parseStartingNumber(val: string): number {
+    if (val === "") return 1;
+    const n = parseInt(val, 10);
+    return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
 export default function GeneralSettingsPage() {
     const { selectedCompany, updateSelectedCompany, token, refreshUser } = useAuth();
     const navigate = useNavigate();
@@ -206,19 +212,19 @@ export default function GeneralSettingsPage() {
                                 label="Početni broj računa"
                                 type="number"
                                 value={formData.invoice_numbering_starting_number ?? ""}
-                                onChange={(val: string) => setFormData({ ...formData, invoice_numbering_starting_number: val === "" ? 1 : parseInt(val, 10) })}
+                                onChange={(val: string) => setFormData({ ...formData, invoice_numbering_starting_number: parseStartingNumber(val) })}
                             />
                             <FormInput
                                 label="Početni broj predračuna"
                                 type="number"
                                 value={formData.proforma_numbering_starting_number ?? ""}
-                                onChange={(val: string) => setFormData({ ...formData, proforma_numbering_starting_number: val === "" ? 1 : parseInt(val, 10) })}
+                                onChange={(val: string) => setFormData({ ...formData, proforma_numbering_starting_number: parseStartingNumber(val) })}
                             />
                             <FormInput
                                 label="Početni broj ponude"
                                 type="number"
                                 value={formData.quote_numbering_starting_number ?? ""}
-                                onChange={(val: string) => setFormData({ ...formData, quote_numbering_starting_number: val === "" ? 1 : parseInt(val, 10) })}
+                                onChange={(val: string) => setFormData({ ...formData, quote_numbering_starting_number: parseStartingNumber(val) })}
                             />
                         </div>
                     </SectionBlock>

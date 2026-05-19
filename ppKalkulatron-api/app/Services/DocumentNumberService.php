@@ -23,7 +23,12 @@ class DocumentNumberService
             ->first();
 
         $startingNumber = $this->getStartingNumber($company, $type);
-        $nextNumber = $counter ? $counter->getNextNumber() : $startingNumber;
+        if ($counter) {
+            $this->applyStartingFloor($counter, $startingNumber);
+            $nextNumber = $counter->getNextNumber();
+        } else {
+            $nextNumber = $startingNumber;
+        }
         $formatted = $this->formatNumber($company, $type, $year, $nextNumber);
 
         return [
@@ -54,6 +59,8 @@ class DocumentNumberService
                     'year' => $year,
                     'last_number' => $startingNumber - 1,
                 ]);
+            } else {
+                $this->applyStartingFloor($counter, $startingNumber);
             }
 
             $nextNumber = $counter->incrementCounter();
@@ -68,8 +75,9 @@ class DocumentNumberService
 
     /**
      * Release a document number when a document is deleted.
-     * If the deleted document had the last reserved number for that year, the counter is decremented
-     * so the next created document reuses that number (e.g. delete 007 → next invoice gets 007).
+     * If the deleted document had the last reserved number, decrement the counter so the next
+     * document reuses that number (e.g. delete 0010 → next is 0010). Never goes below
+     * (starting number - 1) from company settings.
      */
     public function releaseNumber(Company $company, string $type, string $formattedNumber): void
     {
@@ -90,7 +98,7 @@ class DocumentNumberService
 
             if ($counter && $counter->last_number === $number) {
                 $counter->last_number--;
-                $counter->save();
+                $this->applyStartingFloor($counter, $this->getStartingNumber($company, $type));
             }
         });
     }
@@ -106,18 +114,16 @@ class DocumentNumberService
         }
 
         $parts = explode('/', $formatted);
-        if (count($parts) < 2) {
-            return null;
+        if (count($parts) >= 2) {
+            $year = (int) end($parts);
+            $numberPart = (string) $parts[0];
+        } else {
+            $year = null;
+            $numberPart = $formatted;
         }
 
-        $year = (int) end($parts);
-        $numberPart = (string) $parts[0];
-        if (str_contains($numberPart, '-')) {
-            $numberPart = substr($numberPart, strrpos($numberPart, '-') + 1);
-        }
-        $number = (int) $numberPart;
-
-        if ($number < 1) {
+        $number = $this->parseNumericSequence($numberPart);
+        if ($number === null) {
             return null;
         }
 
@@ -143,6 +149,32 @@ class DocumentNumberService
         }
 
         return $year ?? (int) date('Y');
+    }
+
+    /**
+     * Extract the numeric sequence from a number part (e.g. "0007", "INV-0007").
+     */
+    /**
+     * Never leave the counter below (startingNumber - 1).
+     */
+    protected function applyStartingFloor(DocumentCounter $counter, int $startingNumber): void
+    {
+        $floor = $startingNumber - 1;
+        if ($counter->last_number < $floor) {
+            $counter->last_number = $floor;
+            $counter->save();
+        }
+    }
+
+    protected function parseNumericSequence(string $numberPart): ?int
+    {
+        if (str_contains($numberPart, '-')) {
+            $numberPart = substr($numberPart, strrpos($numberPart, '-') + 1);
+        }
+
+        $number = (int) $numberPart;
+
+        return $number >= 1 ? $number : null;
     }
 
     protected function getStartingNumber(Company $company, string $type): int

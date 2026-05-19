@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Models\Company;
+use App\Models\CompanySetting;
 use App\Models\DocumentCounter;
 
 it('tenant: user can preview next document number', function () {
@@ -103,4 +104,25 @@ it('tenant: reservation creates counter if not exists', function () {
 
     expect($counter)->not->toBeNull();
     expect($counter->last_number)->toBe(1);
+});
+
+it('tenant: company settings starting number is persisted', function () {
+    $user = User::factory()->create();
+    $company = Company::factory()->create();
+    attachUserToCompany($user, $company);
+
+    $response = $this->withHeaders(authHeaders($user))
+        ->patchJson("/api/v1/{$company->slug}/settings", [
+            'settings' => [
+                'invoice_numbering_starting_number' => 100,
+                'quote_numbering_starting_number' => 20,
+                'proforma_numbering_starting_number' => 30,
+            ],
+        ]);
+
+    $response->assertStatus(200);
+
+    expect(CompanySetting::get('invoice_numbering_starting_number', null, $company->id))->toBe(100)
+        ->and(CompanySetting::get('quote_numbering_starting_number', null, $company->id))->toBe(20)
+        ->and(CompanySetting::get('proforma_numbering_starting_number', null, $company->id))->toBe(30);
 });
