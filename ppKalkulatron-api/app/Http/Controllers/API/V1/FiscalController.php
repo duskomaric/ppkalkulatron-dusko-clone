@@ -683,8 +683,8 @@ class FiscalController extends Controller
     ): array {
         $headerLines = CompanySetting::get('ofs_receipt_header_text_lines', [], $company->id);
         $renderImage = CompanySetting::get('ofs_render_receipt_image', true, $company->id);
-        $imageFormat = CompanySetting::get('ofs_receipt_image_format', 'Png', $company->id);
         $layout = CompanySetting::get('ofs_receipt_layout', 'Slip', $company->id);
+        $imageFormat = $this->receiptImageFormat($company, $layout);
         $paymentType = $invoice->payment_type?->value ?? CompanySetting::get('ofs_default_payment_type', 'Cash', $company->id);
         $printReceipt = CompanySetting::get('ofs_print_receipt', false, $company->id);
 
@@ -731,6 +731,33 @@ class FiscalController extends Controller
     public static function fiscalRequestId(string $prefix, int $invoiceId): string
     {
         return substr($prefix.$invoiceId.Str::random(8), 0, 32);
+    }
+
+    /**
+     * Receipt image format the layout can actually render.
+     *
+     * Settings validation stops the two from disagreeing, but a company saved before that could
+     * still hold "Invoice" + "Png", which the device answers with a blank one-pixel receipt. Fall
+     * back to a format that renders rather than fiscalizing into an unusable image — fiscalization
+     * itself must not be blocked over a rendering preference.
+     */
+    protected function receiptImageFormat(Company $company, string $layout): string
+    {
+        $format = (string) CompanySetting::get('ofs_receipt_image_format', 'Png', $company->id);
+        $allowed = CompanySetting::allowedReceiptImageFormats($layout);
+
+        if (in_array($format, $allowed, true)) {
+            return $format;
+        }
+
+        Log::warning('Receipt image format is not renderable for the layout, falling back', [
+            'company_id' => $company->id,
+            'layout' => $layout,
+            'configured' => $format,
+            'used' => $allowed[0],
+        ]);
+
+        return $allowed[0];
     }
 
     /** Cashier name, or a stand-in — an unnamed user must not be sent as a blank space. */

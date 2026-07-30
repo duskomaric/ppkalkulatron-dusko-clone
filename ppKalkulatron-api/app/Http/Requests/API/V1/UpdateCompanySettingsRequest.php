@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\API\V1;
 
+use App\Models\CompanySetting;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateCompanySettingsRequest extends FormRequest
@@ -30,22 +31,33 @@ class UpdateCompanySettingsRequest extends FormRequest
                 return;
             }
 
-            $layout = $settings['ofs_receipt_layout'] ?? null;
-            $format = $settings['ofs_receipt_image_format'] ?? null;
+            $company = $this->route('company');
+
+            // Layout and format can arrive in separate requests. Checking only when both are
+            // present let "Invoice" be saved on top of a stored "Png" — a combination the device
+            // answers with a blank one-pixel receipt — so fall back to what is stored.
+            $layout = $settings['ofs_receipt_layout']
+                ?? ($company ? CompanySetting::get('ofs_receipt_layout', 'Slip', $company->id) : null);
+            $format = $settings['ofs_receipt_image_format']
+                ?? ($company ? CompanySetting::get('ofs_receipt_image_format', 'Png', $company->id) : null);
 
             if (!$layout || !$format) {
                 return;
             }
 
-            $allowed = $layout === 'Invoice'
-                ? ['Pdf', 'Html']
-                : ['Png', 'Pdf', 'Html'];
+            $allowed = CompanySetting::allowedReceiptImageFormats($layout);
 
             if (!in_array($format, $allowed, true)) {
-                $validator->errors()->add(
-                    'settings.ofs_receipt_image_format',
-                    "Invalid receipt image format '{$format}' for layout '{$layout}'."
-                );
+                $key = array_key_exists('ofs_receipt_image_format', $settings)
+                    ? 'settings.ofs_receipt_image_format'
+                    : 'settings.ofs_receipt_layout';
+
+                $validator->errors()->add($key, sprintf(
+                    'Layout "%s" ne podržava format "%s". Dozvoljeno: %s.',
+                    $layout,
+                    $format,
+                    implode(', ', $allowed),
+                ));
             }
         });
     }

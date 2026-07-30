@@ -121,4 +121,18 @@ class CompanySetting extends Model
             default => null,
         };
     }
+
+    /**
+     * Which receipt image formats a layout can actually render.
+     *
+     * The A4 ("Invoice") layout has no PNG renderer. OFS does not reject the combination — it
+     * answers 200 with a valid but blank PNG, 82 bytes and one pixel tall (measured against the
+     * test register), so nothing surfaces until someone opens the receipt.
+     */
+    public static function allowedReceiptImageFormats(?string $layout): array
+    {
+        return $layout === 'Invoice'
+            ? ['Pdf', 'Html']
+            : ['Png', 'Pdf', 'Html'];
+    }
 }
