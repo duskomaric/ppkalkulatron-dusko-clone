@@ -138,7 +138,7 @@ class InvoiceController extends Controller
         // A receipt whose file is gone would otherwise be dropped silently and the caller would
         // be told the mail went out complete — split it out so the response can say so.
         [$available, $missing] = $requestedRecords
-            ->partition(fn ($record) => $receipts->exists($record->fiscal_receipt_image_path));
+            ->partition(fn ($record) => $receipts->has($record));
 
         $attachFiscalRecordIds = $available->pluck('id')->values()->all();
 

@@ -62,17 +62,18 @@ class InvoiceMail extends Mailable
 
         foreach ($this->attachFiscalRecordIds as $recordId) {
             $record = $this->invoice->fiscalRecords->firstWhere('id', $recordId);
-            $path = $record?->fiscal_receipt_image_path;
 
-            if (! $path) {
+            if (! $record) {
                 continue;
             }
 
-            if (! $receipts->exists($path)) {
-                Log::warning('Fiscal receipt not attached to email, file missing from storage', [
+            $binary = $receipts->binary($record);
+
+            if ($binary === null) {
+                Log::warning('Fiscal receipt not attached to email, content missing', [
                     'invoice_id' => $this->invoice->id,
                     'fiscal_record_id' => $record->id,
-                    'path' => $path,
+                    'path' => $record->fiscal_receipt_image_path,
                     'disk' => $receipts->diskName(),
                 ]);
 
@@ -87,9 +88,8 @@ class InvoiceMail extends Mailable
 
             // OFS returns PNG, PDF or HTML depending on ofs_receipt_image_format — name the
             // attachment after what was actually stored, not always .png.
-            $atts[] = Attachment::fromStorageDisk($receipts->diskName(), $path)
-                ->as('fiskalni-racun_' . $invoiceNumber . $suffix . '.' . $receipts->extensionOf($path))
-                ->withMime($receipts->mimeFor($path));
+            $atts[] = Attachment::fromData(fn () => $binary, 'fiskalni-racun_' . $invoiceNumber . $suffix . '.' . $receipts->extension($record))
+                ->withMime($receipts->mime($record));
         }
 
         return $atts;

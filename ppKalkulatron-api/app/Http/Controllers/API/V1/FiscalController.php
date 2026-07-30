@@ -244,9 +244,9 @@ class FiscalController extends Controller
                     $fiscalCounter = (string) $fiscalCounter;
                 }
 
-                $receiptImagePath = $this->extractAndSaveFiscalReceiptImage($company, $invoice, $data, 'original');
+                $receipt = $this->extractFiscalReceiptImage($data);
 
-                FiscalRecord::create([
+                $record = FiscalRecord::create([
                     'invoice_id' => $invoice->id,
                     'type' => FiscalRecordTypeEnum::Original,
                     'fiscal_invoice_number' => $data['invoiceNumber'] ?? null,
@@ -254,8 +254,10 @@ class FiscalController extends Controller
                     'request_id' => $requestId,
                     'verification_url' => $data['verificationUrl'] ?? null,
                     'fiscalized_at' => now(),
-                    'fiscal_receipt_image_path' => $receiptImagePath,
+                    'fiscal_receipt_image_path' => $this->receiptName($company, $invoice, 'original', $receipt),
                 ]);
+
+                $this->persistReceipt($record, $receipt);
 
                 $invoice->update(['status' => DocumentStatusEnum::Fiscalized]);
 
@@ -359,9 +361,9 @@ class FiscalController extends Controller
             }
 
             if (isset($data['invoiceNumber'])) {
-                $receiptImagePath = $this->extractAndSaveFiscalReceiptImage($company, $invoice, $data, 'copy');
+                $receipt = $this->extractFiscalReceiptImage($data);
 
-                FiscalRecord::create([
+                $record = FiscalRecord::create([
                     'invoice_id' => $invoice->id,
                     'type' => FiscalRecordTypeEnum::Copy,
                     'fiscal_invoice_number' => $data['invoiceNumber'] ?? null,
@@ -369,8 +371,10 @@ class FiscalController extends Controller
                     'request_id' => $requestId,
                     'verification_url' => $data['verificationUrl'] ?? null,
                     'fiscalized_at' => now(),
-                    'fiscal_receipt_image_path' => $receiptImagePath,
+                    'fiscal_receipt_image_path' => $this->receiptName($company, $invoice, 'copy', $receipt),
                 ]);
+
+                $this->persistReceipt($record, $receipt);
 
                 return response()->json([
                     'success' => true,
@@ -485,9 +489,9 @@ class FiscalController extends Controller
             }
 
             if (isset($data['invoiceNumber'])) {
-                $receiptImagePath = $this->extractAndSaveFiscalReceiptImage($company, $invoice, $data, 'refund');
+                $receipt = $this->extractFiscalReceiptImage($data);
 
-                FiscalRecord::create([
+                $record = FiscalRecord::create([
                     'invoice_id' => $invoice->id,
                     'type' => FiscalRecordTypeEnum::Refund,
                     'fiscal_invoice_number' => $data['invoiceNumber'] ?? null,
@@ -495,8 +499,10 @@ class FiscalController extends Controller
                     'request_id' => $requestId,
                     'verification_url' => $data['verificationUrl'] ?? null,
                     'fiscalized_at' => now(),
-                    'fiscal_receipt_image_path' => $receiptImagePath,
+                    'fiscal_receipt_image_path' => $this->receiptName($company, $invoice, 'refund', $receipt),
                 ]);
+
+                $this->persistReceipt($record, $receipt);
 
                 $invoice->update(['status' => DocumentStatusEnum::Refunded]);
 
@@ -643,62 +649,40 @@ class FiscalController extends Controller
         return $payload;
     }
 
-    protected function extractAndSaveFiscalReceiptImage(Company $company, Invoice $invoice, array $responseData, string $type = 'original'): ?string
+    /** @return array{binary: string, extension: string}|null */
+    protected function extractFiscalReceiptImage(array $responseData): ?array
     {
-        // OFS može vratiti različita polja zavisno od receiptImageFormat.
-        $base64Candidates = [
-            'invoiceImagePngBase64' => 'png',
-            'invoiceImagePdfBase64' => 'pdf',
-            'invoiceImageHtmlBase64' => 'html',
-        ];
-
-        foreach ($base64Candidates as $field => $extension) {
-            $content = $responseData[$field] ?? null;
-            if (is_string($content) && $content !== '') {
-                return $this->saveFiscalReceiptFile($company, $invoice, $content, $type, $extension, true);
-            }
-        }
-
-        // Neki uređaji vraćaju HTML kao plain string (ne base64).
-        $htmlCandidates = ['invoiceImageHtml', 'invoiceHtml', 'receiptHtml'];
-        foreach ($htmlCandidates as $field) {
-            $html = $responseData[$field] ?? null;
-            if (is_string($html) && trim($html) !== '') {
-                return $this->saveFiscalReceiptFile($company, $invoice, $html, $type, 'html', false);
-            }
-        }
-
-        return null;
+        return app(FiscalReceiptStore::class)->extractFrom($responseData);
     }
 
     /**
-     * Spremi fiskalni receipt u folder: company-slug/mjesec/broj-fakture-(type).ext
+     * Logical name of the receipt: company-slug/mjesec/broj-fakture-(type).ext
+     *
+     * Kept on the record because it names the mail attachment and, for records created before
+     * receipts moved into the database, still points at a file on disk.
+     *
+     * @param  array{binary: string, extension: string}|null  $receipt
      */
-    protected function saveFiscalReceiptFile(
-        Company $company,
-        Invoice $invoice,
-        string $content,
-        string $type = 'original',
-        string $extension = 'png',
-        bool $isBase64 = true
-    ): string
+    protected function receiptName(Company $company, Invoice $invoice, string $type, ?array $receipt): ?string
     {
-        $month = now()->format('Y-m');
-        $safeNumber = preg_replace('/[^a-zA-Z0-9\-_]/', '-', $invoice->invoice_number);
-        $relativePath = $company->slug.'/'.$month.'/'.$safeNumber.'-'.$type.'.'.$extension;
-
-        if ($isBase64) {
-            $binary = base64_decode($content, true);
-            if ($binary === false) {
-                throw new \InvalidArgumentException('Invalid base64 receipt data');
-            }
-        } else {
-            $binary = $content;
+        if ($receipt === null) {
+            return null;
         }
 
-        app(FiscalReceiptStore::class)->put($relativePath, $binary);
+        $month = now()->format('Y-m');
+        $safeNumber = preg_replace('/[^a-zA-Z0-9\-_]/', '-', $invoice->invoice_number);
 
-        return $relativePath;
+        return $company->slug.'/'.$month.'/'.$safeNumber.'-'.$type.'.'.$receipt['extension'];
+    }
+
+    /** @param  array{binary: string, extension: string}|null  $receipt */
+    protected function persistReceipt(FiscalRecord $record, ?array $receipt): void
+    {
+        if ($receipt === null) {
+            return;
+        }
+
+        app(FiscalReceiptStore::class)->store($record, $receipt['binary'], $receipt['extension']);
     }
 
     /**
@@ -721,30 +705,28 @@ class FiscalController extends Controller
             return response()->json(['message' => 'Fiskalni zapis nije pronađen.'], 404);
         }
 
-        $imagePath = $record->fiscal_receipt_image_path;
-
-        if (! $imagePath) {
+        if (! $record->fiscal_receipt_image_path && ! $record->receiptImage) {
             return response()->json([
                 'message' => 'OFS nije vratio sliku računa za ovaj zapis.',
             ], 404);
         }
 
-        if (! $receipts->exists($imagePath)) {
-            Log::warning('Fiscal receipt file missing from storage', [
+        if (! $receipts->has($record)) {
+            Log::warning('Fiscal receipt content missing', [
                 'invoice_id' => $invoice->id,
                 'fiscal_record_id' => $record->id,
-                'path' => $imagePath,
+                'path' => $record->fiscal_receipt_image_path,
                 'disk' => $receipts->diskName(),
             ]);
 
             return response()->json([
-                'message' => 'Slika je zabilježena, ali datoteke nema na disku. '
-                    . 'Ako aplikacija radi na hostu koji ne čuva storage/ između deployeva, '
-                    . 'postavite FISCAL_RECEIPTS_DISK na trajni disk.',
+                'message' => 'Slika je zabilježena, ali sadržaja nema. Zapis je nastao prije nego '
+                    . 'što su se slike počele čuvati u bazi, a datoteka je izgubljena. '
+                    . 'Pokušajte je povratiti sa OFS-a komandom fiscal:recover-receipts.',
             ], 404);
         }
 
-        return $receipts->response($imagePath);
+        return $receipts->response($record);
     }
 
     /**

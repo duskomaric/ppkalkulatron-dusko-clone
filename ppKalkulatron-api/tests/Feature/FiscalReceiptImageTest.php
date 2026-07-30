@@ -2,18 +2,18 @@
 
 use App\Models\Client;
 use App\Models\Company;
+use App\Models\CompanySetting;
 use App\Models\Enums\DocumentStatusEnum;
 use App\Models\Enums\FiscalRecordTypeEnum;
+use App\Models\FiscalReceiptImage;
 use App\Models\FiscalRecord;
 use App\Models\Invoice;
 use App\Models\User;
 use App\Services\FiscalReceiptStore;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
-/**
- * The receipt disk is swapped for a fake one, which also proves the code no longer depends on
- * real filesystem paths — it would break on any non-local driver.
- */
+/** Swapping the receipt disk for a fake one also proves the fallback is not path-based. */
 function fakeReceiptDisk(): Illuminate\Contracts\Filesystem\Filesystem
 {
     config()->set('filesystems.fiscal_receipts_disk', 'receipts-test');
@@ -21,7 +21,7 @@ function fakeReceiptDisk(): Illuminate\Contracts\Filesystem\Filesystem
     return Storage::fake('receipts-test');
 }
 
-function invoiceWithFiscalRecord(Company $company, ?string $imagePath): array
+function fiscalizedInvoice(Company $company, ?string $imagePath, ?string $requestId = 'req-1'): array
 {
     $client = Client::factory()->create(['company_id' => $company->id]);
 
@@ -36,6 +36,7 @@ function invoiceWithFiscalRecord(Company $company, ?string $imagePath): array
         'invoice_id' => $invoice->id,
         'type' => FiscalRecordTypeEnum::Original,
         'fiscal_invoice_number' => 'ABC123-ABC123-1',
+        'request_id' => $requestId,
         'fiscalized_at' => now(),
         'fiscal_receipt_image_path' => $imagePath,
     ]);
@@ -43,49 +44,78 @@ function invoiceWithFiscalRecord(Company $company, ?string $imagePath): array
     return [$invoice, $record];
 }
 
-it('streams the receipt from the configured disk', function () {
-    $disk = fakeReceiptDisk();
+function storeReceiptInDb(FiscalRecord $record, string $binary, string $extension = 'png'): void
+{
+    app(FiscalReceiptStore::class)->store($record, $binary, $extension);
+    $record->refresh();
+}
+
+function receiptUrl(Company $company, Invoice $invoice, FiscalRecord $record): string
+{
+    return "/api/v1/{$company->slug}/invoices/{$invoice->id}/fiscal-receipt-image?fiscal_record_id={$record->id}";
+}
+
+it('serves a receipt stored in the database', function () {
+    fakeReceiptDisk();
     $user = User::factory()->create();
     $company = Company::factory()->create();
     attachUserToCompany($user, $company);
 
-    [$invoice, $record] = invoiceWithFiscalRecord($company, 'acme/2026-07/0001-2026-original.png');
-    $disk->put('acme/2026-07/0001-2026-original.png', 'fake-png-bytes');
+    [$invoice, $record] = fiscalizedInvoice($company, 'acme/2026-07/0001-2026-original.png');
+    storeReceiptInDb($record, 'fake-png-bytes');
 
-    $this->withHeaders(authHeaders($user))
-        ->getJson("/api/v1/{$company->slug}/invoices/{$invoice->id}/fiscal-receipt-image?fiscal_record_id={$record->id}")
+    $response = $this->withHeaders(authHeaders($user))
+        ->get(receiptUrl($company, $invoice, $record))
         ->assertStatus(200)
         ->assertHeader('Content-Type', 'image/png');
+
+    expect($response->content())->toBe('fake-png-bytes');
 });
 
 it('serves a pdf receipt with the pdf content type', function () {
-    $disk = fakeReceiptDisk();
+    fakeReceiptDisk();
     $user = User::factory()->create();
     $company = Company::factory()->create();
     attachUserToCompany($user, $company);
 
-    [$invoice, $record] = invoiceWithFiscalRecord($company, 'acme/2026-07/0001-2026-original.pdf');
-    $disk->put('acme/2026-07/0001-2026-original.pdf', '%PDF-1.4 fake');
+    [$invoice, $record] = fiscalizedInvoice($company, 'acme/2026-07/0001-2026-original.pdf');
+    storeReceiptInDb($record, '%PDF-1.4 fake', 'pdf');
 
     $this->withHeaders(authHeaders($user))
-        ->getJson("/api/v1/{$company->slug}/invoices/{$invoice->id}/fiscal-receipt-image?fiscal_record_id={$record->id}")
+        ->get(receiptUrl($company, $invoice, $record))
         ->assertStatus(200)
         ->assertHeader('Content-Type', 'application/pdf');
 });
 
-it('explains that the file is gone rather than that no image exists', function () {
-    fakeReceiptDisk(); // path recorded, nothing written — the production symptom
+it('still serves a receipt that only exists as a legacy file on disk', function () {
+    $disk = fakeReceiptDisk();
     $user = User::factory()->create();
     $company = Company::factory()->create();
     attachUserToCompany($user, $company);
 
-    [$invoice, $record] = invoiceWithFiscalRecord($company, 'acme/2026-07/0001-2026-original.png');
+    [$invoice, $record] = fiscalizedInvoice($company, 'acme/2026-02/0001-2026-original.png');
+    $disk->put('acme/2026-02/0001-2026-original.png', 'legacy-bytes');
 
     $response = $this->withHeaders(authHeaders($user))
-        ->getJson("/api/v1/{$company->slug}/invoices/{$invoice->id}/fiscal-receipt-image?fiscal_record_id={$record->id}")
+        ->get(receiptUrl($company, $invoice, $record))
+        ->assertStatus(200);
+
+    expect($response->content())->toBe('legacy-bytes');
+});
+
+it('explains that the content is gone rather than that no image exists', function () {
+    fakeReceiptDisk(); // name recorded, nothing in the database and no file — the lost receipts
+    $user = User::factory()->create();
+    $company = Company::factory()->create();
+    attachUserToCompany($user, $company);
+
+    [$invoice, $record] = fiscalizedInvoice($company, 'acme/2026-02/0001-2026-original.png');
+
+    $response = $this->withHeaders(authHeaders($user))
+        ->getJson(receiptUrl($company, $invoice, $record))
         ->assertStatus(404);
 
-    expect($response->json('message'))->toContain('datoteke nema na disku');
+    expect($response->json('message'))->toContain('fiscal:recover-receipts');
 });
 
 it('distinguishes a record that never got an image', function () {
@@ -94,37 +124,54 @@ it('distinguishes a record that never got an image', function () {
     $company = Company::factory()->create();
     attachUserToCompany($user, $company);
 
-    [$invoice, $record] = invoiceWithFiscalRecord($company, null);
+    [$invoice, $record] = fiscalizedInvoice($company, null);
 
     $response = $this->withHeaders(authHeaders($user))
-        ->getJson("/api/v1/{$company->slug}/invoices/{$invoice->id}/fiscal-receipt-image?fiscal_record_id={$record->id}")
+        ->getJson(receiptUrl($company, $invoice, $record))
         ->assertStatus(404);
 
     expect($response->json('message'))->toContain('OFS nije vratio sliku');
 });
 
 it('does not leak receipts of another company', function () {
-    $disk = fakeReceiptDisk();
+    fakeReceiptDisk();
     $user = User::factory()->create();
     $company = Company::factory()->create();
     $other = Company::factory()->create();
     attachUserToCompany($user, $company);
     attachUserToCompany($user, $other);
 
-    [$invoice, $record] = invoiceWithFiscalRecord($other, 'other/2026-07/0001-2026-original.png');
-    $disk->put('other/2026-07/0001-2026-original.png', 'fake-png-bytes');
+    [$invoice, $record] = fiscalizedInvoice($other, 'other/2026-07/0001-2026-original.png');
+    storeReceiptInDb($record, 'fake-png-bytes');
 
     $this->withHeaders(authHeaders($user))
-        ->getJson("/api/v1/{$company->slug}/invoices/{$invoice->id}/fiscal-receipt-image?fiscal_record_id={$record->id}")
+        ->getJson(receiptUrl($company, $invoice, $record))
         ->assertStatus(404);
 });
 
+it('keeps the receipt out of invoice listing queries', function () {
+    fakeReceiptDisk();
+    $user = User::factory()->create();
+    $company = Company::factory()->create();
+    attachUserToCompany($user, $company);
+
+    [$invoice, $record] = fiscalizedInvoice($company, 'acme/2026-07/0001-2026-original.png');
+    storeReceiptInDb($record, str_repeat('x', 50_000));
+
+    $response = $this->withHeaders(authHeaders($user))
+        ->getJson("/api/v1/{$company->slug}/invoices")
+        ->assertStatus(200);
+
+    // A receipt column on fiscal_records would have been read and serialised here.
+    expect($response->content())->not->toContain('xxxxxxxxxx');
+});
+
 it('names the mail attachment after what was actually stored', function () {
-    $disk = fakeReceiptDisk();
+    fakeReceiptDisk();
     $company = Company::factory()->create();
 
-    [$invoice, $record] = invoiceWithFiscalRecord($company, 'acme/2026-07/0001-2026-original.pdf');
-    $disk->put('acme/2026-07/0001-2026-original.pdf', '%PDF-1.4 fake');
+    [$invoice, $record] = fiscalizedInvoice($company, 'acme/2026-07/0001-2026-original.pdf');
+    storeReceiptInDb($record, '%PDF-1.4 fake', 'pdf');
 
     $mail = new App\Mail\InvoiceMail(
         invoice: $invoice->load('fiscalRecords'),
@@ -143,7 +190,7 @@ it('skips a missing receipt attachment instead of failing to send', function () 
     fakeReceiptDisk();
     $company = Company::factory()->create();
 
-    [$invoice, $record] = invoiceWithFiscalRecord($company, 'acme/2026-07/0001-2026-original.png');
+    [$invoice, $record] = fiscalizedInvoice($company, 'acme/2026-02/0001-2026-original.png');
 
     $mail = new App\Mail\InvoiceMail(
         invoice: $invoice->load('fiscalRecords'),
@@ -161,7 +208,7 @@ it('reports a receipt it could not attach when sending the mail', function () {
     $company = Company::factory()->create();
     attachUserToCompany($user, $company);
 
-    [$invoice, $record] = invoiceWithFiscalRecord($company, 'acme/2026-07/0001-2026-original.png');
+    [$invoice, $record] = fiscalizedInvoice($company, 'acme/2026-02/0001-2026-original.png');
 
     $response = $this->withHeaders(authHeaders($user))
         ->postJson("/api/v1/{$company->slug}/invoices/{$invoice->id}/send-email", [
@@ -177,7 +224,7 @@ it('reports a receipt it could not attach when sending the mail', function () {
         ->and($response->json('message'))->toContain('nije priložena');
 });
 
-it('resolves the disk from configuration', function () {
+it('resolves the fallback disk from configuration', function () {
     config()->set('filesystems.fiscal_receipts_disk', 'receipts-test');
 
     expect(app(FiscalReceiptStore::class)->diskName())->toBe('receipts-test');
@@ -186,8 +233,89 @@ it('resolves the disk from configuration', function () {
     config()->set('filesystems.fiscal_receipts_disk', '');
 
     expect(app(FiscalReceiptStore::class)->diskName())->toBe('fiscal_receipts');
+});
 
-    config()->set('filesystems.fiscal_receipts_disk', null);
+it('reads the receipt out of any OFS response shape', function (string $field, string $value, string $expectedExtension) {
+    $receipt = app(FiscalReceiptStore::class)->extractFrom([$field => $value]);
 
-    expect(app(FiscalReceiptStore::class)->diskName())->toBe('fiscal_receipts');
+    expect($receipt['extension'])->toBe($expectedExtension);
+})->with([
+    ['invoiceImagePngBase64', 'ZmFrZS1wbmc=', 'png'],
+    ['invoiceImagePdfBase64', 'JVBERi0xLjQ=', 'pdf'],
+    ['invoiceImageHtmlBase64', 'PGh0bWw+', 'html'],
+    ['invoiceImageHtml', '<html>račun</html>', 'html'],
+]);
+
+it('recovers a lost receipt from OFS', function () {
+    fakeReceiptDisk();
+    $company = Company::factory()->create();
+    CompanySetting::set('ofs_base_url', 'https://ofs.test/api', $company->id);
+
+    [, $record] = fiscalizedInvoice($company, 'acme/2026-02/0001-2026-original.png', 'req-abc');
+
+    Http::fake([
+        '*/api/invoices/request/req-abc' => Http::response([
+            'invoiceNumber' => 'ABC123-ABC123-1',
+            'invoiceImagePngBase64' => base64_encode('recovered-bytes'),
+        ], 200),
+    ]);
+
+    $this->artisan('fiscal:recover-receipts')
+        ->assertExitCode(0);
+
+    expect(FiscalReceiptImage::where('fiscal_record_id', $record->id)->exists())->toBeTrue()
+        ->and(app(FiscalReceiptStore::class)->binary($record->fresh()))->toBe('recovered-bytes');
+});
+
+it('leaves the receipt alone on a dry run', function () {
+    fakeReceiptDisk();
+    $company = Company::factory()->create();
+    CompanySetting::set('ofs_base_url', 'https://ofs.test/api', $company->id);
+
+    [, $record] = fiscalizedInvoice($company, 'acme/2026-02/0001-2026-original.png', 'req-abc');
+
+    Http::fake([
+        '*/api/invoices/request/req-abc' => Http::response([
+            'invoiceImagePngBase64' => base64_encode('recovered-bytes'),
+        ], 200),
+    ]);
+
+    $this->artisan('fiscal:recover-receipts --dry-run')->assertExitCode(0);
+
+    expect(FiscalReceiptImage::where('fiscal_record_id', $record->id)->exists())->toBeFalse();
+});
+
+it('reports a receipt OFS no longer has', function () {
+    fakeReceiptDisk();
+    $company = Company::factory()->create();
+    CompanySetting::set('ofs_base_url', 'https://ofs.test/api', $company->id);
+
+    [, $record] = fiscalizedInvoice($company, 'acme/2026-02/0001-2026-original.png', 'req-old');
+
+    // OFS keeps only the last 100 requests; an aged-out one comes back empty.
+    Http::fake([
+        '*/api/invoices/request/req-old' => Http::response([], 200),
+    ]);
+
+    $this->artisan('fiscal:recover-receipts')
+        ->expectsOutputToContain('Could not recover 1 receipt(s)')
+        ->assertExitCode(0);
+
+    expect(FiscalReceiptImage::where('fiscal_record_id', $record->id)->exists())->toBeFalse();
+});
+
+it('does not re-fetch a receipt it already has', function () {
+    fakeReceiptDisk();
+    $company = Company::factory()->create();
+
+    [, $record] = fiscalizedInvoice($company, 'acme/2026-07/0001-2026-original.png');
+    storeReceiptInDb($record, 'already-here');
+
+    Http::fake(); // any OFS call would return an empty 200 and overwrite nothing
+
+    $this->artisan('fiscal:recover-receipts')
+        ->expectsOutputToContain('Nothing to recover')
+        ->assertExitCode(0);
+
+    Http::assertNothingSent();
 });
