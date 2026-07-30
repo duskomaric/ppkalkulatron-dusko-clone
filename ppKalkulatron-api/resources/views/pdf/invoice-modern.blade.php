@@ -314,7 +314,7 @@
                     <div class="card-eyebrow">Detalji</div>
                     <div class="document-details-row"><span class="document-details-label">Rok dospijeća</span> <span class="document-details-value">{{ $invoice->due_date?->format('d.m.Y.') ?? '-' }}</span></div>
                     <div class="document-details-row"><span class="document-details-label">Datum izdavanja</span> <span class="document-details-value">{{ $invoice->date?->format('d.m.Y.') ?? '-' }}</span></div>
-                    <div class="document-details-row"><span class="document-details-label">Način plaćanja</span> <span class="document-details-value">{{ $invoice->payment_type }}</span></div>
+                    <div class="document-details-row"><span class="document-details-label">Način plaćanja</span> <span class="document-details-value">{{ $invoice->payment_type?->label() ?? '-' }}</span></div>
                     @php
                         $originalFiscal = $invoice->fiscalRecords->firstWhere('type', \App\Models\Enums\FiscalRecordTypeEnum::Original);
                     @endphp
@@ -361,7 +361,7 @@
                 $taxAmount = (int)$item->tax_amount;
                 $total = (int)$item->total;
                 $unitPriceWithoutVat = $quantity > 0 ? (int)round($subtotal / $quantity) : 0;
-                $unit = $item->article?->unit ?? $item->unit ?? 'kom';
+                $unit = \App\Models\Enums\UnitEnum::labelFor($item->article?->unit);
                 $taxRatePercent = $taxRateRaw / 100;
             @endphp
             <tr>

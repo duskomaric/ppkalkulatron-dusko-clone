@@ -42,4 +42,19 @@ enum UnitEnum: string
             'label' => $e->label(),
         ], self::cases());
     }
+
+    /**
+     * Display label for a stored unit. The column is a plain string and users can type their
+     * own unit, so anything unknown is passed through as written; empty falls back to "kom".
+     */
+    public static function labelFor(?string $unit): string
+    {
+        $unit = trim((string) $unit);
+
+        if ($unit === '') {
+            return self::KOM->label();
+        }
+
+        return self::tryFrom($unit)?->label() ?? $unit;
+    }
 }

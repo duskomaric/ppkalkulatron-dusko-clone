@@ -221,7 +221,7 @@
                         </tr>
                         <tr>
                             <td class="detail-label">Način plaćanja</td>
-                            <td class="detail-value">{{ $invoice->payment_type }}</td>
+                            <td class="detail-value">{{ $invoice->payment_type?->label() ?? '-' }}</td>
                         </tr>
                         @php
                             $originalFiscal = $invoice->fiscalRecords->firstWhere('type', \App\Models\Enums\FiscalRecordTypeEnum::Original);

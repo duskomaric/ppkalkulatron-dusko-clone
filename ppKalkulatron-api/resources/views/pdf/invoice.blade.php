@@ -249,7 +249,7 @@
                         </tr>
                         <tr>
                             <td class="detail-label">Način plaćanja:</td>
-                            <td class="detail-value">{{ $invoice->payment_type }}</td>
+                            <td class="detail-value">{{ $invoice->payment_type?->label() ?? '-' }}</td>
                         </tr>
                         @php
                             $originalFiscal = $invoice->fiscalRecords->firstWhere('type', \App\Models\Enums\FiscalRecordTypeEnum::Original);
@@ -299,7 +299,7 @@
                 $taxAmount = (int) $item->tax_amount;
                 $total = (int) $item->total; // sa PDV
                 $unitPriceWithoutVat = $quantity > 0 ? (int) round($subtotal / $quantity) : 0;
-                $unit = $item->article?->unit ?? $item->unit ?? 'kom';
+                $unit = \App\Models\Enums\UnitEnum::labelFor($item->article?->unit);
                 $taxRatePercent = $taxRateRaw / 100;
             @endphp
             <tr>
