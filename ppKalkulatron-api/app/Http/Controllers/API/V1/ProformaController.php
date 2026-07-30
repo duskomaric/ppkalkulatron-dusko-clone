@@ -149,8 +149,10 @@ class ProformaController extends Controller
     #[Endpoint(operationId: 'destroyProforma', title: 'Destroy proforma', description: 'Remove proforma')]
     public function destroy(Company $company, Proforma $proforma, DocumentNumberService $numberService): JsonResponse
     {
-        $numberService->releaseNumber($company, 'proforma', $proforma->proforma_number);
+        $proformaNumber = $proforma->proforma_number;
         $proforma->delete();
+        $numberService->releaseNumber($company, 'proforma', $proformaNumber);
+
         return response()->json(['message' => 'Proforma deleted successfully']);
     }
 

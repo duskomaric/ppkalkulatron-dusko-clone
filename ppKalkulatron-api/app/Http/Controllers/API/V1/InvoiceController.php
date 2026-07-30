@@ -202,8 +202,9 @@ class InvoiceController extends Controller
             $invoice->originalInvoice()->update(['refund_invoice_id' => null]);
         }
 
-        $numberService->releaseNumber($company, 'invoice', $invoice->invoice_number);
+        $invoiceNumber = $invoice->invoice_number;
         $invoice->delete();
+        $numberService->releaseNumber($company, 'invoice', $invoiceNumber);
 
         return response()->json(['message' => 'Invoice deleted successfully']);
     }

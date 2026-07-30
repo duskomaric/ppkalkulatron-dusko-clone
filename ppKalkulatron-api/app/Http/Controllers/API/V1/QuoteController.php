@@ -144,8 +144,10 @@ class QuoteController extends Controller
     #[Endpoint(operationId: 'destroyQuote', title: 'Destroy quote', description: 'Remove quote')]
     public function destroy(Company $company, Quote $quote, DocumentNumberService $numberService): JsonResponse
     {
-        $numberService->releaseNumber($company, 'quote', $quote->quote_number);
+        $quoteNumber = $quote->quote_number;
         $quote->delete();
+        $numberService->releaseNumber($company, 'quote', $quoteNumber);
+
         return response()->json(['message' => 'Quote deleted successfully']);
     }
 

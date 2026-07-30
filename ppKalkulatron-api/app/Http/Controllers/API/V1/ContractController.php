@@ -76,7 +76,7 @@ class ContractController extends Controller
     }
 
     #[Endpoint(operationId: 'destroyContract', title: 'Destroy contract', description: 'Remove contract')]
-    public function destroy(Company $company, Contract $contract): JsonResponse
+    public function destroy(Company $company, Contract $contract, DocumentNumberService $numberService): JsonResponse
     {
         // Delete associated files
         if ($contract->file_paths) {
@@ -87,7 +87,10 @@ class ContractController extends Controller
             }
         }
 
+        $contractNumber = (string) $contract->contract_number;
         $contract->delete();
+        $numberService->releaseNumber($company, 'contract', $contractNumber);
+
         return response()->json(['message' => 'Contract deleted successfully']);
     }
 

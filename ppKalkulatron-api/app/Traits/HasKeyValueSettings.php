@@ -140,6 +140,18 @@ trait HasKeyValueSettings
         unset(static::$cachedSettings[$cacheKey]);
     }
 
+    /**
+     * Drop the in-process cache for every owner.
+     *
+     * The cache is a static, so it outlives the application instance. In tests owner ids are
+     * handed out again after each rollback, which would otherwise let one test read another
+     * test's settings.
+     */
+    public static function flushCachedSettings(): void
+    {
+        static::$cachedSettings = [];
+    }
+
     private static function assertKey(string $key): void
     {
         if (! array_key_exists($key, static::$castsTo)) {
