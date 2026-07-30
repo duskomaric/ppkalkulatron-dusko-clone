@@ -955,7 +955,7 @@ export default function InvoicesPage() {
                                     <StickyNoteIcon className="h-3 w-3 text-[var(--color-text-dim)]" />
                                     <span className="text-[8px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">Napomena</span>
                                 </div>
-                                <p className="text-xs text-[var(--color-text-muted)]">{activeInvoice.notes}</p>
+                                <p className="text-xs text-[var(--color-text-muted)] whitespace-pre-line">{activeInvoice.notes}</p>
                             </div>
                         )}
 
@@ -982,7 +982,7 @@ export default function InvoicesPage() {
                                                     <div>
                                                         <p className="text-sm font-bold text-[var(--color-text-main)]">{item.name}</p>
                                                         {item.description && (
-                                                            <p className="text-[10px] text-[var(--color-text-dim)]">{item.description}</p>
+                                                            <p className="text-[10px] text-[var(--color-text-dim)] whitespace-pre-line">{item.description}</p>
                                                         )}
                                                     </div>
                                                     <p className="text-sm font-black text-primary">
@@ -999,7 +999,7 @@ export default function InvoicesPage() {
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-bold text-[var(--color-text-main)]">{item.name}</p>
                                                     {item.description && (
-                                                        <p className="text-[10px] text-[var(--color-text-dim)]">{item.description}</p>
+                                                        <p className="text-[10px] text-[var(--color-text-dim)] whitespace-pre-line">{item.description}</p>
                                                     )}
                                                 </div>
                                                 <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">

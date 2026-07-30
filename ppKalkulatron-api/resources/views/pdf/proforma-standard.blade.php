@@ -224,7 +224,7 @@
                     <td>
                         <strong>{{ $item->name }}</strong>
                         @if($item->description)
-                        <br><span style="font-size: 12px; color: #666;">{{ $item->description }}</span>
+                        <br><span style="font-size: 12px; color: #666;">{!! nl2br(e($item->description)) !!}</span>
                         @endif
                     </td>
                     <td class="text-right">{{ $item->quantity }}</td>

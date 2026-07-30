@@ -368,7 +368,7 @@
                 <td class="text-center">{{ $loop->iteration }}</td>
                 <td class="cell-description">
                     <div class="item-name">{{ $item->name }}</div>
-                    @if($item->description)<div class="item-desc">{{ $item->description }}</div>@endif
+                    @if($item->description)<div class="item-desc">{!! nl2br(e($item->description)) !!}</div>@endif
                 </td>
                 <td class="text-center">{{ $unit }}</td>
                 <td class="text-center">{{ rtrim(rtrim(number_format($quantity, 3, ',', '.'), '0'), ',') }}</td>

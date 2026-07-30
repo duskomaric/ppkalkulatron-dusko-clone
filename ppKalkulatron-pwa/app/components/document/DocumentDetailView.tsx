@@ -99,7 +99,7 @@ export function DocumentDetailView({
             <StickyNoteIcon className="h-3 w-3 text-[var(--color-text-dim)]" />
             <span className="text-[8px] font-black uppercase tracking-widest text-[var(--color-text-dim)]">Napomena</span>
           </div>
-          <p className="text-xs text-[var(--color-text-muted)]">{doc.notes}</p>
+          <p className="text-xs text-[var(--color-text-muted)] whitespace-pre-line">{doc.notes}</p>
         </div>
       )}
 
@@ -121,7 +121,7 @@ export function DocumentDetailView({
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="text-sm font-bold text-[var(--color-text-main)]">{item.name}</p>
-                      {item.description && <p className="text-[10px] text-[var(--color-text-dim)]">{item.description}</p>}
+                      {item.description && <p className="text-[10px] text-[var(--color-text-dim)] whitespace-pre-line">{item.description}</p>}
                     </div>
                     <p className="text-sm font-black text-primary">{formatPrice(item.total)} {currency}</p>
                   </div>
@@ -134,7 +134,7 @@ export function DocumentDetailView({
                 <div className="hidden md:grid grid-cols-[minmax(0,1fr)_70px_110px_80px_120px] gap-2 items-center">
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-[var(--color-text-main)]">{item.name}</p>
-                    {item.description && <p className="text-[10px] text-[var(--color-text-dim)]">{item.description}</p>}
+                    {item.description && <p className="text-[10px] text-[var(--color-text-dim)] whitespace-pre-line">{item.description}</p>}
                   </div>
                   <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">{item.quantity}</div>
                   <div className="text-xs font-bold text-[var(--color-text-muted)] text-right">{formatPrice(unitPrice)} {currency}</div>

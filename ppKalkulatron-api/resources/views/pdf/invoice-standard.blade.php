@@ -377,7 +377,7 @@
                 <td>
                     <div class="item-name">{{ $item->name }}</div>
                     @if($item->description)
-                        <div class="item-desc">{{ $item->description }}</div>
+                        <div class="item-desc">{!! nl2br(e($item->description)) !!}</div>
                     @endif
                 </td>
                 <td class="text-center" style="font-family: DejaVu Sans, sans-serif;">{{ $item->quantity }}</td>

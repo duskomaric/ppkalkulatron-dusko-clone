@@ -16,6 +16,9 @@ use App\Models\QuoteItem;
  */
 const MULTILINE_NOTE = "Prva linija.\nDruga linija.\n\nNakon praznog reda.";
 
+/** The article description is a textarea too, and it is snapshotted onto every item. */
+const MULTILINE_DESCRIPTION = "Opis prvi red.\nOpis drugi red.";
+
 function renderDocumentTemplate(string $view, string $documentType): string
 {
     $company = Company::factory()->create();
@@ -34,10 +37,12 @@ function renderDocumentTemplate(string $view, string $documentType): string
         'quote' => [Quote::factory()->create($attributes + ['quote_number' => '0001/2026']), 'quote'],
     };
 
+    $item = ['article_id' => $article->id, 'description' => MULTILINE_DESCRIPTION];
+
     match ($documentType) {
-        'invoice' => InvoiceItem::factory()->create(['invoice_id' => $document->id, 'article_id' => $article->id]),
-        'proforma' => ProformaItem::factory()->create(['proforma_id' => $document->id, 'article_id' => $article->id]),
-        'quote' => QuoteItem::factory()->create(['quote_id' => $document->id, 'article_id' => $article->id]),
+        'invoice' => InvoiceItem::factory()->create($item + ['invoice_id' => $document->id]),
+        'proforma' => ProformaItem::factory()->create($item + ['proforma_id' => $document->id]),
+        'quote' => QuoteItem::factory()->create($item + ['quote_id' => $document->id]),
     };
 
     return view($view, [
@@ -47,14 +52,8 @@ function renderDocumentTemplate(string $view, string $documentType): string
     ])->render();
 }
 
-it('keeps the line breaks of a note', function (string $view, string $documentType) {
-    $html = renderDocumentTemplate($view, $documentType);
-
-    expect($html)->toContain('Prva linija.')
-        ->and($html)->toContain('Druga linija.')
-        // Without <br> the newlines collapse and the note prints as one paragraph.
-        ->and($html)->toMatch('/Prva linija\.\s*<br\s*\/?>\s*Druga linija\./');
-})->with([
+/** Every template a document can be exported with. */
+const DOCUMENT_TEMPLATES = [
     ['pdf.invoice', 'invoice'],
     ['pdf.invoice-modern', 'invoice'],
     ['pdf.invoice-minimal', 'invoice'],
@@ -67,7 +66,22 @@ it('keeps the line breaks of a note', function (string $view, string $documentTy
     ['pdf.quote-modern', 'quote'],
     ['pdf.quote-minimal', 'quote'],
     ['pdf.quote-standard', 'quote'],
-]);
+];
+
+it('keeps the line breaks of a note', function (string $view, string $documentType) {
+    $html = renderDocumentTemplate($view, $documentType);
+
+    expect($html)->toContain('Prva linija.')
+        ->and($html)->toContain('Druga linija.')
+        // Without <br> the newlines collapse and the note prints as one paragraph.
+        ->and($html)->toMatch('/Prva linija\.\s*<br\s*\/?>\s*Druga linija\./');
+})->with(DOCUMENT_TEMPLATES);
+
+it('keeps the line breaks of an item description', function (string $view, string $documentType) {
+    $html = renderDocumentTemplate($view, $documentType);
+
+    expect($html)->toMatch('/Opis prvi red\.\s*<br\s*\/?>\s*Opis drugi red\./');
+})->with(DOCUMENT_TEMPLATES);
 
 it('escapes a note before turning newlines into breaks', function () {
     $company = Company::factory()->create();

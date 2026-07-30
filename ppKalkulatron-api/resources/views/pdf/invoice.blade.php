@@ -307,7 +307,7 @@
                 <td>
                     <div style="font-weight: 700;">{{ $item->name }}</div>
                     @if($item->description)
-                        <div style="font-size: 6pt; color: #555;">{{ $item->description }}</div>
+                        <div style="font-size: 6pt; color: #555;">{!! nl2br(e($item->description)) !!}</div>
                     @endif
                 </td>
                 <td class="center">{{ $unit }}</td>

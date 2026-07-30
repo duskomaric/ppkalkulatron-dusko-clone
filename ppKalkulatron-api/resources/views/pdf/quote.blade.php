@@ -108,7 +108,7 @@
                 <tr>
                     <td>
                         <strong>{{ $item->name }}</strong>
-                        @if($item->description)<br><span style="font-size: 9pt; color: #6b7280;">{{ $item->description }}</span>@endif
+                        @if($item->description)<br><span style="font-size: 9pt; color: #6b7280;">{!! nl2br(e($item->description)) !!}</span>@endif
                     </td>
                     <td class="text-right">{{ $item->quantity }}</td>
                     <td class="text-right">{{ $formatAmount($item->quantity > 0 ? $item->total / $item->quantity : 0) }} {{ $currency }}</td>
