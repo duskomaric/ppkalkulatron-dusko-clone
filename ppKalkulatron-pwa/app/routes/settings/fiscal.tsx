@@ -38,6 +38,7 @@ import {
     isLocalFiscalBlockedByMixedContent,
     isLocalNetworkScanBlocked,
     LOCAL_FISCAL_MIXED_CONTENT_MESSAGE,
+    LOOPBACK_ESIR_SUGGESTIONS,
 } from "~/utils/fiscalLocal";
 
 /** Vraća Service Worker za LOCAL_FETCH (controller ili registration.active). Izvor: PWA, da request ide s uređaja korisnika na lokalnu adresu. */
@@ -676,6 +677,18 @@ export default function FiscalSettingsPage() {
                                 <p className="text-xs text-[var(--color-text-dim)] leading-relaxed">
                                     {LOCAL_FISCAL_MIXED_CONTENT_MESSAGE}
                                 </p>
+                                <div className="flex flex-wrap gap-2 mt-3">
+                                    {LOOPBACK_ESIR_SUGGESTIONS.map((url) => (
+                                        <button
+                                            key={url}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, ofs_base_url: url })}
+                                            className="px-3 py-1.5 rounded-lg border border-amber-500/40 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-xs font-bold cursor-pointer"
+                                        >
+                                            Postavi {url}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
                         {formData.ofs_device_mode === "local" && (
