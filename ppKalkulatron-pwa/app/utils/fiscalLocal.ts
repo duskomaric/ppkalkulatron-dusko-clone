@@ -44,15 +44,45 @@ export function isLocalFiscalBlockedByMixedContent(baseUrl: string): boolean {
     }
 }
 
+/** Privatni opsezi po RFC 1918 — preglednik ih ne smatra sigurnim porijeklom. */
+export function isPrivateNetworkHost(host: string): boolean {
+    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!ipv4) return false;
+
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+
+    return a === 10
+        || (a === 172 && b >= 16 && b <= 31)
+        || (a === 192 && b === 168);
+}
+
 export const LOCAL_FISCAL_MIXED_CONTENT_MESSAGE =
-    "Preglednik blokira HTTP adresu na lokalnoj mreži (npr. http://192.168.x.x:3566) sa HTTPS stranice, " +
-    "i service worker to ne zaobilazi. Ako ESIR radi na istom računaru kao i preglednik, u Base URL " +
-    "upišite http://localhost:3566 (ili http://127.0.0.1:3566) — loopback preglednik dozvoljava. " +
-    "Ako ESIR radi na drugom računaru, prebacite način uređaja na Cloud.";
+    "Preglednik blokira HTTP adresu sa HTTPS stranice (mixed content), i service worker to ne zaobilazi. " +
+    "Sam ESIR ne podržava HTTPS — sluša samo HTTP na portu 3566.";
+
+/** Uređaj je zasebna kutija na LAN-u: HTTPS mu ne možemo dodati, pa ide proxy ili Chrome postavka. */
+const PRIVATE_NETWORK_ADVICE =
+    "Najbrže: u Chromeu klikni na ikonu pored adrese → Postavke stranice → \"Nesiguran sadržaj\" → Dozvoli. " +
+    "Trajno rješenje za više uređaja: HTTPS reverse proxy na bilo kojem računaru na istoj mreži, koji " +
+    "prosljeđuje na uređaj. Ili prebaci način uređaja na Cloud.";
+
+/** ESIR kao program na istom računaru — loopback preglednik dozvoljava. */
+const LOOPBACK_ADVICE =
+    "Ako ESIR radi na istom računaru kao i preglednik, u Base URL upiši http://localhost:3566 — " +
+    "loopback je izuzet od ovog ograničenja.";
 
 export function getLocalFiscalBlockedReason(baseUrl: string): string | null {
     if (!isLocalFiscalBlockedByMixedContent(baseUrl)) return null;
-    return LOCAL_FISCAL_MIXED_CONTENT_MESSAGE;
+
+    let host = "";
+    try {
+        host = new URL(normalizeFiscalBaseUrl(baseUrl)).hostname;
+    } catch {
+        // Neispravan URL — ostaje generična poruka.
+    }
+
+    return LOCAL_FISCAL_MIXED_CONTENT_MESSAGE + " "
+        + (isPrivateNetworkHost(host) ? PRIVATE_NETWORK_ADVICE : LOOPBACK_ADVICE);
 }
 
 /**
@@ -61,6 +91,15 @@ export function getLocalFiscalBlockedReason(baseUrl: string): string | null {
  */
 export function isLocalNetworkScanBlocked(): boolean {
     return typeof window !== "undefined" && window.location.protocol === "https:";
+}
+
+/** Hostname iz base URL-a, ili prazno ako URL nije ispravan. */
+export function hostOf(baseUrl: string | null | undefined): string {
+    try {
+        return new URL(normalizeFiscalBaseUrl(baseUrl ?? "")).hostname;
+    } catch {
+        return "";
+    }
 }
 
 /** Predložene loopback adrese koje rade i sa HTTPS stranice. */
