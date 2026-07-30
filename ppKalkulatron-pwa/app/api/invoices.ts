@@ -174,7 +174,7 @@ export async function sendInvoiceEmail(
     invoiceId: number,
     token: string,
     data: SendInvoiceEmailInput
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; missing_fiscal_receipt_record_ids?: number[] }> {
     return fetchApi(`/${companySlug}/invoices/${invoiceId}/send-email`, {
         method: "POST",
         token,

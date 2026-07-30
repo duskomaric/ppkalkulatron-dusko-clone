@@ -469,7 +469,11 @@ export default function InvoicesPage() {
                 attach_pdf: emailForm.attach_pdf,
                 attach_fiscal_record_ids: emailForm.attach_fiscal_record_ids,
             });
-            showToast(res.message || "Faktura uspješno poslata na email", "success");
+            const missingReceipts = (res.missing_fiscal_receipt_record_ids ?? []).length > 0;
+            showToast(
+                res.message || "Faktura uspješno poslata na email",
+                missingReceipts ? "warning" : "success",
+            );
             setEmailModalOpen(false);
         } catch (err: any) {
             showToast(err.message || "Greška pri slanju maila", "error");

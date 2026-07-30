@@ -19,10 +19,13 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
   const [contentType, setContentType] = useState<"image" | "pdf" | "html">("image");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  /** Message the API returned, so the user sees why it failed instead of a generic line. */
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setError(false);
+      setErrorMessage(null);
     }
     return () => {
       if (imageSrc && imageSrc.startsWith("blob:")) {
@@ -44,11 +47,16 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
     if (token) {
       setLoading(true);
       setError(false);
+      setErrorMessage(null);
       fetch(`${API_URL}${src}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to load image");
+        .then(async (res) => {
+          if (!res.ok) {
+            // The API answers with { message } — surface it, a generic line hides the cause.
+            const body = await res.json().catch(() => null);
+            throw new Error(body?.message || `Greška ${res.status}`);
+          }
           const type = (res.headers.get("content-type") || "").toLowerCase();
           if (type.includes("application/pdf")) {
             setContentType("pdf");
@@ -62,7 +70,10 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
         .then((blob) => {
           setImageSrc(URL.createObjectURL(blob));
         })
-        .catch(() => setError(true))
+        .catch((e: unknown) => {
+          setError(true);
+          setErrorMessage(e instanceof Error ? e.message : null);
+        })
         .finally(() => setLoading(false));
       return () => {};
     }
@@ -109,8 +120,11 @@ export function ImageModal({ isOpen, onClose, src, token, alt = "Image", title }
           />
           )
         ) : (
-          <div className="max-w-md p-8 rounded-xl bg-white/10 text-white text-center">
+          <div className="max-w-md p-8 rounded-xl bg-white/10 text-white text-center space-y-2">
             <p className="text-sm font-bold">Sadržaj nije dostupan ili nije učitan.</p>
+            {errorMessage && (
+              <p className="text-xs text-white/70">{errorMessage}</p>
+            )}
           </div>
         )}
         <button

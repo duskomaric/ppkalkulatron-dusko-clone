@@ -17,6 +17,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Fiscal Receipt Disk
+    |--------------------------------------------------------------------------
+    |
+    | Disk that holds the receipt files OFS returns after fiscalization. The
+    | default keeps them in storage/, which is right for local development.
+    | Hosts with an ephemeral or per-replica filesystem (Laravel Cloud) lose
+    | those files, so point this at an attached S3-compatible bucket disk
+    | there — no code change needed, the files are read through Storage.
+    |
+    */
+
+    'fiscal_receipts_disk' => env('FISCAL_RECEIPTS_DISK', 'fiscal_receipts'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |

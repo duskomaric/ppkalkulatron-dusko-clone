@@ -3,13 +3,14 @@
 namespace App\Mail;
 
 use App\Models\Invoice;
+use App\Services\FiscalReceiptStore;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceMail extends Mailable
 {
@@ -49,30 +50,46 @@ class InvoiceMail extends Mailable
     public function attachments(): array
     {
         $atts = [];
+        $invoiceNumber = $this->invoice->invoice_number;
 
         if ($this->pdfPath && file_exists($this->pdfPath)) {
-            $invoiceNumber = $this->invoice->invoice_number;
             $atts[] = Attachment::fromPath($this->pdfPath)
                 ->as('racun_' . $invoiceNumber . '.pdf')
                 ->withMime('application/pdf');
         }
 
+        $receipts = app(FiscalReceiptStore::class);
+
         foreach ($this->attachFiscalRecordIds as $recordId) {
             $record = $this->invoice->fiscalRecords->firstWhere('id', $recordId);
-            if ($record?->fiscal_receipt_image_path) {
-                $fullPath = Storage::disk('fiscal_receipts')->path($record->fiscal_receipt_image_path);
-                if (file_exists($fullPath)) {
-                    $invoiceNumber = $this->invoice->invoice_number;
-                    $suffix = match ($record->type->value) {
-                        'copy' => '-kopija',
-                        'refund' => '-refundacija',
-                        default => '',
-                    };
-                    $atts[] = Attachment::fromPath($fullPath)
-                        ->as('fiskalni-racun_' . $invoiceNumber . $suffix . '.png')
-                        ->withMime('image/png');
-                }
+            $path = $record?->fiscal_receipt_image_path;
+
+            if (! $path) {
+                continue;
             }
+
+            if (! $receipts->exists($path)) {
+                Log::warning('Fiscal receipt not attached to email, file missing from storage', [
+                    'invoice_id' => $this->invoice->id,
+                    'fiscal_record_id' => $record->id,
+                    'path' => $path,
+                    'disk' => $receipts->diskName(),
+                ]);
+
+                continue;
+            }
+
+            $suffix = match ($record->type->value) {
+                'copy' => '-kopija',
+                'refund' => '-refundacija',
+                default => '',
+            };
+
+            // OFS returns PNG, PDF or HTML depending on ofs_receipt_image_format — name the
+            // attachment after what was actually stored, not always .png.
+            $atts[] = Attachment::fromStorageDisk($receipts->diskName(), $path)
+                ->as('fiskalni-racun_' . $invoiceNumber . $suffix . '.' . $receipts->extensionOf($path))
+                ->withMime($receipts->mimeFor($path));
         }
 
         return $atts;

@@ -12,12 +12,12 @@ use App\Models\Enums\FiscalRecordTypeEnum;
 use App\Models\FiscalRecord;
 use App\Models\Invoice;
 use App\Services\CurrencyConversionService;
+use App\Services\FiscalReceiptStore;
 use App\Services\OFSService;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 #[Group('Fiscal', weight: 10)]
@@ -696,7 +696,7 @@ class FiscalController extends Controller
             $binary = $content;
         }
 
-        Storage::disk('fiscal_receipts')->put($relativePath, $binary);
+        app(FiscalReceiptStore::class)->put($relativePath, $binary);
 
         return $relativePath;
     }
@@ -705,7 +705,7 @@ class FiscalController extends Controller
      * Vrati sliku fiskalnog računa (original, copy ili refund)
      */
     #[Endpoint(operationId: 'getFiscalReceiptImage', title: 'Get fiscal receipt image', description: 'Stream fiscal receipt image file')]
-    public function fiscalReceiptImage(Company $company, Invoice $invoice): mixed
+    public function fiscalReceiptImage(Company $company, Invoice $invoice, FiscalReceiptStore $receipts): mixed
     {
         abort_if($invoice->company_id !== $company->id, 404);
 
@@ -718,28 +718,33 @@ class FiscalController extends Controller
             : $invoice->originalFiscalRecord();
 
         if (! $record) {
-            return response()->json(['message' => 'Zapis nije pronađen'], 404);
+            return response()->json(['message' => 'Fiskalni zapis nije pronađen.'], 404);
         }
 
         $imagePath = $record->fiscal_receipt_image_path;
 
         if (! $imagePath) {
-            return response()->json(['message' => 'Slika nije dostupna'], 404);
+            return response()->json([
+                'message' => 'OFS nije vratio sliku računa za ovaj zapis.',
+            ], 404);
         }
 
-        $path = Storage::disk('fiscal_receipts')->path($imagePath);
+        if (! $receipts->exists($imagePath)) {
+            Log::warning('Fiscal receipt file missing from storage', [
+                'invoice_id' => $invoice->id,
+                'fiscal_record_id' => $record->id,
+                'path' => $imagePath,
+                'disk' => $receipts->diskName(),
+            ]);
 
-        if (! file_exists($path)) {
-            return response()->json(['message' => 'Datoteka nije pronađena'], 404);
+            return response()->json([
+                'message' => 'Slika je zabilježena, ali datoteke nema na disku. '
+                    . 'Ako aplikacija radi na hostu koji ne čuva storage/ između deployeva, '
+                    . 'postavite FISCAL_RECEIPTS_DISK na trajni disk.',
+            ], 404);
         }
 
-        $contentType = match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
-            'pdf' => 'application/pdf',
-            'html', 'htm' => 'text/html; charset=UTF-8',
-            default => 'image/png',
-        };
-
-        return response()->file($path, ['Content-Type' => $contentType]);
+        return $receipts->response($imagePath);
     }
 
     /**

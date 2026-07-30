@@ -22,6 +22,7 @@ use App\Services\CompanyMailService;
 use App\Services\CurrencyConversionService;
 use App\Services\DocumentConversionService;
 use App\Services\DocumentNumberService;
+use App\Services\FiscalReceiptStore;
 use App\Services\InvoicePdfService;
 use Carbon\Carbon;
 use Dedoc\Scramble\Attributes\Endpoint;
@@ -125,15 +126,21 @@ class InvoiceController extends Controller
     }
 
     #[Endpoint(operationId: 'sendInvoiceEmail', title: 'Send invoice email', description: 'Send invoice and fiscal receipt via email')]
-    public function sendEmail(SendInvoiceEmailRequest $request, Company $company, Invoice $invoice, CompanyMailService $mailService, InvoicePdfService $pdfService): JsonResponse
+    public function sendEmail(SendInvoiceEmailRequest $request, Company $company, Invoice $invoice, CompanyMailService $mailService, InvoicePdfService $pdfService, FiscalReceiptStore $receipts): JsonResponse
     {
         $invoice->load(['client', 'company', 'fiscalRecords']);
         $verificationUrl = $invoice->fiscal_verification_url;
 
-        $attachFiscalRecordIds = collect($request->validated('attach_fiscal_record_ids') ?? [])
-            ->filter(fn ($id) => $invoice->fiscalRecords->contains('id', $id))
-            ->values()
-            ->all();
+        $requestedRecords = collect($request->validated('attach_fiscal_record_ids') ?? [])
+            ->map(fn ($id) => $invoice->fiscalRecords->firstWhere('id', $id))
+            ->filter();
+
+        // A receipt whose file is gone would otherwise be dropped silently and the caller would
+        // be told the mail went out complete — split it out so the response can say so.
+        [$available, $missing] = $requestedRecords
+            ->partition(fn ($record) => $receipts->exists($record->fiscal_receipt_image_path));
+
+        $attachFiscalRecordIds = $available->pluck('id')->values()->all();
 
         $pdfPath = null;
         if ($request->boolean('attach_pdf')) {
@@ -159,7 +166,10 @@ class InvoiceController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Faktura uspješno poslata na email.',
+                'message' => $missing->isEmpty()
+                    ? 'Faktura uspješno poslata na email.'
+                    : 'Faktura poslata, ali slika fiskalnog računa nije priložena jer datoteke nema na disku.',
+                'missing_fiscal_receipt_record_ids' => $missing->pluck('id')->values()->all(),
             ]);
         } finally {
             $mailService->cleanupTempFile($pdfPath);
