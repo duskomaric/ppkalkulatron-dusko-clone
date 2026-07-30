@@ -44,6 +44,8 @@ export interface CompanySettings {
     ofs_device_mode: string | null;
     ofs_default_payment_type: string | null;
     ofs_print_receipt?: boolean;
+    /** Veleprodaja — buyerId ide sa prefiksom "VP:" */
+    ofs_wholesale?: boolean;
 
     // Mail - ako nije podešeno, koristi se default iz .env
     mail_from_address: string | null;

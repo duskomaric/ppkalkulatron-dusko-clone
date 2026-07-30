@@ -788,6 +788,18 @@ export default function FiscalSettingsPage() {
                                 />
                             </div>
                             <div className="md:col-span-2">
+                                <Toggle
+                                    checked={formData.ofs_wholesale ?? false}
+                                    onChange={(v) => setFormData({ ...formData, ofs_wholesale: v })}
+                                    label="Veleprodaja (VP)"
+                                />
+                                <p className="text-[11px] text-[var(--color-text-dim)] mt-1.5 pl-1">
+                                    Promet se evidentira kao veleprodaja, pa JIB kupca ide sa prefiksom <strong>VP:</strong>.
+                                    Za stranog kupca bez JIB-a šalje se <strong>VP:9999999999999</strong>.
+                                    Uključi samo ako je uređaj registrovan za veleprodaju — tada je JIB kupca obavezan.
+                                </p>
+                            </div>
+                            <div className="md:col-span-2">
                                 <FormTextarea
                                     label="Linije u zaglavlju računa"
                                     value={formData.ofs_receipt_header_text_lines?.join("\n") || ""}

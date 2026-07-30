@@ -67,6 +67,8 @@ class CompanySetting extends Model
         // Default za fiskalizaciju
         'ofs_default_payment_type' => 'string', // Cash, Card, WireTransfer, itd.
         'ofs_print_receipt' => 'boolean', // Štampaj račun pri fiskalizaciji (default false)
+        // Veleprodaja: buyerId dobija prefiks "VP:" jer se evidentira promet u veleprodaji
+        'ofs_wholesale' => 'boolean',
 
         // Mail - ako nije podešeno, koristi se default iz .env
         'mail_from_address' => 'string',

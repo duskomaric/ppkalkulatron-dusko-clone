@@ -199,6 +199,11 @@ class FiscalController extends Controller
 
         try {
             $invoice->load(['items.article', 'client']);
+
+            if ($missingBuyer = $this->wholesaleBuyerMissing($company, $invoice)) {
+                return $missingBuyer;
+            }
+
             $this->ensureInvoiceBamAmounts($invoice, $currencyConversionService);
             $ofs = new OFSService($company);
 
@@ -311,6 +316,11 @@ class FiscalController extends Controller
 
         try {
             $invoice->load(['items.article', 'client']);
+
+            if ($missingBuyer = $this->wholesaleBuyerMissing($company, $invoice)) {
+                return $missingBuyer;
+            }
+
             $this->ensureInvoiceBamAmounts($invoice, $currencyConversionService);
             $ofs = new OFSService($company);
 
@@ -438,6 +448,11 @@ class FiscalController extends Controller
 
         try {
             $invoice->load(['items.article', 'client']);
+
+            if ($missingBuyer = $this->wholesaleBuyerMissing($company, $invoice)) {
+                return $missingBuyer;
+            }
+
             $this->ensureInvoiceBamAmounts($invoice, $currencyConversionService);
             $ofs = new OFSService($company);
 
@@ -615,7 +630,6 @@ class FiscalController extends Controller
         // Struktura prema OFS dokumentaciji: invoiceRequest + opciona polja print, renderReceiptImage, receiptLayout, ...
         $payload = [
             'print' => $printReceipt,
-            'email' => 'duskomaric86@gmail.com',
             'renderReceiptImage' => $renderImage,
             'receiptImageFormat' => $imageFormat,
             'receiptLayout' => $layout,
@@ -638,15 +652,79 @@ class FiscalController extends Controller
             $payload['invoiceRequest']['referentDocumentDT'] = $referentDocumentDT;
         }
 
-        // buyerId: samo kada račun ima klijenta (račun sa podacima o kupcu)
-        $client = $invoice->client;
-        if ($client && $client->tax_id) {
-            $payload['invoiceRequest']['buyerId'] = ($client->country ?? 'BIH') === 'BIH'
-                ? $client->tax_id
-                : 'VP:9999999999999';
+        $buyerId = $this->resolveBuyerId($company, $invoice);
+        if ($buyerId !== null) {
+            $payload['invoiceRequest']['buyerId'] = $buyerId;
         }
 
         return $payload;
+    }
+
+    /** JIB used for a wholesale buyer that has none of its own (a foreign entity). */
+    public const FOREIGN_BUYER_ID = '9999999999999';
+
+    /**
+     * Wholesale turnover has to be recorded against a buyer, so say which piece is missing instead
+     * of letting OFS reject the invoice with an error nobody can act on.
+     */
+    protected function wholesaleBuyerMissing(Company $company, Invoice $invoice): ?JsonResponse
+    {
+        $wholesale = (bool) CompanySetting::get('ofs_wholesale', false, $company->id);
+
+        if (! $wholesale || $this->resolveBuyerId($company, $invoice) !== null) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => $invoice->client
+                ? 'Za veleprodaju je obavezan JIB kupca. Unesite JIB u podatke klijenta, ili isključite "Veleprodaja (VP)" u fiskalnim postavkama.'
+                : 'Za veleprodaju je obavezan kupac sa JIB-om. Račun bez klijenta se ne može evidentirati kao veleprodaja.',
+        ], 422);
+    }
+
+    /**
+     * Identification of the buyer, per api.ofs.ba: "identifikacija kupca (JIB firme, broj lične
+     * karte, broj pasoša)".
+     *
+     * The client's JIB is vat_id — the field labelled "Identifikacioni broj" — not tax_id, which
+     * holds the PDV number. Recording wholesale turnover requires the "VP:" prefix; a wholesale
+     * buyer with no JIB of its own is sent as VP:9999999999999. Returns null when the invoice
+     * carries no buyer identification at all, so buyerId is simply left out.
+     */
+    public function resolveBuyerId(Company $company, Invoice $invoice): ?string
+    {
+        $jib = trim((string) $invoice->client?->vat_id);
+        $wholesale = (bool) CompanySetting::get('ofs_wholesale', false, $company->id);
+
+        if (! $wholesale) {
+            return $jib !== '' ? $jib : null;
+        }
+
+        if ($jib !== '') {
+            // OFS adds the prefix itself on a wholesale-only device; sending it twice would be wrong.
+            return str_starts_with($jib, 'VP:') ? $jib : 'VP:'.$jib;
+        }
+
+        return $this->buyerIsForeign($invoice) ? 'VP:'.self::FOREIGN_BUYER_ID : null;
+    }
+
+    /**
+     * Country is free text, so treat anything that is not recognisably Bosnia and Herzegovina as
+     * foreign, and an empty country as domestic.
+     */
+    protected function buyerIsForeign(Invoice $invoice): bool
+    {
+        $country = trim((string) $invoice->client?->country);
+
+        if ($country === '') {
+            return false;
+        }
+
+        $normalized = mb_strtolower($country);
+        $domestic = ['ba', 'bih', 'bh', 'bosna i hercegovina', 'bosna and herzegovina', 'bosnia and herzegovina', 'bosnia', 'босна и херцеговина'];
+
+        return ! in_array($normalized, $domestic, true);
     }
 
     /** @return array{binary: string, extension: string}|null */

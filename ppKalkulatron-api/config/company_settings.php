@@ -25,10 +25,12 @@ return [
 
 //    fiscal settings
 
-    'ofs_base_url' => 'https://pos.ofs.ba',
-    'ofs_pac' => '123456',
-    'ofs_api_key' => 'bb7584a167578b89c459d6ab1759b0cc',
-    'ofs_serial_number' => 'F41AEFFF110A4B5ABB266299A41EE479',
+    // Uređaj se podešava po kompaniji. Ovo su samo fallback vrijednosti iz okoline — ne upisivati
+    // kredencijale ovdje, jer bi svaka kompanija bez svojih podešavanja fiskalizovala kroz taj uređaj.
+    'ofs_base_url' => env('OFS_DEFAULT_BASE_URL', 'https://pos.ofs.ba'),
+    'ofs_pac' => env('OFS_DEFAULT_PAC'),
+    'ofs_api_key' => env('OFS_DEFAULT_API_KEY'),
+    'ofs_serial_number' => env('OFS_DEFAULT_SERIAL_NUMBER'),
 
     // Receipt/print settings - zavise od cloud vs lokalni uređaj
     'ofs_receipt_layout' => 'Slip', // Slip | Invoice - Slip=termalni, Invoice=A4
@@ -37,4 +39,8 @@ return [
     'ofs_device_mode' => 'cloud', // cloud | local - način korištenja (cloud = pos.ofs.ba, local = fizički ESIR)
 
     'ofs_default_payment_type' => \App\Models\Enums\FiscalPaymentTypeEnum::WireTransfer->value,
+
+    // Veleprodaja: buyerId ide sa prefiksom "VP:" jer se evidentira promet u veleprodaji.
+    // Ako je uređaj registrovan isključivo za veleprodaju, OFS dodaje prefiks i sam.
+    'ofs_wholesale' => false,
 ];

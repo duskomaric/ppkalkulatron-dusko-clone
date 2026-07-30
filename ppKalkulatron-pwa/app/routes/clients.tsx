@@ -371,8 +371,8 @@ export default function ClientsPage() {
               <DetailsItem icon={MapPinIcon} label={t.city} value={activeClient.city} />
               <DetailsItem icon={HashIcon} label="ZIP" value={activeClient.zip} />
               <DetailsItem icon={GlobeIcon} label={t.country} value={activeClient.country} />
-              <DetailsItem icon={HashIcon} label="VAT ID" value={activeClient.vat_id} />
-              <DetailsItem icon={HashIcon} label="TAX ID" value={activeClient.tax_id} />
+              <DetailsItem icon={HashIcon} label="JIB" value={activeClient.vat_id} />
+              <DetailsItem icon={HashIcon} label="PDV" value={activeClient.tax_id} />
               <DetailsItem icon={CheckCircleIcon} label={t.status} value={activeClient.is_active} />
             </DetailsGrid>
           </SectionBlock>
@@ -474,7 +474,7 @@ export default function ClientsPage() {
           <SectionHeader icon={HashIcon} title={t.taxInfo} />
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="VAT ID"
+              label="JIB"
               name="vat_id"
               icon={HashIcon}
               value={formData.vat_id || ""}
@@ -482,7 +482,7 @@ export default function ClientsPage() {
               placeholder="Identifikacioni broj"
             />
             <Input
-              label="TAX ID"
+              label="PDV"
               name="tax_id"
               icon={HashIcon}
               value={formData.tax_id || ""}
@@ -490,6 +490,9 @@ export default function ClientsPage() {
               placeholder="Porezni broj"
             />
           </div>
+          <p className="text-[11px] text-[var(--color-text-dim)] mt-2 pl-1">
+            JIB se šalje fiskalnom uređaju kao identifikacija kupca. Obavezan je za veleprodaju.
+          </p>
         </SectionBlock>
       </FormDrawer>
     </AppLayout>
