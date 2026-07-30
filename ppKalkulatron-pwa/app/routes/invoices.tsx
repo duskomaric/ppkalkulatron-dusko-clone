@@ -58,6 +58,7 @@ import { useToast } from "~/hooks/useToast";
 import { useDocumentItems } from "~/hooks/useDocumentItems";
 import { useDocumentReferenceData } from "~/hooks/useDocumentReferenceData";
 import { OFS } from "~/config/constants";
+import { getLocalFiscalBlockedReason, normalizeFiscalBaseUrl } from "~/utils/fiscalLocal";
 
 const emptyInvoiceItem = emptyDocumentItem;
 
@@ -150,6 +151,10 @@ export default function InvoicesPage() {
         payload: Record<string, unknown>,
         requestId?: string
     ): Promise<unknown> => {
+        const base = normalizeFiscalBaseUrl(companySettings?.ofs_base_url || url);
+        const blocked = getLocalFiscalBlockedReason(base);
+        if (blocked) throw new Error(blocked);
+
         let sw: ServiceWorker | null = navigator.serviceWorker?.controller ?? null;
         if (!sw && navigator.serviceWorker) {
             const reg = await navigator.serviceWorker.ready;

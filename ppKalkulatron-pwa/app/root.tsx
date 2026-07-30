@@ -26,6 +26,7 @@ export const links: Route.LinksFunction = () => [
 import { useEffect } from "react";
 import { ThemeProvider } from "./components/ui/ThemeProvider";
 import { YearProvider } from "./contexts/YearContext";
+import { AuthProvider } from "./contexts/AuthContext";
 
 export function Layout({ children }: { children: ReactNode }) {
     useEffect(() => {
@@ -64,9 +65,11 @@ export function Layout({ children }: { children: ReactNode }) {
         </head>
         <body>
         <ThemeProvider>
-            <YearProvider>
-                {children}
-            </YearProvider>
+            <AuthProvider>
+                <YearProvider>
+                    {children}
+                </YearProvider>
+            </AuthProvider>
         </ThemeProvider>
         <ScrollRestoration />
         <Scripts />

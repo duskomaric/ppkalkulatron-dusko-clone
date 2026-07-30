@@ -31,6 +31,13 @@ import {
     type FoundDevice,
     type ScanProgress,
 } from "~/utils/networkScan";
+import {
+    normalizeFiscalBaseUrl,
+    getLocalFiscalBlockedReason,
+    isLocalFiscalBlockedByMixedContent,
+    isLocalNetworkScanBlocked,
+    LOCAL_FISCAL_MIXED_CONTENT_MESSAGE,
+} from "~/utils/fiscalLocal";
 
 /** Vraća Service Worker za LOCAL_FETCH (controller ili registration.active). Izvor: PWA, da request ide s uređaja korisnika na lokalnu adresu. */
 async function getServiceWorkerForLocalFetch(): Promise<ServiceWorker | null> {
@@ -41,12 +48,14 @@ async function getServiceWorkerForLocalFetch(): Promise<ServiceWorker | null> {
     return reg?.active ?? null;
 }
 
-/** Normalizira base URL (dodaje http:// ako nedostaje). */
-function normalizeFiscalBaseUrl(url: string): string {
-    const u = (url || "").trim();
-    if (!u) return "";
-    if (!/^https?:\/\//i.test(u)) return "http://" + u;
-    return u;
+function toastLocalFiscalBlocked(
+    baseUrl: string,
+    showToast: (message: string, type: "success" | "error" | "info") => void
+): boolean {
+    const reason = getLocalFiscalBlockedReason(baseUrl);
+    if (!reason) return false;
+    showToast(reason, "error");
+    return true;
 }
 
 
@@ -128,6 +137,10 @@ export default function FiscalSettingsPage() {
                 const base = normalizeFiscalBaseUrl(formData.ofs_base_url || "");
                 if (!base) {
                     showToast("Unesite Base URL za lokalni uređaj", "error");
+                    setTesting(null);
+                    return;
+                }
+                if (toastLocalFiscalBlocked(base, showToast)) {
                     setTesting(null);
                     return;
                 }
@@ -214,6 +227,10 @@ export default function FiscalSettingsPage() {
                     setTesting(null);
                     return;
                 }
+                if (toastLocalFiscalBlocked(base, showToast)) {
+                    setTesting(null);
+                    return;
+                }
                 const url = base.replace(/\/$/, "") + OFS.PATHS.STATUS;
                 const headers: Record<string, string> = {
                     "Content-Type": "application/json",
@@ -278,6 +295,11 @@ export default function FiscalSettingsPage() {
      */
     const handleScanNetwork = async () => {
         if (!formData) return;
+
+        if (isLocalNetworkScanBlocked()) {
+            showToast(LOCAL_FISCAL_MIXED_CONTENT_MESSAGE, "error");
+            return;
+        }
 
         // Proveri da li je API key popunjen
         if (!formData.ofs_api_key || formData.ofs_api_key.trim() === "") {
@@ -376,6 +398,10 @@ export default function FiscalSettingsPage() {
                     setTesting(null);
                     return;
                 }
+                if (toastLocalFiscalBlocked(base, showToast)) {
+                    setTesting(null);
+                    return;
+                }
                 const url = base.replace(/\/$/, "") + OFS.PATHS.SETTINGS;
                 const headers: Record<string, string> = {
                     "Content-Type": "application/json",
@@ -437,6 +463,10 @@ export default function FiscalSettingsPage() {
     };
 
     if (!selectedCompany) return null;
+
+    const localFiscalHttpsBlocked =
+        formData?.ofs_device_mode === "local" &&
+        isLocalFiscalBlockedByMixedContent(formData.ofs_base_url || "http://");
 
     return (
         <AppLayout
@@ -541,6 +571,17 @@ export default function FiscalSettingsPage() {
                                 </>
                             )}
                         </div>
+                        {formData.ofs_device_mode === "local" &&
+                            isLocalFiscalBlockedByMixedContent(formData.ofs_base_url || "http://") && (
+                            <div className="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                                <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mb-1">
+                                    Lokalni ESIR nije dostupan s ove stranice
+                                </p>
+                                <p className="text-xs text-[var(--color-text-dim)] leading-relaxed">
+                                    {LOCAL_FISCAL_MIXED_CONTENT_MESSAGE}
+                                </p>
+                            </div>
+                        )}
                         {formData.ofs_device_mode === "local" && (
                             <div className="mt-4 p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
                                 <div className="flex items-center justify-between mb-3">
@@ -548,7 +589,13 @@ export default function FiscalSettingsPage() {
                                     <button
                                         type="button"
                                         onClick={handleScanNetwork}
-                                        disabled={scanning || !!testing || !formData.ofs_api_key || formData.ofs_api_key.trim() === ""}
+                                        disabled={
+                                            scanning ||
+                                            !!testing ||
+                                            !formData.ofs_api_key ||
+                                            formData.ofs_api_key.trim() === "" ||
+                                            isLocalNetworkScanBlocked()
+                                        }
                                         className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-hover)] hover:bg-[var(--color-surface-hover)] text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
                                     >
                                         <SearchIcon className="h-4 w-4" />
@@ -662,7 +709,7 @@ export default function FiscalSettingsPage() {
                                 <button
                                     type="button"
                                     onClick={handleTestAttention}
-                                    disabled={!!testing}
+                                    disabled={!!testing || localFiscalHttpsBlocked}
                                     className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-sm font-bold disabled:opacity-50 cursor-pointer"
                                 >
                                     {testing === "attention" ? "Testiranje..." : "Test Attention"}
@@ -670,7 +717,7 @@ export default function FiscalSettingsPage() {
                                 <button
                                     type="button"
                                     onClick={handleTestSettings}
-                                    disabled={!!testing}
+                                    disabled={!!testing || localFiscalHttpsBlocked}
                                     className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-sm font-bold disabled:opacity-50 cursor-pointer"
                                 >
                                     {testing === "settings" ? "Testiranje..." : "Test Settings"}
@@ -678,7 +725,7 @@ export default function FiscalSettingsPage() {
                                 <button
                                     type="button"
                                     onClick={handleTestStatus}
-                                    disabled={!!testing}
+                                    disabled={!!testing || localFiscalHttpsBlocked}
                                     className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-sm font-bold disabled:opacity-50 cursor-pointer"
                                 >
                                     {testing === "status" ? "Testiranje..." : "Test Status"}
