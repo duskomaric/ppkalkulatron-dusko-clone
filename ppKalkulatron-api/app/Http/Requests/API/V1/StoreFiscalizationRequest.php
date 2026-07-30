@@ -17,7 +17,8 @@ class StoreFiscalizationRequest extends FormRequest
     {
         return [
             'localDeviceResponse' => ['nullable', 'array'],
-            'request_id' => ['nullable', 'string', 'max:64'],
+            // OFS: "maksimalna dužina je 32 alfanumerička znaka".
+            'request_id' => ['nullable', 'string', 'alpha_num', 'max:32'],
         ];
     }
 

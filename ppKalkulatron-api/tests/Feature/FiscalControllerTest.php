@@ -41,7 +41,7 @@ it('F 11% - 1 item 100 BAM: invoice store pa fiscalize', function () {
 
     $response->assertStatus(200)
         ->assertJson(['success' => true])
-        ->assertJsonPath('data.request_id', fn ($v) => str_starts_with($v, 'inv-'));
+        ->assertJsonPath('data.request_id', fn ($v) => str_starts_with($v, 'inv'));
 
     expect($response->json('data.fiscal_invoice_number'))->not->toBeNull();
 
@@ -196,7 +196,7 @@ it('sends the three headers OFS requires and a payment equal to the sum of the i
             ->and($request->hasHeader('X-Teron-SerialNumber', OFS_FAKE_SERIAL_NUMBER))->toBeTrue()
             ->and($request->hasHeader('X-PAC', OFS_FAKE_PAC))->toBeTrue()
             // RequestId lets us recover the response if it is lost in transit.
-            ->and($request->header('RequestId')[0])->toStartWith('inv-')
+            ->and($request->header('RequestId')[0])->toStartWith('inv')
             ->and($invoiceRequest['invoiceType'])->toBe('Normal')
             ->and($invoiceRequest['transactionType'])->toBe('Sale')
             // Amounts go out in BAM, not in pfening.

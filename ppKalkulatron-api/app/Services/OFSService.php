@@ -104,4 +104,33 @@ class OFSService
     {
         return $this->request('GET', '/api/settings');
     }
+
+    /**
+     * Unesi PIN sigurnosnog elementa (POST /api/pin).
+     *
+     * Jedini poziv koji prima plain text: tijelo je same 4 cifre, ne JSON. Potreban je kada
+     * /api/status u polju "gsc" vrati kod 1500. Uspjeh je HTTP 200 sa tijelom "0100".
+     */
+    public function enterPin(string $pin)
+    {
+        $endpoint = $this->baseUrl.'/api/pin';
+
+        Log::info('OFS request', ['method' => 'POST', 'url' => $endpoint]);
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer '.$this->getConf('ofs_api_key'),
+            'X-Teron-SerialNumber' => $this->getConf('ofs_serial_number'),
+            'X-PAC' => $this->getConf('ofs_pac'),
+            'Accept' => 'application/json',
+        ])->withBody($pin, 'text/plain')->post($endpoint);
+
+        // Ne logujemo tijelo zahtjeva — PIN ne ide u log.
+        Log::info('OFS response', [
+            'url' => $endpoint,
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+
+        return $response;
+    }
 }

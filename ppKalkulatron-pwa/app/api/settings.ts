@@ -30,9 +30,17 @@ export async function testFiscalSettings(companySlug: string, token: string) {
 }
 
 export async function testFiscalStatus(companySlug: string, token: string) {
-    return fetchApi<{ success: boolean; message: string; data?: any }>(
+    return fetchApi<{ success: boolean; message: string; pin_required?: boolean; data?: any }>(
         `/${companySlug}/fiscal/test-status`,
         { token }
+    );
+}
+
+/** Unos PIN-a sigurnosnog elementa — traži se kada status vrati kod 1500. PIN se ne čuva. */
+export async function enterFiscalPin(companySlug: string, token: string, pin: string) {
+    return fetchApi<{ success: boolean; message: string; code?: string }>(
+        `/${companySlug}/fiscal/pin`,
+        { method: "POST", body: JSON.stringify({ pin }), token }
     );
 }
 

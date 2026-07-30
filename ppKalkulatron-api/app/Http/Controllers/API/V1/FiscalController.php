@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Exceptions\NoExchangeRateForDateException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\API\V1\EnterFiscalPinRequest;
 use App\Http\Requests\API\V1\StoreFiscalizationRequest;
 use App\Models\Company;
 use App\Models\CompanySetting;
@@ -106,10 +107,20 @@ class FiscalController extends Controller
             $response = $ofs->getStatus();
 
             if ($response->successful()) {
+                $data = $response->json() ?? [];
+
+                // "gsc" je lista statusnih kodova LPFR-a; 1500 znači da uređaj traži PIN, 1300 da
+                // sigurnosnog elementa nema. Polje ne postoji kod VPFR-a (cloud).
+                $gsc = array_map('strval', (array) ($data['gsc'] ?? []));
+                $pinRequired = in_array(self::PIN_REQUIRED_CODE, $gsc, true);
+
                 return response()->json([
                     'success' => true,
-                    'message' => 'Status uspješno učitan',
-                    'data' => $response->json(),
+                    'message' => $pinRequired
+                        ? 'Uređaj traži PIN sigurnosnog elementa.'
+                        : 'Status uspješno učitan',
+                    'pin_required' => $pinRequired,
+                    'data' => $data,
                 ]);
             }
 
@@ -128,6 +139,56 @@ class FiscalController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Unesi PIN sigurnosnog elementa (POST /api/pin).
+     *
+     * Traži se kada /api/status u "gsc" vrati kod 1500. PIN se nigdje ne čuva — unosi se kada
+     * uređaj to zatraži i ide pravo na ESIR.
+     */
+    #[Endpoint(operationId: 'enterFiscalPin', title: 'Enter fiscal PIN', description: 'Enter the security element PIN on the fiscal device')]
+    public function enterPin(EnterFiscalPinRequest $request, Company $company): JsonResponse
+    {
+        try {
+            $response = (new OFSService($company))->enterPin($request->validated('pin'));
+            $code = trim($response->body(), " \t\n\r\0\x0B\"");
+
+            if ($response->successful() && $code === self::PIN_OK) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'PIN je prihvaćen. Uređaj je spreman za fiskalizaciju.',
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => self::PIN_ERRORS[$code] ?? 'Uređaj je odbio PIN.',
+                'status' => $response->status(),
+                'code' => $code,
+            ], 502);
+        } catch (\Exception $e) {
+            Log::error('Fiscal PIN entry failed', ['company_id' => $company->id, 'error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Greška: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /** OFS vraća "0100" kada je PIN prihvaćen. */
+    public const PIN_OK = '0100';
+
+    /** Kod 1500 u /api/status → "gsc" znači da uređaj traži PIN. */
+    public const PIN_REQUIRED_CODE = '1500';
+
+    /** @var array<string, string> Kodovi koje /api/pin vraća na grešku. */
+    public const PIN_ERRORS = [
+        '1300' => 'Sigurnosni element nije prisutan u uređaju.',
+        '2400' => 'Lokalni ESIR (LPFR) nije spreman.',
+        '2800' => 'PIN nije u ispravnom formatu — očekuje se 4 cifre.',
+        '2806' => 'PIN nije u ispravnom formatu — očekuje se 4 cifre.',
+    ];
 
     /**
      * Vrati OFS payload za lokalni uređaj (PWA ga šalje na ESIR, odgovor na fiscalize).
@@ -213,7 +274,7 @@ class FiscalController extends Controller
 
             $payload = $this->buildInvoicePayload($company, $invoice, $items, $paymentAmount, 'Sale', 'Normal');
 
-            $requestId = $request->validated('request_id') ?? 'inv-'.$invoice->id.'-'.Str::random(8);
+            $requestId = $request->validated('request_id') ?? self::fiscalRequestId('inv', $invoice->id);
             $deviceMode = CompanySetting::get('ofs_device_mode', 'cloud', $company->id);
 
             Log::info('Fiscalizing invoice', [
@@ -340,7 +401,7 @@ class FiscalController extends Controller
                 $referentDT
             );
 
-            $requestId = $request->validated('request_id') ?? 'copy-'.$invoice->id.'-'.Str::random(8);
+            $requestId = $request->validated('request_id') ?? self::fiscalRequestId('copy', $invoice->id);
             $deviceMode = CompanySetting::get('ofs_device_mode', 'cloud', $company->id);
 
             Log::info('Fiscalizing copy', [
@@ -473,7 +534,7 @@ class FiscalController extends Controller
                 $referentDT
             );
 
-            $requestId = $request->validated('request_id') ?? 'refund-'.$invoice->id.'-'.Str::random(8);
+            $requestId = $request->validated('request_id') ?? self::fiscalRequestId('refund', $invoice->id);
             $deviceMode = CompanySetting::get('ofs_device_mode', 'cloud', $company->id);
 
             Log::info('Fiscalizing refund', [
@@ -641,7 +702,7 @@ class FiscalController extends Controller
                     ['amount' => $totalAmount, 'paymentType' => $paymentType],
                 ],
                 'items' => $items,
-                'cashier' => auth()->user()?->first_name . ' ' . auth()->user()?->last_name ?? 'Prodavac',
+                    'cashier' => $this->cashierName(),
             ],
         ];
 
@@ -662,6 +723,23 @@ class FiscalController extends Controller
 
     /** JIB used for a wholesale buyer that has none of its own (a foreign entity). */
     public const FOREIGN_BUYER_ID = '9999999999999';
+
+    /**
+     * RequestId lets a lost response be looked up later, and OFS specifies "maksimalna dužina je
+     * 32 alfanumerička znaka" — so no separators. Str::random is already alphanumeric only.
+     */
+    public static function fiscalRequestId(string $prefix, int $invoiceId): string
+    {
+        return substr($prefix.$invoiceId.Str::random(8), 0, 32);
+    }
+
+    /** Cashier name, or a stand-in — an unnamed user must not be sent as a blank space. */
+    protected function cashierName(): string
+    {
+        $name = trim(auth()->user()?->first_name.' '.auth()->user()?->last_name);
+
+        return $name !== '' ? $name : 'Prodavac';
+    }
 
     /**
      * Wholesale turnover has to be recorded against a buyer, so say which piece is missing instead

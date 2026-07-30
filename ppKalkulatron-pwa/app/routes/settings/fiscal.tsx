@@ -8,6 +8,7 @@ import {
     testFiscalAttention,
     testFiscalSettings,
     testFiscalStatus,
+    enterFiscalPin,
 } from "~/api/settings";
 import type { CompanySettings } from "~/types/config";
 import type { SelectOption } from "~/types/config";
@@ -72,6 +73,10 @@ export default function FiscalSettingsPage() {
     const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, currentIp: "" });
     const [detectedIPs, setDetectedIPs] = useState<string[]>([]);
     const [manualIPRange, setManualIPRange] = useState("");
+    /** Uređaj traži PIN sigurnosnog elementa (kod 1500 u statusu). PIN se nikad ne čuva. */
+    const [pinRequired, setPinRequired] = useState(false);
+    const [pin, setPin] = useState("");
+    const [sendingPin, setSendingPin] = useState(false);
 
     const { toast, showToast, hideToast } = useToast();
     const receiptLayout = formData?.ofs_receipt_layout ?? "Slip";
@@ -256,7 +261,16 @@ export default function FiscalSettingsPage() {
                     console.log("[Fiscal] Local mode – status response:", payload);
                     const { success, ok, status, data, error } = payload;
                     if (success && ok) {
-                        showToast("Status uspješno učitan (Lokalno).", "success");
+                        // "gsc" je lista statusnih kodova; 1500 znači da uređaj traži PIN.
+                        const gsc = (data?.gsc ?? []).map(String);
+                        const needsPin = gsc.includes(OFS.PIN_REQUIRED_CODE);
+                        setPinRequired(needsPin);
+                        showToast(
+                            needsPin
+                                ? "Uređaj traži PIN sigurnosnog elementa."
+                                : "Status uspješno učitan (Lokalno).",
+                            needsPin ? "warning" : "success",
+                        );
                     } else if (success && !ok) {
                         const body = typeof data === "string" ? data : (data?.message ?? JSON.stringify(data));
                         showToast(`Greška pri dohvatu statusa (${status ?? ""})${body ? ": " + String(body).slice(0, 80) : ""}`, "error");
@@ -273,8 +287,9 @@ export default function FiscalSettingsPage() {
             }
             const res = await testFiscalStatus(selectedCompany.slug, token);
             console.log("[Fiscal] Cloud mode – status response:", res);
+            setPinRequired(Boolean(res.pin_required));
             const message = res.message || (res.success ? "Status uspješno učitan." : "Greška pri dohvatu statusa.");
-            showToast(message, res.success ? "success" : "error");
+            showToast(message, res.success ? (res.pin_required ? "warning" : "success") : "error");
         } catch (error: unknown) {
             if (!isLocal) {
                 const msg = error instanceof Error ? error.message : String(error);
@@ -285,6 +300,87 @@ export default function FiscalSettingsPage() {
             }
         } finally {
             if (!handledBySw) setTesting(null);
+        }
+    };
+
+    /**
+     * Unos PIN-a sigurnosnog elementa (POST /api/pin).
+     * OFS prima plain text — same 4 cifre, ne JSON. PIN se nigdje ne čuva.
+     */
+    const handleEnterPin = async () => {
+        if (!formData || !selectedCompany || !token) return;
+
+        if (!/^\d{4}$/.test(pin)) {
+            showToast("PIN sigurnosnog elementa je 4 cifre.", "error");
+            return;
+        }
+
+        const isLocal = formData.ofs_device_mode === "local";
+        setSendingPin(true);
+        try {
+            if (isLocal) {
+                const base = normalizeFiscalBaseUrl(formData.ofs_base_url || "");
+                if (!base) {
+                    showToast("Unesite Base URL za lokalni uređaj", "error");
+                    return;
+                }
+                if (toastLocalFiscalBlocked(base, showToast)) {
+                    return;
+                }
+                const sw = await getServiceWorkerForLocalFetch();
+                if (!sw) {
+                    showToast("Service worker nije spreman. Osvježite stranicu i pokušajte ponovo.", "error");
+                    return;
+                }
+
+                const channel = new MessageChannel();
+                const timeout = setTimeout(() => {
+                    showToast("Timeout: uređaj nije odgovorio.", "error");
+                    setSendingPin(false);
+                }, OFS.LOCAL_FETCH_TIMEOUT_MS);
+
+                channel.port1.onmessage = (event: MessageEvent) => {
+                    clearTimeout(timeout);
+                    const { success, ok, data, error } = event.data ?? {};
+                    const code = String(data ?? "").replace(/["\s]/g, "");
+                    if (success && ok && code === OFS.PIN_OK) {
+                        setPinRequired(false);
+                        setPin("");
+                        showToast("PIN je prihvaćen. Uređaj je spreman.", "success");
+                    } else {
+                        showToast(success ? `Uređaj je odbio PIN (${code || "?"})` : "Greška: " + (error ?? "nepoznato"), "error");
+                    }
+                    setSendingPin(false);
+                };
+
+                sw.postMessage(
+                    {
+                        type: "LOCAL_FETCH",
+                        url: base.replace(/\/$/, "") + OFS.PATHS.PIN,
+                        options: {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "text/plain",
+                                ...(formData.ofs_api_key ? { Authorization: "Bearer " + formData.ofs_api_key } : {}),
+                            },
+                            body: pin,
+                        },
+                    },
+                    [channel.port2],
+                );
+                return;
+            }
+
+            const res = await enterFiscalPin(selectedCompany.slug, token, pin);
+            if (res.success) {
+                setPinRequired(false);
+                setPin("");
+            }
+            showToast(res.message, res.success ? "success" : "error");
+        } catch (error: unknown) {
+            showToast(error instanceof Error ? error.message : "Greška pri unosu PIN-a", "error");
+        } finally {
+            if (formData.ofs_device_mode !== "local") setSendingPin(false);
         }
     };
 
@@ -731,6 +827,37 @@ export default function FiscalSettingsPage() {
                                     {testing === "status" ? "Testiranje..." : "Test Status"}
                                 </button>
                             </div>
+                            {pinRequired && (
+                                <div className="mt-3 p-4 rounded-xl border-l-4 border-[var(--color-warning)] bg-amber-50">
+                                    <p className="text-sm text-slate-800">
+                                        <span className="font-bold text-[var(--color-warning)] uppercase tracking-tight text-xs block mb-1">
+                                            Uređaj traži PIN
+                                        </span>
+                                        Sigurnosni element nije otključan (status kod 1500), pa fiskalizacija neće raditi.
+                                        Unesite 4-cifreni PIN. PIN se ne čuva.
+                                    </p>
+                                    <div className="flex gap-3 mt-3">
+                                        <input
+                                            type="password"
+                                            inputMode="numeric"
+                                            autoComplete="off"
+                                            maxLength={4}
+                                            value={pin}
+                                            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                                            placeholder="••••"
+                                            className="w-28 px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-main)] font-bold text-sm tracking-[0.4em] outline-none focus:border-primary/50"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleEnterPin}
+                                            disabled={sendingPin || pin.length !== 4 || localFiscalHttpsBlocked}
+                                            className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50 cursor-pointer"
+                                        >
+                                            {sendingPin ? "Slanje..." : "Pošalji PIN"}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </SectionBlock>
 

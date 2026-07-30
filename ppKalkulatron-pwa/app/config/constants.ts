@@ -12,5 +12,10 @@ export const OFS = {
         SETTINGS: "/api/settings",
         STATUS: "/api/status",
         INVOICES: "/api/invoices",
+        PIN: "/api/pin",
     },
+    /** Kod u "gsc" listi iz /api/status koji znači da uređaj traži PIN sigurnosnog elementa. */
+    PIN_REQUIRED_CODE: "1500",
+    /** Tijelo koje /api/pin vrati kada je PIN prihvaćen. */
+    PIN_OK: "0100",
 } as const;
