@@ -320,7 +320,7 @@
     @if($invoice->notes)
         <div class="notes-section">
             <div class="notes-label">Napomena</div>
-            <div class="notes-text">{{ $invoice->notes }}</div>
+            <div class="notes-text">{!! nl2br(e($invoice->notes)) !!}</div>
         </div>
     @endif
 

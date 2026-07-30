@@ -373,7 +373,7 @@
     @if($invoice->notes)
         <div class="notes-section">
             <strong>Napomena:</strong><br>
-            {{ $invoice->notes }}
+            {!! nl2br(e($invoice->notes)) !!}
         </div>
     @endif
 

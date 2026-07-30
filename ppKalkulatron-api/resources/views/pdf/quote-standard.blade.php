@@ -255,7 +255,7 @@
 
         @if($quote->notes)
         <div class="notes">
-            <strong>Napomena:</strong> {{ $quote->notes }}
+            <strong>Napomena:</strong> {!! nl2br(e($quote->notes)) !!}
         </div>
         @endif
 

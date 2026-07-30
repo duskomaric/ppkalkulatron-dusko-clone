@@ -255,7 +255,7 @@
 
         @if($proforma->notes)
         <div class="notes">
-            <strong>Napomena:</strong> {{ $proforma->notes }}
+            <strong>Napomena:</strong> {!! nl2br(e($proforma->notes)) !!}
         </div>
         @endif
 

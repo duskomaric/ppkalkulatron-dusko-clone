@@ -100,7 +100,7 @@
         </div>
 
         @if($quote->notes)
-        <div class="notes">{{ $quote->notes }}</div>
+        <div class="notes">{!! nl2br(e($quote->notes)) !!}</div>
         @endif
     </div>
 </body>

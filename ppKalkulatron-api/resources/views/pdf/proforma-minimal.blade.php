@@ -100,7 +100,7 @@
         </div>
 
         @if($proforma->notes)
-        <div class="notes">{{ $proforma->notes }}</div>
+        <div class="notes">{!! nl2br(e($proforma->notes)) !!}</div>
         @endif
     </div>
 </body>
